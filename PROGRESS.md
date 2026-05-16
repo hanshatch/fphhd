@@ -3,7 +3,7 @@
 ## Fases completadas
 
 - [x] Fase 0 — Bootstrap del proyecto (2026-05-16)
-- [ ] Fase 1 — Modelo de datos y migraciones
+- [x] Fase 1 — Modelo de datos y migraciones (2026-05-16)
 - [ ] Fase 2 — Autenticación + 2FA
 - [ ] Fase 3 — CRUD cuentas, categorías, fuentes, transacciones
 - [ ] Fase 4 — Dashboard + saldos
@@ -16,7 +16,7 @@
 
 ## En curso
 
-Fase 1 — Modelo de datos y migraciones
+Fase 2 — Autenticación + 2FA
 
 ## Bloqueos / decisiones pendientes
 
