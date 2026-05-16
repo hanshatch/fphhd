@@ -2,118 +2,92 @@
 
 Webapp personal de finanzas para Hans Hatch. Single-user, mobile-first, en español.
 
-**Dominio:** https://fp.hanshatch.com  
-**Stack:** FastAPI + PostgreSQL + React + TypeScript + Tailwind
+**Dominio:** https://fp.hanshatch.com
+**Stack:** Laravel 13 + MySQL + Blade + Tailwind CSS v4
+
+---
+
+## Requisitos de desarrollo
+
+- PHP 8.4+ (via Homebrew)
+- Composer
+- MySQL 8 (via Homebrew)
+- Laravel Valet
 
 ---
 
 ## Arranque en desarrollo
 
-### Requisitos previos
-
-- Docker Desktop instalado y corriendo
-- Node 20+ (`node --version`)
-- Python 3.12+ con `uv` (`uv --version`)
-
-### 1. Clonar e instalar
-
 ```bash
-git clone <repo> fp-hanshatch
-cd fp-hanshatch
-```
+# 1. Clonar
+git clone https://github.com/hanshatch/fphhd fp
+cd fp/app
 
-### 2. Configurar variables de entorno
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-# Editar los valores necesarios en ambos archivos
-```
-
-### 3. Levantar con Docker Compose (recomendado)
-
-```bash
-docker compose -f deploy/docker-compose.dev.yml up -d
-```
-
-La app queda disponible en:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- Docs API: http://localhost:8000/api/docs
-
-### 4. O levantar servicios individualmente
-
-**Base de datos:**
-```bash
-docker compose -f deploy/docker-compose.dev.yml up db -d
-```
-
-**Backend:**
-```bash
-cd backend
-uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
-```
-
-**Frontend:**
-```bash
-cd frontend
+# 2. Instalar dependencias
+composer install
 npm install
+
+# 3. Configurar entorno
+cp .env.example .env
+php artisan key:generate
+# Editar .env con credenciales de DB local
+
+# 4. Migrar base de datos
+php artisan migrate
+
+# 5. Compilar assets
 npm run dev
+
+# 6. Enlazar con Valet
+valet link fp
+valet secure fp
 ```
 
----
-
-## Primer registro
-
-Al abrir la app por primera vez, el sistema detecta que no hay usuario y muestra el formulario de registro. Después del registro se solicita enrolar un autenticador TOTP (Google Authenticator, Authy, etc.).
+La app queda en **https://fp.test**
 
 ---
 
-## Tests
+## Comandos frecuentes
 
 ```bash
-# Backend
-cd backend && uv run pytest --cov=app --cov-report=term-missing
+# Correr migraciones
+php artisan migrate
 
-# Frontend
-cd frontend && npm run test
-```
+# Crear nueva migración
+php artisan make:migration create_accounts_table
 
----
+# Correr tests
+php artisan test
 
-## Linters y formateo
+# Compilar assets en desarrollo (con hot reload)
+npm run dev
 
-```bash
-# Backend
-cd backend
-uv run ruff check app/ tests/
-uv run ruff format app/ tests/
-uv run mypy app/
-
-# Frontend
-cd frontend
-npm run lint
-npm run format
+# Compilar para producción
+npm run build
 ```
 
 ---
 
 ## Deploy a producción
 
-Ver [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+```bash
+# En el servidor vía SSH
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+npm run build
+```
 
 ---
 
-## Estructura del proyecto
+## Estructura
 
 ```
-fp-hanshatch/
-├── backend/          # FastAPI + SQLAlchemy + Alembic
-├── frontend/         # React + Vite + TypeScript + Tailwind
-├── deploy/           # Docker Compose, Traefik, Ansible, scripts
-├── docs/             # Documentación técnica
-├── CLAUDE.md         # Instrucciones para Claude Code
-└── PROGRESS.md       # Estado de desarrollo
+fp/
+├── app/          ← proyecto Laravel
+├── CLAUDE.md     ← instrucciones para Claude Code
+├── PROGRESS.md   ← estado del desarrollo
+└── README.md
 ```
