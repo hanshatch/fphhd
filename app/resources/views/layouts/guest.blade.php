@@ -1,30 +1,58 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+<html lang="es" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name') }} · Finanzas</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="h-full bg-[#efeded] antialiased" style="font-family:'Roboto',system-ui,sans-serif">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+    <div class="min-h-full flex">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        {{-- Panel izquierdo — solo desktop --}}
+        <div class="hidden lg:flex lg:flex-col lg:w-1/2 xl:w-2/5 bg-[#373737] relative overflow-hidden">
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
-            <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
+            {{-- Patrón de fondo sutil --}}
+            <div class="absolute inset-0 opacity-5"
+                 style="background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0); background-size: 32px 32px;">
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+            {{-- Contenido centrado --}}
+            <div class="relative flex flex-col items-start justify-center flex-1 px-12">
+                {{-- Logo --}}
+                <img src="{{ asset('images/logo.png') }}" alt="hans hatch" class="h-10 mb-12 brightness-0 invert opacity-90">
+
+                <h1 class="text-4xl font-bold text-white leading-tight mb-3">
+                    Tus finanzas,<br>bajo control.
+                </h1>
+                <p class="text-white/50 text-base leading-relaxed max-w-xs">
+                    Registra ingresos, egresos e inversiones. Visualiza tu patrimonio y toma mejores decisiones.
+                </p>
+
+                {{-- Decoración inferior --}}
+                <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#76a72b]"></div>
             </div>
         </div>
-    </body>
+
+        {{-- Panel derecho — formulario --}}
+        <div class="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:px-8">
+
+            {{-- Logo mobile --}}
+            <div class="lg:hidden mb-8">
+                <img src="{{ asset('images/logo.png') }}" alt="hans hatch" class="h-8">
+            </div>
+
+            <div class="w-full max-w-sm">
+                {{ $slot }}
+            </div>
+
+            <p class="mt-8 text-xs text-[#ababab]">
+                FP · Finanzas Personales
+            </p>
+        </div>
+    </div>
+
+</body>
 </html>
