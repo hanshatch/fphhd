@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\TotpController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecurringChargeController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,9 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
     Route::resource('sources', SourceController::class)->except('show');
     Route::resource('transactions', TransactionController::class)->except('show');
+    Route::resource('recurring', RecurringChargeController::class)->except('show');
+    Route::post('/recurring/{recurring}/apply-now', [RecurringChargeController::class, 'applyNow'])->name('recurring.apply-now');
+    Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
 });
 
 Route::middleware('auth')->group(function () {

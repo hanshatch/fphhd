@@ -18,6 +18,10 @@
 
 Fase 5 — Captura rápida de movimientos (optimización mobile)
 
+## Módulos adicionales completados
+
+- [x] Cargos recurrentes + MSI (2026-05-17)
+
 ## Bloqueos / decisiones pendientes
 
 - Pendiente configurar credenciales de DB en producción (hosting SSH)

@@ -30,6 +30,7 @@
                 ['route' => 'accounts.index',     'match' => 'accounts.*',      'icon' => 'card',        'label' => 'Cuentas'],
                 ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
                 ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
+                ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
             ];
             @endphp
 
