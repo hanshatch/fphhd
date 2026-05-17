@@ -15,48 +15,42 @@ class ImportService
         'sep' => '09', 'oct' => '10', 'nov' => '11', 'dic' => '12',
     ];
 
-    // Patrones de descripción → tipo de transacción + sugerencia de categoría
-    private array $patterns = [
-        ['regex' => '/ABONO.?NOMINA|NOMINA/i',             'type' => 'income',  'hint' => 'nomina'],
-        ['regex' => '/DEPOSITO INTERBANCARIO|DEPOSITO CAN/i','type' => 'income',  'hint' => 'deposito'],
-        ['regex' => '/TRASPASO.*DE/i',                      'type' => 'income',  'hint' => 'traspaso'],
-        ['regex' => '/PCOMP/i',                             'type' => 'income',  'hint' => 'rendimiento'],
-        ['regex' => '/SEGUROS MONTERREY|DOMI.*SEGURO/i',    'type' => 'expense', 'hint' => 'seguro'],
-        ['regex' => '/DOMI\s/i',                            'type' => 'expense', 'hint' => 'domiciliacion'],
-        ['regex' => '/OXXO|SORIANA|WALMART|CHEDRAUI/i',    'type' => 'expense', 'hint' => 'super'],
-        ['regex' => '/DIS\.?EFE|EFECTIVO/i',               'type' => 'expense', 'hint' => 'efectivo'],
-        ['regex' => '/PAGO DE SERVICIO|PAGO INTERBANCARIO/i','type' => 'expense','hint' => 'pago'],
-        ['regex' => '/TRASPASO.*A/i',                       'type' => 'expense', 'hint' => 'traspaso_salida'],
+    // Solo sugieren CATEGORÍA — el tipo lo dicta la columna (Depósitos/Retiros)
+    private array $categoryPatterns = [
+        // Ingresos
+        ['regex' => '/ABONO.?NOMINA|NOMINA/i',              'kind' => 'income',  'hint' => 'nomina'],
+        ['regex' => '/DEPOSITO INTERBANCARIO|DEP\.? INTER/i','kind' => 'income',  'hint' => 'deposito'],
+        ['regex' => '/DEPOSITO CANALES|DEP\.? CANAL/i',      'kind' => 'income',  'hint' => 'deposito'],
+        ['regex' => '/TRASPASO.*DE/i',                       'kind' => 'income',  'hint' => 'traspaso'],
+        ['regex' => '/PCOMP/i',                              'kind' => 'income',  'hint' => 'rendimiento'],
+        // Egresos
+        ['regex' => '/SEGUROS MONTERREY|DOMI.*SEGURO/i',     'kind' => 'expense', 'hint' => 'seguro'],
+        ['regex' => '/DOMI\s/i',                             'kind' => 'expense', 'hint' => 'domiciliacion'],
+        ['regex' => '/OXXO|SORIANA|WALMART|CHEDRAUI|SEVEN/i','kind' => 'expense', 'hint' => 'super'],
+        ['regex' => '/DIS\.?EFE|RETIRO.*EFE/i',             'kind' => 'expense', 'hint' => 'efectivo'],
+        ['regex' => '/PAGO DE SERVICIO|PAGO INTER/i',        'kind' => 'expense', 'hint' => 'pago'],
+        ['regex' => '/ESPERANZA ECHEGARAY/i',                'kind' => 'expense', 'hint' => 'pago'],
     ];
 
-    /**
-     * Parsea un archivo CSV o XLSX y retorna filas normalizadas.
-     */
     public function parse(UploadedFile $file): Collection
     {
         $ext = strtolower($file->getClientOriginalExtension());
-
-        $rawRows = match (true) {
-            in_array($ext, ['xlsx', 'xls', 'ods']) => $this->parseSpreadsheet($file->getRealPath()),
-            default                                  => $this->parseCsv($file->getRealPath()),
-        };
-
+        $rawRows = $this->loadRows($file->getRealPath(), $ext);
         return $this->normalize($rawRows);
     }
 
-    /**
-     * Parsea directamente desde una ruta (para el archivo de ejemplo).
-     */
     public function parseFromPath(string $path): Collection
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-
-        $rawRows = match (true) {
-            in_array($ext, ['xlsx', 'xls', 'ods']) => $this->parseSpreadsheet($path),
-            default                                  => $this->parseCsv($path),
-        };
-
+        $rawRows = $this->loadRows($path, $ext);
         return $this->normalize($rawRows);
+    }
+
+    private function loadRows(string $path, string $ext): array
+    {
+        return in_array($ext, ['xlsx', 'xls', 'ods'])
+            ? $this->parseSpreadsheet($path)
+            : $this->parseCsv($path);
     }
 
     private function parseSpreadsheet(string $path): array
@@ -69,7 +63,7 @@ class ImportService
     {
         $rows = [];
         if (($fh = fopen($path, 'r')) !== false) {
-            while (($row = fgetcsv($fh, 1000, ',', '"')) !== false) {
+            while (($row = fgetcsv($fh, 2000, ',', '"', '\\')) !== false) {
                 $rows[] = $row;
             }
             fclose($fh);
@@ -83,50 +77,70 @@ class ImportService
             return collect();
         }
 
-        // Detectar fila de encabezado
-        $header = array_map('strtolower', array_map('trim', $rawRows[0]));
+        // Normalizar encabezado: sin acentos, sin mayúsculas
+        $header   = array_map(fn($h) => $this->ascii(mb_strtolower(trim((string) $h))), $rawRows[0]);
         $dataRows = array_slice($rawRows, 1);
 
-        // Mapear columnas por nombre
+        // Detectar columnas por posición o nombre
         $colFecha = $this->findCol($header, ['fecha', 'date']);
-        $colDesc  = $this->findCol($header, ['descripción', 'descripcion', 'description', 'concepto']);
-        $colDep   = $this->findCol($header, ['depósitos', 'depositos', 'deposito', 'abono', 'cargo_abono']);
-        $colRet   = $this->findCol($header, ['retiros', 'retiro', 'cargo', 'débitos']);
+        $colDesc  = $this->findCol($header, ['descripcion', 'description', 'concepto', 'detalle']);
+        $colDep   = $this->findCol($header, ['depositos', 'deposito', 'abono', 'credito', 'entrada']);
+        $colRet   = $this->findCol($header, ['retiros', 'retiro', 'cargo', 'debito', 'salida']);
+
+        // Si no detecta columnas, usar posiciones fijas del formato Banamex
+        // Banamex: 0=Fecha, 1=Descripción, 2=Depósitos, 3=Retiros, 4=Saldo
+        if ($colDep === $colRet) {
+            $colFecha = 0;
+            $colDesc  = 1;
+            $colDep   = 2;
+            $colRet   = 3;
+        }
 
         $rows = collect();
 
         foreach ($dataRows as $i => $raw) {
-            $fecha = trim($raw[$colFecha] ?? '');
-            $desc  = trim($raw[$colDesc]  ?? '');
-            $dep   = $this->parseMoney($raw[$colDep] ?? '');
-            $ret   = $this->parseMoney($raw[$colRet] ?? '');
+            $fecha = trim((string) ($raw[$colFecha] ?? ''));
+            $desc  = trim((string) ($raw[$colDesc]  ?? ''));
 
             if (! $fecha || ! $desc) {
                 continue;
             }
 
-            $date   = $this->parseDate($fecha);
+            $dep = $this->parseMoney($raw[$colDep] ?? null);
+            $ret = $this->parseMoney($raw[$colRet] ?? null);
+
+            // El tipo lo determina EXCLUSIVAMENTE la columna que tiene valor
             $amount = $dep > 0 ? $dep : $ret;
             $type   = $dep > 0 ? 'income' : 'expense';
+
+            $date = $this->parseDate($fecha);
 
             if (! $date || $amount <= 0) {
                 continue;
             }
 
-            ['type' => $suggestedType, 'category_id' => $suggestedCat] = $this->suggest($desc, $type);
+            // La categoría se sugiere por descripción, SIN tocar el tipo
+            $categoryId = $this->suggestCategory($desc, $type);
 
             $rows->push([
-                'row_id'       => $i,
-                'date'         => $date,
-                'description'  => $this->cleanDesc($desc),
-                'amount'       => number_format($amount, 2, '.', ''),
-                'type'         => $suggestedType,
-                'category_id'  => $suggestedCat,
-                'skip'         => false,
+                'row_id'      => $i,
+                'date'        => $date,
+                'description' => $this->cleanDesc($desc),
+                'amount'      => number_format($amount, 2, '.', ''),
+                'type'        => $type,
+                'category_id' => $categoryId,
             ]);
         }
 
         return $rows;
+    }
+
+    /** Quita acentos para comparación robusta de encabezados */
+    private function ascii(string $str): string
+    {
+        $from = ['á','é','í','ó','ú','ü','ñ','à','è','ì','ò','ù'];
+        $to   = ['a','e','i','o','u','u','n','a','e','i','o','u'];
+        return str_replace($from, $to, $str);
     }
 
     private function findCol(array $header, array $names): int
@@ -143,68 +157,65 @@ class ImportService
 
     private function parseMoney(mixed $value): float
     {
-        if ($value === null || $value === '') {
+        if ($value === null || $value === '' || $value === 0) {
             return 0.0;
         }
+        // Remover símbolo $, espacios y comas de miles
         $clean = preg_replace('/[^0-9.]/', '', str_replace(',', '', (string) $value));
         return $clean !== '' ? (float) $clean : 0.0;
     }
 
     private function parseDate(string $raw): ?string
     {
-        // "04 May 2026" o "04 mayo 2026"
+        // "04 May 2026" / "04 mayo 2026"
         if (preg_match('/(\d{1,2})\s+([a-záéíóú]{3,})\s+(\d{4})/iu', $raw, $m)) {
-            $month = $this->monthMap[strtolower(substr($m[2], 0, 3))] ?? null;
+            $abbr  = mb_strtolower(mb_substr($m[2], 0, 3));
+            $month = $this->monthMap[$abbr] ?? null;
             if ($month) {
                 return "{$m[3]}-{$month}-" . str_pad($m[1], 2, '0', STR_PAD_LEFT);
             }
         }
-        // Intentar parseo genérico
         $ts = strtotime($raw);
         return $ts ? date('Y-m-d', $ts) : null;
     }
 
     private function cleanDesc(string $desc): string
     {
-        // Quitar espacios múltiples internos
-        return preg_replace('/\s+/', ' ', $desc);
+        return preg_replace('/\s+/', ' ', trim($desc));
     }
 
-    private function suggest(string $desc, string $baseType): array
-    {
-        $type       = $baseType;
-        $categoryId = null;
-
-        foreach ($this->patterns as $p) {
-            if (preg_match($p['regex'], $desc)) {
-                $type = $p['type'];
-                $categoryId = $this->categoryIdFromHint($p['hint'], $type);
-                break;
-            }
-        }
-
-        return ['type' => $type, 'category_id' => $categoryId];
-    }
-
-    private function categoryIdFromHint(string $hint, string $type): ?int
+    /** Sugiere categoría por descripción. El tipo ya viene determinado por columna. */
+    private function suggestCategory(string $desc, string $type): ?int
     {
         $kind = $type === 'income' ? 'income' : 'expense';
 
+        foreach ($this->categoryPatterns as $p) {
+            if ($p['kind'] !== $kind) {
+                continue;
+            }
+            if (preg_match($p['regex'], $desc)) {
+                return $this->categoryIdFromHint($p['hint'], $kind);
+            }
+        }
+
+        return null;
+    }
+
+    private function categoryIdFromHint(string $hint, string $kind): ?int
+    {
         $map = [
             'nomina'        => ['Honorarios', 'Docencia'],
             'deposito'      => ['Honorarios'],
             'rendimiento'   => [],
+            'traspaso'      => [],
             'seguro'        => ['Finanzas'],
             'domiciliacion' => ['Hogar'],
             'super'         => ['Alimentación'],
             'efectivo'      => ['Otros gastos'],
             'pago'          => ['Otros gastos'],
-            'traspaso_salida'=> [],
         ];
 
-        $names = $map[$hint] ?? [];
-
-        foreach ($names as $name) {
+        foreach ($map[$hint] ?? [] as $name) {
             $cat = Category::where('kind', $kind)->where('name', $name)->first();
             if ($cat) {
                 return $cat->id;
