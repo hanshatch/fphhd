@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\TotpController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\TransactionController;
@@ -23,6 +24,10 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('accounts', AccountController::class)->except('show');
+    Route::get('/import',         [ImportController::class, 'create'])->name('import.create');
+    Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
+    Route::get('/import/review',  [ImportController::class, 'review'])->name('import.review');
+    Route::post('/import/confirm',[ImportController::class, 'confirm'])->name('import.confirm');
     Route::resource('categories', CategoryController::class)->except('show');
     Route::resource('sources', SourceController::class)->except('show');
     Route::resource('transactions', TransactionController::class)->except('show');
