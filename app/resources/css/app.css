@@ -1,10 +1,9 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
 /* ── Brand tokens (Hans Hatch Identity) ─────────────────────────── */
 @theme {
-  --font-sans:    'Nunito', 'Avenir Next', system-ui, sans-serif;
-  --font-body:    'Roboto', system-ui, sans-serif;
+  --font-sans: 'Roboto', system-ui, sans-serif;
 
   /* Verde primario: Pantone 376C */
   --color-brand-50:   oklch(0.97 0.03 130);
@@ -19,28 +18,22 @@
   --color-brand-900:  oklch(0.28 0.08 130);
 
   /* Grises de identidad */
-  --color-hh-dark:    #373737;  /* Pantone Neutral Black C */
-  --color-hh-gray:    #878787;  /* Pantone 422 C */
-  --color-hh-mid:     #ababab;  /* Pantone Cool Gray 8C */
-  --color-hh-light:   #efeded;  /* Pantone 663 C */
+  --color-hh-dark:  #373737;  /* Pantone Neutral Black C */
+  --color-hh-gray:  #878787;  /* Pantone 422 C */
+  --color-hh-mid:   #ababab;  /* Pantone Cool Gray 8C */
+  --color-hh-light: #efeded;  /* Pantone 663 C */
 }
 
 /* ── Base ────────────────────────────────────────────────────────── */
-:root {
-  color-scheme: light dark;
-}
+:root { color-scheme: light dark; }
 
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
 
 body {
-  font-family: var(--font-body);
+  font-family: 'Roboto', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3, h4, h5, h6, .font-display {
-  font-family: var(--font-sans);
 }
 
 /* ── Scrollbar delgado ───────────────────────────────────────────── */

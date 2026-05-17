@@ -30,7 +30,7 @@
             {{-- Info --}}
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                    <span class="font-semibold text-[#373737] dark:text-white truncate font-['Nunito']">{{ $account->name }}</span>
+                    <span class="font-semibold text-[#373737] dark:text-white truncate">{{ $account->name }}</span>
                     @if(!$account->is_active)
                         <span class="text-[10px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-2 py-0.5 rounded-full font-medium">Inactiva</span>
                     @endif
@@ -40,7 +40,7 @@
 
             {{-- Balance --}}
             <div class="text-right">
-                <div class="font-bold font-['Nunito'] {{ $account->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
+                <div class="font-bold {{ $account->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
                     ${{ number_format((float)$balance, 2) }}
                 </div>
                 <div class="text-[10px] text-[#ababab] uppercase tracking-wider">MXN</div>

@@ -172,9 +172,10 @@ fp/
 | Fondo | `#efeded` | Background general |
 
 ### Tipografía
-- **Display / títulos:** Nunito (`font-['Nunito']`)
-- **Body / texto:** Roboto (default del body)
-- **Montos / números:** `font-variant-numeric: tabular-nums` + Nunito
+- **Fuente única del sistema: Roboto** (cargada desde Google Fonts, pesos 300/400/500/700)
+- No usar ninguna otra fuente. No añadir `font-['Nunito']`, `font-['Inter']` ni ninguna clase de fuente explícita en las vistas.
+- La fuente está declarada en `resources/css/app.css` como `--font-sans` y en `body { font-family }`.
+- **Montos / números:** agregar `tabular-nums` vía `font-variant-numeric: tabular-nums` o clase `tabular-nums` de Tailwind.
 
 ### Componentes disponibles
 - `<x-card>` — Tarjeta blanca con border sutil y sombra

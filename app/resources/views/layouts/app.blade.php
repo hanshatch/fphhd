@@ -16,9 +16,9 @@
 
         {{-- Logo --}}
         <div class="flex items-center h-16 px-5 border-b border-white/10">
-            <span class="text-white font-['Nunito'] text-xl font-light tracking-tight">hans</span>
-            <span class="text-[#76a72b] font-['Nunito'] text-xl font-bold tracking-tight">hatch</span>
-            <span class="ml-2 text-white/30 text-xs font-['Roboto'] uppercase tracking-widest">fp</span>
+            <span class="text-white text-xl font-light tracking-tight">hans</span>
+            <span class="text-[#76a72b] text-xl font-bold tracking-tight">hatch</span>
+            <span class="ml-2 text-white/30 text-xs uppercase tracking-widest">fp</span>
         </div>
 
         {{-- Nav --}}
@@ -61,7 +61,7 @@
 
         {{-- Header móvil --}}
         <header class="lg:hidden sticky top-0 z-20 bg-[#373737] h-14 flex items-center justify-between px-4">
-            <span class="text-white font-['Nunito'] text-lg font-light">hans<span class="text-[#76a72b] font-bold">hatch</span> <span class="text-white/30 text-xs uppercase tracking-widest">fp</span></span>
+            <span class="text-white text-lg font-light">hans<span class="text-[#76a72b] font-bold">hatch</span> <span class="text-white/30 text-xs uppercase tracking-widest">fp</span></span>
             <a href="{{ route('transactions.create') }}"
                class="flex items-center gap-1.5 bg-[#76a72b] hover:bg-[#659220] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>

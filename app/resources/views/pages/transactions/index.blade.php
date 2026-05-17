@@ -66,7 +66,7 @@
             {{-- Descripción --}}
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-semibold text-[#373737] dark:text-white text-sm truncate font-['Nunito']">
+                    <span class="font-semibold text-[#373737] dark:text-white text-sm truncate">
                         {{ $tx->description ?: $cfg['label'] }}
                     </span>
                     <span class="text-[10px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-2 py-0.5 rounded-full flex-shrink-0 font-medium">
@@ -82,7 +82,7 @@
             </div>
 
             {{-- Monto --}}
-            <div class="font-bold text-sm {{ $cfg['color'] }} text-right flex-shrink-0 font-['Nunito']">
+            <div class="font-bold text-sm {{ $cfg['color'] }} text-right flex-shrink-0">
                 {{ $cfg['sign'] }}${{ number_format((float)$tx->amount, 2) }}
             </div>
 

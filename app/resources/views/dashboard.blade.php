@@ -2,7 +2,7 @@
 
     {{-- Saludo --}}
     <div class="mb-5">
-        <h1 class="text-2xl font-bold text-[#373737] dark:text-white font-['Nunito']">
+        <h1 class="text-2xl font-bold text-[#373737] dark:text-white">
             Hola, <span class="text-[#76a72b]">Hans</span> 👋
         </h1>
         <p class="text-[#878787] text-sm mt-0.5">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</p>
@@ -16,7 +16,7 @@
             <x-card class="p-5 bg-[#373737] dark:bg-[#222] border-0 h-full flex flex-col justify-between">
                 <div>
                     <p class="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Patrimonio neto</p>
-                    <p class="text-3xl font-bold text-white font-['Nunito'] leading-none">
+                    <p class="text-3xl font-bold text-white leading-none">
                         ${{ number_format((float)$netWorth, 2) }}
                     </p>
                     <p class="text-white/30 text-xs mt-1">MXN</p>
@@ -28,11 +28,11 @@
                     @endphp
                     <div>
                         <p class="text-white/30 text-[10px] uppercase tracking-wider">Activos</p>
-                        <p class="text-[#76a72b] font-bold text-sm font-['Nunito']">${{ number_format($assets, 2) }}</p>
+                        <p class="text-[#76a72b] font-bold text-sm">${{ number_format($assets, 2) }}</p>
                     </div>
                     <div>
                         <p class="text-white/30 text-[10px] uppercase tracking-wider">Tarjetas</p>
-                        <p class="text-red-400 font-bold text-sm font-['Nunito']">${{ number_format($debts, 2) }}</p>
+                        <p class="text-red-400 font-bold text-sm">${{ number_format($debts, 2) }}</p>
                     </div>
                 </div>
             </x-card>
@@ -49,15 +49,15 @@
                 <div class="grid grid-cols-3 gap-4">
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Ingresos</div>
-                        <div class="text-xl font-bold text-[#76a72b] font-['Nunito']">${{ number_format((float)$flow['income'], 2) }}</div>
+                        <div class="text-xl font-bold text-[#76a72b]">${{ number_format((float)$flow['income'], 2) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Egresos</div>
-                        <div class="text-xl font-bold text-red-500 font-['Nunito']">${{ number_format((float)$flow['expenses'], 2) }}</div>
+                        <div class="text-xl font-bold text-red-500">${{ number_format((float)$flow['expenses'], 2) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Neto</div>
-                        <div class="text-xl font-bold font-['Nunito'] {{ (float)$flow['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                        <div class="text-xl font-bold {{ (float)$flow['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
                             {{ (float)$flow['net'] >= 0 ? '+' : '' }}${{ number_format((float)$flow['net'], 2) }}
                         </div>
                     </div>
@@ -120,7 +120,7 @@
                                 <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $cat['color'] }}"></div>
                                 <span class="text-sm text-[#373737] dark:text-white font-medium truncate max-w-[140px]">{{ $cat['name'] }}</span>
                             </div>
-                            <span class="text-sm font-bold text-[#373737] dark:text-white font-['Nunito']">${{ number_format($cat['total'], 2) }}</span>
+                            <span class="text-sm font-bold text-[#373737] dark:text-white">${{ number_format($cat['total'], 2) }}</span>
                         </div>
                         <div class="h-1.5 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
                             <div class="h-full rounded-full transition-all duration-500"
@@ -161,11 +161,11 @@
                                 <div class="w-2.5 h-2.5 rounded-full" style="background-color: {{ $acc->color }}"></div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-[#373737] dark:text-white truncate font-['Nunito']">{{ $acc->name }}</p>
+                                <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">{{ $acc->name }}</p>
                                 <p class="text-[10px] text-[#ababab] capitalize">{{ $typeLabels[$acc->type] ?? $acc->type }} · {{ $acc->institution }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-sm {{ $acc->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }} font-['Nunito']">
+                                <p class="font-bold text-sm {{ $acc->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
                                     ${{ number_format((float)$bal, 2) }}
                                 </p>
                                 @if($acc->isInvestment() && $acc->invest_apr)
@@ -193,14 +193,14 @@
                     @php $totalInterest = array_sum(array_column($monthlyInterest->toArray(), 'total')); @endphp
                     <div class="mb-4 p-3 bg-[#76a72b]/10 rounded-xl text-center">
                         <p class="text-xs text-[#76a72b] font-semibold">Total del mes</p>
-                        <p class="text-xl font-bold text-[#76a72b] font-['Nunito']">${{ number_format($totalInterest, 2) }}</p>
+                        <p class="text-xl font-bold text-[#76a72b]">${{ number_format($totalInterest, 2) }}</p>
                     </div>
                     <div class="space-y-3">
                         @foreach($monthlyInterest as $r)
                         <div class="flex items-center gap-2">
                             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $r['color'] }}"></div>
                             <span class="text-xs text-[#878787] flex-1 truncate">{{ $r['name'] }}</span>
-                            <span class="text-xs font-bold text-[#76a72b] font-['Nunito']">${{ number_format($r['total'], 2) }}</span>
+                            <span class="text-xs font-bold text-[#76a72b]">${{ number_format($r['total'], 2) }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -245,7 +245,7 @@
                         {{ $c['sign'] ?: '⇄' }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-[#373737] dark:text-white truncate font-['Nunito']">
+                        <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">
                             {{ $tx->description ?: $c['label'] }}
                         </p>
                         <p class="text-xs text-[#ababab]">
@@ -254,7 +254,7 @@
                             @if($tx->category) · {{ $tx->category->name }} @endif
                         </p>
                     </div>
-                    <span class="font-bold text-sm {{ $c['text'] }} font-['Nunito'] flex-shrink-0">
+                    <span class="font-bold text-sm {{ $c['text'] }} flex-shrink-0">
                         {{ $c['sign'] }}${{ number_format((float)$tx->amount, 2) }}
                     </span>
                 </a>

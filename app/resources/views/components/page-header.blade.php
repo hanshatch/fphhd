@@ -6,7 +6,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </a>
         @endif
-        <h1 class="text-xl font-bold text-[#373737] dark:text-white font-['Nunito']">{{ $title }}</h1>
+        <h1 class="text-xl font-bold text-[#373737] dark:text-white">{{ $title }}</h1>
     </div>
     @if($actionRoute)
     <a href="{{ $actionRoute }}"
