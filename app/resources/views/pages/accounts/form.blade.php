@@ -3,7 +3,10 @@
         <x-page-header :title="$account->exists ? 'Editar cuenta' : 'Nueva cuenta'" :back="route('accounts.index')" />
 
         <x-card class="p-6">
-            <form method="POST" action="{{ $account->exists ? route('accounts.update', $account) : route('accounts.store') }}" class="space-y-5">
+            <form method="POST"
+                  action="{{ $account->exists ? route('accounts.update', $account) : route('accounts.store') }}"
+                  class="space-y-5"
+                  x-data="{ type: '{{ old('type', $account->type ?? 'debit') }}' }">
                 @csrf
                 @if($account->exists) @method('PATCH') @endif
 
@@ -11,8 +14,8 @@
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Nombre <span class="text-[#76a72b]">*</span></label>
                     <input type="text" name="name" value="{{ old('name', $account->name) }}" required autofocus
-                        class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] focus:border-transparent transition"
-                        placeholder="ej. Banamex débito">
+                        class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition"
+                        placeholder="ej. Banamex débito / Amex Gold">
                     @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
@@ -20,7 +23,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tipo <span class="text-[#76a72b]">*</span></label>
-                        <select name="type" required
+                        <select name="type" required x-model="type"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                             @foreach(['debit' => 'Débito', 'credit' => 'TDC', 'savings' => 'Caja de ahorro', 'investment' => 'Inversión', 'cash' => 'Efectivo'] as $val => $label)
                                 <option value="{{ $val }}" {{ old('type', $account->type) === $val ? 'selected' : '' }}>{{ $label }}</option>
@@ -38,9 +41,12 @@
                     </div>
                 </div>
 
-                {{-- Saldo inicial --}}
+                {{-- Saldo inicial (para TDC = deuda actual) --}}
                 <div>
-                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Saldo inicial <span class="text-[#76a72b]">*</span></label>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
+                        <span x-text="type === 'credit' ? 'Deuda actual' : 'Saldo inicial'"></span>
+                        <span class="text-[#76a72b]">*</span>
+                    </label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
                         <input type="number" name="initial_balance" step="0.01" min="0" inputmode="decimal" required
@@ -51,8 +57,59 @@
                     @error('initial_balance')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
-                {{-- APR --}}
-                <div>
+                {{-- ── Campos exclusivos TDC ──────────────────────────────── --}}
+                <div x-show="type === 'credit'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="space-y-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20">
+
+                    <p class="text-xs font-bold text-red-500 uppercase tracking-wider">Datos de la tarjeta de crédito</p>
+
+                    {{-- Día de corte + Día de pago --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
+                                Día de corte
+                                <span class="text-[#76a72b]">*</span>
+                            </label>
+                            <input type="number" name="statement_day" min="1" max="31" inputmode="numeric"
+                                value="{{ old('statement_day', $creditCard->statement_day ?? '') }}"
+                                placeholder="ej. 15"
+                                class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                            <p class="mt-1 text-[10px] text-[#ababab]">Día del mes en que cierra el periodo</p>
+                            @error('statement_day')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
+                                Día de pago
+                                <span class="text-[#76a72b]">*</span>
+                            </label>
+                            <input type="number" name="payment_day" min="1" max="31" inputmode="numeric"
+                                value="{{ old('payment_day', $creditCard->payment_day ?? '') }}"
+                                placeholder="ej. 5"
+                                class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                            <p class="mt-1 text-[10px] text-[#ababab]">Fecha límite para pagar sin intereses</p>
+                            @error('payment_day')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    {{-- Límite de crédito --}}
+                    <div>
+                        <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Límite de crédito</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
+                            <input type="number" name="credit_limit" step="0.01" min="0" inputmode="decimal"
+                                value="{{ old('credit_limit', $creditCard->credit_limit ?? '') }}"
+                                placeholder="ej. 50000.00"
+                                class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- APR (cajas de ahorro) --}}
+                <div x-show="type !== 'credit'" x-cloak>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">APR nominal anual (%)</label>
                     <input type="number" name="invest_apr" step="0.01" min="0" max="100" inputmode="decimal"
                         value="{{ old('invest_apr', $account->invest_apr) }}"
