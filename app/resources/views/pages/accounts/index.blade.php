@@ -12,7 +12,7 @@
     <div class="space-y-3">
         @php
         $typeLabels = ['debit' => 'Débito', 'credit' => 'TDC', 'savings' => 'Ahorro', 'investment' => 'Inversión', 'cash' => 'Efectivo'];
-        $instLabels = ['banamex' => 'Banamex', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu', 'revolut' => 'Revolut', 'other' => 'Otra'];
+        $instLabels = ['banamex' => 'Banamex', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu', 'revolut' => 'Revolut', 'amex' => 'American Express', 'other' => 'Otra'];
         @endphp
         @foreach($accounts as $item)
         @php $account = $item['account']; $balance = $item['balance']; @endphp
