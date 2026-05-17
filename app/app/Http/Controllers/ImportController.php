@@ -27,11 +27,15 @@ class ImportController extends Controller
     {
         $request->validate([
             'account_id' => 'required|exists:accounts,id',
-            'file'       => 'required|file|mimes:csv,txt,xlsx,xls,ods|max:5120',
+            'file'       => 'required|file|max:5120',
         ], [
-            'file.mimes' => 'Solo se aceptan archivos CSV, TXT o Excel (XLSX/XLS).',
-            'file.max'   => 'El archivo no puede superar 5 MB.',
+            'file.max' => 'El archivo no puede superar 5 MB.',
         ]);
+
+        $ext = strtolower($request->file('file')->getClientOriginalExtension());
+        if (! in_array($ext, ['csv', 'txt', 'xlsx', 'xls', 'ods'])) {
+            return back()->withErrors(['file' => 'Solo se aceptan archivos CSV, TXT o Excel (XLSX/XLS).']);
+        }
 
         $rows = $this->importer->parse($request->file('file'));
 
