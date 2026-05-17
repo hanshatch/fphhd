@@ -160,7 +160,61 @@ fp/
 
 ---
 
-## 9. Flujo de trabajo en cada sesión
+## 9. Design System — Componentes y patrones UI
+
+### Paleta de marca (Hans Hatch Identity)
+| Token | Valor | Uso |
+|---|---|---|
+| Verde principal | `#76a72b` | Botones primarios, acentos, ingresos |
+| Gris oscuro | `#373737` | Sidebar, texto principal, fondos dark |
+| Gris medio | `#878787` | Texto secundario, labels |
+| Gris claro | `#ababab` | Bordes, placeholders |
+| Fondo | `#efeded` | Background general |
+
+### Tipografía
+- **Display / títulos:** Nunito (`font-['Nunito']`)
+- **Body / texto:** Roboto (default del body)
+- **Montos / números:** `font-variant-numeric: tabular-nums` + Nunito
+
+### Componentes disponibles
+- `<x-card>` — Tarjeta blanca con border sutil y sombra
+- `<x-btn variant="primary|secondary|danger|ghost">` — Botón con estados hover/disabled
+- `<x-page-header title="..." :back="route(...)" action-route="..." action-label="...">` — Encabezado de página
+
+### Spinner en botones de acción (OBLIGATORIO)
+**Todos los botones `[type="submit"]` dentro de `<form>` muestran automáticamente un spinner al hacer clic.** El script global en `layouts/app.blade.php` intercepta el evento `submit` y reemplaza el contenido del botón con un spinner + "Procesando…".
+
+**No requiere ningún código adicional en las vistas.**
+
+```blade
+{{-- Esto funciona automáticamente con el spinner global: --}}
+<x-btn type="submit">Guardar</x-btn>
+```
+
+Para excluir un botón del spinner (ej. preview sin guardar):
+```html
+<button type="submit" data-no-spinner="true">Vista previa</button>
+```
+
+Para botones de acción que NO son submit de form (ej. delete via JS):
+```html
+<button data-action-btn="true">Eliminar</button>
+```
+
+### Convenciones de formularios
+- `enctype="multipart/form-data"` en forms con upload de archivos
+- Inputs con `focus:ring-2 focus:ring-[#76a72b]`
+- Labels con `text-sm font-semibold text-[#373737]`
+- Errores con `<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>`
+- Campos requeridos con `<span class="text-[#76a72b]">*</span>`
+
+### Alertas / Flash
+- Flash de éxito: `session('status')` — aparece con Alpine.js y desaparece en 4s
+- Errores de validación: `$errors->any()` — listado con fondo rojo
+
+---
+
+## 10. Flujo de trabajo en cada sesión
 
 1. Leer `PROGRESS.md`.
 2. Confirmar con Hans qué fase trabajar.

@@ -127,5 +127,49 @@
 </nav>
 
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<script>
+/**
+ * DESIGN SYSTEM — Spinner global en botones de acción
+ * Se activa automáticamente en cualquier submit de form.
+ * Para excluir un botón: <button data-no-spinner="true">
+ */
+(function () {
+    const SPINNER_SVG = `<svg class="inline-block animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14 6.373 14 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+    </svg>`;
+
+    document.addEventListener('submit', function (e) {
+        // e.submitter = botón exacto que activó el submit
+        const btn = e.submitter || e.target.querySelector('[type="submit"]');
+        if (!btn || btn.dataset.noSpinner === 'true') return;
+
+        btn.disabled = true;
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
+
+        // Safeguard: re-habilitar tras 15s si la página no navega
+        setTimeout(() => {
+            if (btn.dataset.originalHtml) {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalHtml;
+                delete btn.dataset.originalHtml;
+            }
+        }, 15000);
+    });
+
+    // Botones de confirmación tipo delete (no son submit de form)
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-action-btn]');
+        if (!btn || btn.dataset.noSpinner === 'true') return;
+        if (btn.disabled) return;
+
+        btn.disabled = true;
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
+    });
+}());
+</script>
 </body>
 </html>

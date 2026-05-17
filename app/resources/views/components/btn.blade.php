@@ -1,6 +1,6 @@
 @props(['variant' => 'primary', 'href' => null, 'type' => 'button'])
 @php
-$base = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-50';
+$base = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100';
 $variants = [
     'primary'  => 'bg-[#76a72b] hover:bg-[#659220] text-white shadow-sm',
     'secondary'=> 'bg-white dark:bg-[#2a2a2a] border border-[#ababab]/40 text-[#373737] dark:text-white hover:border-[#76a72b] hover:text-[#76a72b]',
