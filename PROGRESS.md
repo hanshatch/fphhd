@@ -6,7 +6,7 @@
 - [x] Fase 1 — Modelo de datos y migraciones (2026-05-16)
 - [x] Fase 2 — Autenticación + 2FA (2026-05-16)
 - [x] Fase 3 — CRUD cuentas, categorías, fuentes, transacciones (2026-05-16)
-- [ ] Fase 4 — Dashboard + saldos
+- [x] Fase 4 — Dashboard + saldos (2026-05-16)
 - [ ] Fase 5 — Captura rápida de movimientos
 - [ ] Fase 6 — Reportes (fuentes de ingreso, egresos, patrimonio)
 - [ ] Fase 7 — Tarjetas de crédito + alertas
@@ -16,7 +16,7 @@
 
 ## En curso
 
-Fase 4 — Dashboard + saldos
+Fase 5 — Captura rápida de movimientos (optimización mobile)
 
 ## Bloqueos / decisiones pendientes
 
