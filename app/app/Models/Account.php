@@ -10,7 +10,7 @@ class Account extends Model
 {
     protected $fillable = [
         'name', 'type', 'institution', 'currency',
-        'initial_balance', 'is_active', 'color', 'icon',
+        'initial_balance', 'is_active', 'color', 'icon', 'logo_path',
         'invest_apr', 'notes',
     ];
 
@@ -46,6 +46,11 @@ class Account extends Model
     public function creditCard(): HasOne
     {
         return $this->hasOne(CreditCard::class);
+    }
+
+    public function logoUrl(): ?string
+    {
+        return $this->logo_path ? asset('storage/' . $this->logo_path) : null;
     }
 
     public function isCredit(): bool

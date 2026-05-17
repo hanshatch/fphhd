@@ -5,6 +5,7 @@
         <x-card class="p-6">
             <form method="POST"
                   action="{{ $account->exists ? route('accounts.update', $account) : route('accounts.store') }}"
+                  enctype="multipart/form-data"
                   class="space-y-5"
                   x-data="{ type: '{{ old('type', $account->type ?? 'debit') }}' }">
                 @csrf
@@ -117,13 +118,71 @@
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                 </div>
 
-                {{-- Color --}}
-                <div>
-                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Color identificador</label>
-                    <div class="flex items-center gap-3">
-                        <input type="color" name="color" value="{{ old('color', $account->color ?? '#76a72b') }}"
-                            class="h-11 w-20 rounded-xl border border-[#ababab]/40 cursor-pointer p-1 bg-white">
-                        <span class="text-sm text-[#878787]">Elige el color que identifica esta cuenta en la UI</span>
+                {{-- Logo + Color ──────────────────────────────────── --}}
+                <div x-data="{
+                        preview: '{{ $account->logoUrl() }}',
+                        hasLogo: {{ $account->logo_path ? 'true' : 'false' }},
+                        handleFile(e) {
+                            const f = e.target.files[0];
+                            if (!f) return;
+                            this.preview = URL.createObjectURL(f);
+                            this.hasLogo = true;
+                        },
+                        removeLogo() {
+                            this.preview = null;
+                            this.hasLogo = false;
+                            this.$refs.logoInput.value = '';
+                        }
+                    }">
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Logotipo e identificador</label>
+
+                    <div class="flex items-start gap-4">
+
+                        {{-- Preview / zona de clic --}}
+                        <div class="flex-shrink-0">
+                            <label class="cursor-pointer block" x-on:click="$refs.logoInput.click()">
+                                <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-[#ababab]/40 hover:border-[#76a72b] transition-colors flex items-center justify-center overflow-hidden bg-white dark:bg-white/5">
+                                    <template x-if="preview">
+                                        <img :src="preview" class="w-full h-full object-contain p-1">
+                                    </template>
+                                    <template x-if="!preview">
+                                        <div class="text-center">
+                                            <svg class="w-6 h-6 text-[#ababab] mx-auto mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            <span class="text-[9px] text-[#ababab]">Logo</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </label>
+                            <input type="file" name="logo" accept="image/*" class="hidden"
+                                   x-ref="logoInput" x-on:change="handleFile($event)">
+                        </div>
+
+                        {{-- Controles --}}
+                        <div class="flex-1 space-y-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" name="color" value="{{ old('color', $account->color ?? '#76a72b') }}"
+                                    class="h-9 w-14 rounded-lg border border-[#ababab]/40 cursor-pointer p-1 bg-white flex-shrink-0">
+                                <span class="text-xs text-[#878787]">Color de respaldo cuando no hay logo</span>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button type="button"
+                                    x-on:click="$refs.logoInput.click()"
+                                    class="h-8 px-3 text-xs font-semibold border border-[#ababab]/40 rounded-lg hover:border-[#76a72b] hover:text-[#76a72b] text-[#878787] transition-colors">
+                                    {{ $account->logo_path ? 'Cambiar logo' : 'Subir logo' }}
+                                </button>
+                                <template x-if="hasLogo">
+                                    <div class="flex items-center gap-2">
+                                        <input type="hidden" name="remove_logo" x-bind:value="preview ? '0' : '1'">
+                                        <button type="button" x-on:click="removeLogo()"
+                                            class="h-8 px-3 text-xs font-semibold border border-red-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                                            Quitar
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                            <p class="text-[10px] text-[#ababab]">PNG, JPG, SVG · máx. 2 MB · Recomendado: fondo transparente</p>
+                        </div>
                     </div>
                 </div>
 

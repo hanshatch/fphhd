@@ -17,10 +17,14 @@
         @foreach($accounts as $item)
         @php $account = $item['account']; $balance = $item['balance']; @endphp
         <x-card class="p-4 flex items-center gap-4">
-            {{-- Color dot --}}
-            <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center"
+            {{-- Logo o color --}}
+            <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
                  style="background-color: {{ $account->color }}22">
-                <div class="w-4 h-4 rounded-full" style="background-color: {{ $account->color }}"></div>
+                @if($account->logo_path)
+                    <img src="{{ $account->logoUrl() }}" alt="{{ $account->name }}" class="w-8 h-8 object-contain">
+                @else
+                    <div class="w-4 h-4 rounded-full" style="background-color: {{ $account->color }}"></div>
+                @endif
             </div>
 
             {{-- Info --}}

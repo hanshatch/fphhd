@@ -7,6 +7,7 @@ use App\Models\CreditCard;
 use App\Services\AccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class AccountController extends Controller
@@ -45,10 +46,16 @@ class AccountController extends Controller
             'statement_day'   => 'nullable|integer|min:1|max:31',
             'payment_day'     => 'nullable|integer|min:1|max:31',
             'credit_limit'    => 'nullable|numeric|min:0',
+            'logo'            => 'nullable|image|max:2048',
         ]);
 
         $data['initial_balance'] = number_format((float) $data['initial_balance'], 2, '.', '');
 
+        if ($request->hasFile('logo')) {
+            $data['logo_path'] = $request->file('logo')->store('account-logos', 'public');
+        }
+
+        unset($data['logo']);
         $account = Account::create($data);
 
         if ($data['type'] === 'credit') {
@@ -86,11 +93,28 @@ class AccountController extends Controller
             'statement_day'   => 'nullable|integer|min:1|max:31',
             'payment_day'     => 'nullable|integer|min:1|max:31',
             'credit_limit'    => 'nullable|numeric|min:0',
+            'logo'            => 'nullable|image|max:2048',
+            'remove_logo'     => 'nullable|boolean',
         ]);
 
         $data['initial_balance'] = number_format((float) $data['initial_balance'], 2, '.', '');
         $data['is_active']       = $request->boolean('is_active', true);
 
+        // Eliminar logo si se pidió
+        if ($request->boolean('remove_logo') && $account->logo_path) {
+            Storage::disk('public')->delete($account->logo_path);
+            $data['logo_path'] = null;
+        }
+
+        // Subir nuevo logo
+        if ($request->hasFile('logo')) {
+            if ($account->logo_path) {
+                Storage::disk('public')->delete($account->logo_path);
+            }
+            $data['logo_path'] = $request->file('logo')->store('account-logos', 'public');
+        }
+
+        unset($data['logo'], $data['remove_logo']);
         $account->update($data);
 
         if ($data['type'] === 'credit') {
