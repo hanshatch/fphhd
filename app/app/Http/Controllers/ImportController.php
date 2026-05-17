@@ -81,7 +81,7 @@ class ImportController extends Controller
             return redirect()->route('import.create');
         }
 
-        $skips      = $request->input('skip', []);
+        $included   = $request->input('include', []);
         $types      = $request->input('type', []);
         $categories = $request->input('category_id', []);
         $descs      = $request->input('description', []);
@@ -91,7 +91,8 @@ class ImportController extends Controller
         foreach ($rows as $row) {
             $id = $row['row_id'];
 
-            if (in_array((string) $id, $skips)) {
+            // Solo importar filas que tengan el checkbox marcado
+            if (! in_array((string) $id, $included)) {
                 continue;
             }
 
