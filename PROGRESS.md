@@ -22,6 +22,12 @@ Fase 5 — Captura rápida de movimientos (optimización mobile)
 
 - Pendiente configurar credenciales de DB en producción (hosting SSH)
 
+## Decisiones de producto
+
+- **Importación eliminada**: La función de importar estados de cuenta se desarrolló y se eliminó.
+  Razón: el Excel del banco no trae suficiente detalle y al cabo de un mes no se recuerdan los movimientos.
+  Decisión: captura manual en tiempo real al momento de cada pago/movimiento.
+
 ## Notas técnicas relevantes
 
 - Stack cambiado de Python/FastAPI/React a Laravel 13 + Blade + Tailwind v4.
