@@ -75,6 +75,7 @@
                                 <span class="text-[#76a72b]">*</span>
                             </label>
                             <input type="number" name="statement_day" min="1" max="31" inputmode="numeric"
+                                x-bind:required="type === 'credit'"
                                 value="{{ old('statement_day', $creditCard->statement_day ?? '') }}"
                                 placeholder="ej. 15"
                                 class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -87,6 +88,7 @@
                                 <span class="text-[#76a72b]">*</span>
                             </label>
                             <input type="number" name="payment_day" min="1" max="31" inputmode="numeric"
+                                x-bind:required="type === 'credit'"
                                 value="{{ old('payment_day', $creditCard->payment_day ?? '') }}"
                                 placeholder="ej. 5"
                                 class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">

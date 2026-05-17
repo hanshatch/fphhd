@@ -60,10 +60,10 @@ class AccountController extends Controller
 
         if ($data['type'] === 'credit') {
             $account->creditCard()->create([
-                'statement_day' => $request->input('statement_day', 1),
-                'payment_day'   => $request->input('payment_day', 20),
-                'credit_limit'  => number_format((float) $request->input('credit_limit', 0), 2, '.', ''),
-                'apr'           => null,
+                'statement_day'   => $request->input('statement_day') ?? 1,
+                'payment_day'     => $request->input('payment_day')   ?? 20,
+                'credit_limit'    => number_format((float) ($request->input('credit_limit') ?? 0), 2, '.', ''),
+                'apr'             => null,
                 'min_payment_pct' => 1.5,
             ]);
         }
@@ -118,12 +118,13 @@ class AccountController extends Controller
         $account->update($data);
 
         if ($data['type'] === 'credit') {
+            // ?? 1/20 como fallback porque ConvertEmptyStringsToNull convierte '' a null
             $account->creditCard()->updateOrCreate(
                 ['account_id' => $account->id],
                 [
-                    'statement_day' => $request->input('statement_day', 1),
-                    'payment_day'   => $request->input('payment_day', 20),
-                    'credit_limit'  => number_format((float) $request->input('credit_limit', 0), 2, '.', ''),
+                    'statement_day' => $request->input('statement_day') ?? 1,
+                    'payment_day'   => $request->input('payment_day')   ?? 20,
+                    'credit_limit'  => number_format((float) ($request->input('credit_limit') ?? 0), 2, '.', ''),
                 ]
             );
         }
