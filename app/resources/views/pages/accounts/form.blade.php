@@ -156,39 +156,49 @@
 
                         getDominantColor(img) {
                             const canvas = document.createElement('canvas');
-                            const SIZE = 80;
+                            const SIZE = 120;
                             canvas.width = canvas.height = SIZE;
                             const ctx = canvas.getContext('2d');
+
+                            // Fondo blanco explícito: evita que píxeles transparentes
+                            // se muestren como negro en canvas, lo que confunde el análisis
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, SIZE, SIZE);
                             ctx.drawImage(img, 0, 0, SIZE, SIZE);
 
                             const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
                             const buckets = {};
 
                             for (let i = 0; i < data.length; i += 4) {
-                                const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+                                const r = data[i], g = data[i+1], b = data[i+2];
 
-                                // Ignorar transparentes y semi-transparentes
-                                if (a < 180) continue;
+                                // Filtrar blancos (fondo): umbral alto
+                                if (r > 230 && g > 230 && b > 230) continue;
 
-                                // Ignorar blancos, grises y negros
-                                const brightness = (r + g + b) / 3;
-                                const saturation = Math.max(r,g,b) - Math.min(r,g,b);
-                                if (brightness > 235 || brightness < 20 || saturation < 30) continue;
+                                // Filtrar negros puros
+                                if (r < 15 && g < 15 && b < 15) continue;
 
-                                // Cuantizar en cubos de 24px para agrupar colores similares
-                                const qr = Math.round(r / 24) * 24;
-                                const qg = Math.round(g / 24) * 24;
-                                const qb = Math.round(b / 24) * 24;
+                                // Filtrar grises neutros (saturación baja)
+                                const max = Math.max(r, g, b);
+                                const min = Math.min(r, g, b);
+                                const saturation = max - min;
+                                if (saturation < 20) continue;
+
+                                // Cuantizar en cubos de 16px (más fino que antes)
+                                const qr = Math.round(r / 16) * 16;
+                                const qg = Math.round(g / 16) * 16;
+                                const qb = Math.round(b / 16) * 16;
                                 const key = `${qr},${qg},${qb}`;
-                                // Peso extra para colores más saturados (más vibrantes)
-                                buckets[key] = (buckets[key] || 0) + 1 + (saturation / 100);
+
+                                // Peso: frecuencia + bonus por saturación alta
+                                buckets[key] = (buckets[key] || 0) + 1 + (saturation / 80);
                             }
 
-                            const sorted = Object.entries(buckets).sort((a,b) => b[1]-a[1]);
+                            const sorted = Object.entries(buckets).sort((a, b) => b[1] - a[1]);
                             if (!sorted.length) return null;
 
-                            const [r,g,b] = sorted[0][0].split(',').map(Number);
-                            return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+                            const [r, g, b] = sorted[0][0].split(',').map(Number);
+                            return '#' + [r, g, b].map(v => Math.min(255, v).toString(16).padStart(2, '0')).join('');
                         },
 
                         removeLogo() {
