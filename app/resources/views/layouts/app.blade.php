@@ -4,109 +4,128 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'FP' }} — Finanzas Personales</title>
+    <title>{{ $title ?? 'FP' }} · Finanzas</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full bg-gray-50 dark:bg-gray-950 font-sans antialiased">
+<body class="h-full bg-[#efeded] dark:bg-[#1a1a1a] antialiased">
 
-    <div class="flex h-full">
+<div class="flex h-full">
 
-        {{-- Sidebar desktop --}}
-        <aside class="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
-            <div class="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-800">
-                <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">FP</span>
-                <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Finanzas</span>
-            </div>
-            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                    <x-icon name="home" class="mr-3 h-5 w-5" /> Panel
-                </x-nav-link>
-                <x-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
-                    <x-icon name="arrow-left-right" class="mr-3 h-5 w-5" /> Movimientos
-                </x-nav-link>
-                <x-nav-link :href="route('accounts.index')" :active="request()->routeIs('accounts.*')">
-                    <x-icon name="landmark" class="mr-3 h-5 w-5" /> Cuentas
-                </x-nav-link>
-                <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
-                    <x-icon name="tag" class="mr-3 h-5 w-5" /> Categorías
-                </x-nav-link>
-                <x-nav-link :href="route('sources.index')" :active="request()->routeIs('sources.*')">
-                    <x-icon name="briefcase" class="mr-3 h-5 w-5" /> Fuentes
-                </x-nav-link>
-            </nav>
-            <div class="p-3 border-t border-gray-200 dark:border-gray-800">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                        <x-icon name="log-out" class="mr-3 h-4 w-4" /> Cerrar sesión
-                    </button>
-                </form>
-            </div>
-        </aside>
+    {{-- ── Sidebar desktop ──────────────────────────────────────── --}}
+    <aside class="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-[#373737] dark:bg-[#222222]">
 
-        {{-- Contenido principal --}}
-        <div class="flex-1 lg:pl-64 flex flex-col min-h-full">
-
-            {{-- Header móvil --}}
-            <header class="lg:hidden sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-                <div class="flex items-center justify-between h-14 px-4">
-                    <span class="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                        {{ $title ?? 'FP' }}
-                    </span>
-                </div>
-            </header>
-
-            {{-- Notificaciones flash --}}
-            @if(session('status'))
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
-                     class="mx-4 mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400">
-                    {{ session('status') }}
-                </div>
-            @endif
-
-            {{-- Contenido --}}
-            <main class="flex-1 px-4 py-4 lg:px-8 lg:py-6 pb-24 lg:pb-6">
-                {{ $slot }}
-            </main>
+        {{-- Logo --}}
+        <div class="flex items-center h-16 px-5 border-b border-white/10">
+            <span class="text-white font-['Nunito'] text-xl font-light tracking-tight">hans</span>
+            <span class="text-[#76a72b] font-['Nunito'] text-xl font-bold tracking-tight">hatch</span>
+            <span class="ml-2 text-white/30 text-xs font-['Roboto'] uppercase tracking-widest">fp</span>
         </div>
+
+        {{-- Nav --}}
+        <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            @php
+            $navItems = [
+                ['route' => 'dashboard',          'match' => 'dashboard',       'icon' => 'home',        'label' => 'Panel'],
+                ['route' => 'transactions.index', 'match' => 'transactions.*',  'icon' => 'arrows',      'label' => 'Movimientos'],
+                ['route' => 'accounts.index',     'match' => 'accounts.*',      'icon' => 'card',        'label' => 'Cuentas'],
+                ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
+                ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
+            ];
+            @endphp
+
+            @foreach($navItems as $item)
+            @php $active = request()->routeIs($item['match']); @endphp
+            <a href="{{ route($item['route']) }}"
+               class="{{ $active ? 'bg-[#76a72b] text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }} group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                @include('layouts._icon', ['name' => $item['icon'], 'class' => 'w-5 h-5 flex-shrink-0'])
+                {{ $item['label'] }}
+            </a>
+            @endforeach
+        </nav>
+
+        {{-- Footer sidebar --}}
+        <div class="p-3 border-t border-white/10">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-all duration-150">
+                    @include('layouts._icon', ['name' => 'logout', 'class' => 'w-4 h-4'])
+                    Cerrar sesión
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    {{-- ── Área principal ───────────────────────────────────────── --}}
+    <div class="flex-1 lg:pl-60 flex flex-col min-h-full">
+
+        {{-- Header móvil --}}
+        <header class="lg:hidden sticky top-0 z-20 bg-[#373737] h-14 flex items-center justify-between px-4">
+            <span class="text-white font-['Nunito'] text-lg font-light">hans<span class="text-[#76a72b] font-bold">hatch</span> <span class="text-white/30 text-xs uppercase tracking-widest">fp</span></span>
+            <a href="{{ route('transactions.create') }}"
+               class="flex items-center gap-1.5 bg-[#76a72b] hover:bg-[#659220] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                Nuevo
+            </a>
+        </header>
+
+        {{-- Flash --}}
+        @if(session('status'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+             x-transition:leave="transition ease-in duration-300" x-transition:leave-end="opacity-0 -translate-y-2"
+             class="mx-4 mt-4 flex items-center gap-3 p-3 bg-[#76a72b]/10 border border-[#76a72b]/30 rounded-xl text-sm text-[#4a7018] dark:text-[#76a72b]">
+            <svg class="w-4 h-4 text-[#76a72b] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            {{ session('status') }}
+        </div>
+        @endif
+
+        @if($errors->any())
+        <div class="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+            <ul class="list-disc list-inside space-y-0.5">
+                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+            </ul>
+        </div>
+        @endif
+
+        {{-- Contenido --}}
+        <main class="flex-1 p-4 lg:p-8 pb-24 lg:pb-8">
+            {{ $slot }}
+        </main>
     </div>
+</div>
 
-    {{-- FAB: nuevo movimiento --}}
-    <a href="{{ route('transactions.create') }}"
-       class="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-        </svg>
-    </a>
+{{-- FAB móvil --}}
+<a href="{{ route('transactions.create') }}"
+   class="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 bg-[#76a72b] hover:bg-[#659220] text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+</a>
 
-    {{-- Bottom navigation móvil --}}
-    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-        <div class="grid grid-cols-4 h-16">
-            <a href="{{ route('dashboard') }}"
-               class="flex flex-col items-center justify-center gap-1 text-xs {{ request()->routeIs('dashboard') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                Panel
-            </a>
-            <a href="{{ route('transactions.index') }}"
-               class="flex flex-col items-center justify-center gap-1 text-xs {{ request()->routeIs('transactions.*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                Movimientos
-            </a>
-            <a href="{{ route('accounts.index') }}"
-               class="flex flex-col items-center justify-center gap-1 text-xs {{ request()->routeIs('accounts.*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                Cuentas
-            </a>
-            <a href="{{ route('sources.index') }}"
-               class="flex flex-col items-center justify-center gap-1 text-xs {{ request()->routeIs('sources.*') || request()->routeIs('categories.*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                Más
-            </a>
+{{-- Bottom nav móvil --}}
+<nav class="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-[#373737] border-t border-white/10">
+    <div class="grid grid-cols-5 h-16">
+        @foreach([
+            ['route' => 'dashboard',          'match' => 'dashboard',      'icon' => 'home',      'label' => 'Panel'],
+            ['route' => 'transactions.index', 'match' => 'transactions.*', 'icon' => 'arrows',    'label' => 'Movimientos'],
+            ['route' => 'transactions.create','match' => 'x',             'icon' => 'plus',       'label' => ''],
+            ['route' => 'accounts.index',     'match' => 'accounts.*',    'icon' => 'card',       'label' => 'Cuentas'],
+            ['route' => 'sources.index',      'match' => 'sources.*',     'icon' => 'briefcase',  'label' => 'Más'],
+        ] as $item)
+        @php $active = request()->routeIs($item['match']); @endphp
+        @if($item['icon'] === 'plus')
+        <div class="flex items-center justify-center">
+            {{-- espacio para el FAB --}}
         </div>
-    </nav>
+        @else
+        <a href="{{ route($item['route']) }}"
+           class="{{ $active ? 'text-[#76a72b]' : 'text-white/40 hover:text-white/70' }} flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors">
+            @include('layouts._icon', ['name' => $item['icon'], 'class' => 'w-5 h-5'])
+            {{ $item['label'] }}
+        </a>
+        @endif
+        @endforeach
+    </div>
+</nav>
 
-    {{-- Alpine.js para interactividad ligera --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
