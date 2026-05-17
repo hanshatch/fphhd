@@ -41,7 +41,7 @@
                     Nombre <span class="text-[#76a72b]">*</span>
                 </label>
                 <input type="text" name="name" value="{{ old('name', $charge->name) }}" required autofocus
-                    placeholder="{{ isMsi ? 'ej. iPhone 16 Pro MSI' : 'ej. Netflix, Spotify, Renta' }}"
+                    :placeholder="isMsi ? 'ej. iPhone 16 Pro MSI' : 'ej. Netflix, Spotify, Renta'"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                 @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
             </div>
