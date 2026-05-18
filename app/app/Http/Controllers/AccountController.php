@@ -45,14 +45,34 @@ class AccountController extends Controller
     {
         $balance = $this->service->balance($account);
 
-        $grouped = Transaction::with(['category', 'source', 'counterpartyAccount'])
+        // Cargamos ASC para calcular saldo corrido, luego invertimos para mostrar
+        $transactions = Transaction::with(['category', 'source', 'counterpartyAccount'])
             ->where('account_id', $account->id)
-            ->orderBy('date', 'desc')
-            ->orderBy('id', 'desc')
-            ->get()
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        // Saldo corrido con bcmath (nunca float para dinero)
+        $running = (string) $account->initial_balance;
+        $runningBalances = [];
+
+        foreach ($transactions as $tx) {
+            if (in_array($tx->type, ['income', 'interest'])) {
+                $running = bcadd($running, (string) $tx->amount, 2);
+            } else {
+                // expense, fee, transfer: resta del saldo de esta cuenta
+                $running = bcsub($running, (string) $tx->amount, 2);
+            }
+            $runningBalances[$tx->id] = $running;
+        }
+
+        // Invertir y agrupar por mes para mostrar (más reciente primero)
+        $grouped = $transactions->reverse()->values()
             ->groupBy(fn ($tx) => $tx->date->format('Y-m'));
 
-        return view('pages.accounts.show', compact('account', 'balance', 'grouped'));
+        return view('pages.accounts.show', compact(
+            'account', 'balance', 'grouped', 'runningBalances'
+        ));
     }
 
     public function create(): View

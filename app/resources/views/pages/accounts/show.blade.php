@@ -128,10 +128,17 @@ $now = now();
             </div>
         </div>
 
-        <div class="text-right flex-shrink-0">
+        {{-- Monto + saldo corrido --}}
+        <div class="text-right flex-shrink-0 min-w-[80px]">
             <p class="text-sm font-bold tabular-nums" style="color: {{ $cfg['color'] }}">
                 {{ $cfg['sign'] }}${{ number_format((float)$tx->amount, 2) }}
             </p>
+            @if(isset($runningBalances[$tx->id]))
+            @php $rb = (float) $runningBalances[$tx->id]; @endphp
+            <p class="text-[10px] tabular-nums mt-0.5 {{ $rb < 0 ? 'text-red-400' : 'text-[#ababab]' }}">
+                ${{ number_format($rb, 2) }}
+            </p>
+            @endif
         </div>
 
         <div class="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
