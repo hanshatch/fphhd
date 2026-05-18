@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\TotpController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IncomePlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecurringChargeController;
 use App\Http\Controllers\SourceController;
@@ -27,6 +28,10 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::resource('sources', SourceController::class)->except('show');
     Route::resource('transactions', TransactionController::class)->except('show');
     Route::resource('recurring', RecurringChargeController::class)->except('show');
+    Route::resource('income-plans', IncomePlanController::class)->except('show');
+    Route::get('/income-plans/{incomePlan}/register',  [IncomePlanController::class, 'registerShow'])->name('income-plans.register.show');
+    Route::post('/income-plans/{incomePlan}/register', [IncomePlanController::class, 'registerStore'])->name('income-plans.register.store');
+    Route::post('/income-plans/{incomePlan}/toggle',   [IncomePlanController::class, 'toggle'])->name('income-plans.toggle');
     Route::post('/recurring/{recurring}/apply-now', [RecurringChargeController::class, 'applyNow'])->name('recurring.apply-now');
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
 });
