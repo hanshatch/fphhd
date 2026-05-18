@@ -31,6 +31,7 @@ class Account extends Model
     const INST_NU          = 'nu';
     const INST_REVOLUT     = 'revolut';
     const INST_AMEX        = 'amex';
+    const INST_EFECTIVO    = 'efectivo';
     const INST_OTHER       = 'other';
 
     public function transactions(): HasMany
