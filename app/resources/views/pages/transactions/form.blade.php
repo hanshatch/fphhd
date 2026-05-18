@@ -77,13 +77,36 @@
                 </select>
             </div>
 
-            {{-- Categoría --}}
-            <div x-show="type !== 'transfer' && type !== 'interest'" x-cloak>
+            {{-- Categoría de EGRESO --}}
+            <div x-show="type === 'expense' || type === 'fee'" x-cloak>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
                 <select name="category_id"
+                    x-bind:disabled="type !== 'expense' && type !== 'fee'"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                     <option value="">Sin categoría</option>
-                    @foreach($categories->whereNull('parent_id') as $cat)
+                    @foreach($categories->whereNull('parent_id')->where('kind', 'expense') as $cat)
+                    <optgroup label="{{ $cat->name }}">
+                        <option value="{{ $cat->id }}" {{ old('category_id', $transaction->category_id) == $cat->id ? 'selected' : '' }}>
+                            {{ $cat->name }}
+                        </option>
+                        @foreach($cat->children as $child)
+                        <option value="{{ $child->id }}" {{ old('category_id', $transaction->category_id) == $child->id ? 'selected' : '' }}>
+                            &nbsp;&nbsp;{{ $child->name }}
+                        </option>
+                        @endforeach
+                    </optgroup>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Categoría de INGRESO --}}
+            <div x-show="type === 'income'" x-cloak>
+                <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
+                <select name="category_id"
+                    x-bind:disabled="type !== 'income'"
+                    class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                    <option value="">Sin categoría</option>
+                    @foreach($categories->whereNull('parent_id')->where('kind', 'income') as $cat)
                     <optgroup label="{{ $cat->name }}">
                         <option value="{{ $cat->id }}" {{ old('category_id', $transaction->category_id) == $cat->id ? 'selected' : '' }}>
                             {{ $cat->name }}
