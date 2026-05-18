@@ -111,6 +111,17 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index')->with('status', 'Movimiento actualizado.');
     }
 
+    public function duplicate(Transaction $transaction): RedirectResponse
+    {
+        // Copia el movimiento con la fecha de hoy y redirige al form de edición
+        $copy = $transaction->replicate(['created_at', 'updated_at']);
+        $copy->date = now()->toDateString();
+        $copy->save();
+
+        return redirect()->route('transactions.edit', $copy)
+            ->with('status', 'Movimiento duplicado. Ajusta los datos y guarda.');
+    }
+
     public function destroy(Transaction $transaction): RedirectResponse
     {
         $transaction->delete();

@@ -75,6 +75,40 @@ class AccountController extends Controller
         ));
     }
 
+    public function adjustShow(Account $account): View
+    {
+        $balance = $this->service->balance($account);
+        return view('pages.accounts.adjust', compact('account', 'balance'));
+    }
+
+    public function adjustStore(Request $request, Account $account): RedirectResponse
+    {
+        $request->validate([
+            'target_balance' => 'required|numeric',
+            'date'           => 'required|date',
+            'description'    => 'nullable|string|max:255',
+        ]);
+
+        $current  = $this->service->balance($account);
+        $target   = number_format((float) $request->target_balance, 2, '.', '');
+        $diff     = bcsub($target, $current, 2);
+
+        if ($diff == '0.00') {
+            return back()->with('status', 'El saldo ya es correcto, no se creó ningún movimiento.');
+        }
+
+        Transaction::create([
+            'date'        => $request->date,
+            'type'        => bccomp($diff, '0', 2) > 0 ? 'income' : 'expense',
+            'amount'      => number_format(abs((float) $diff), 2, '.', ''),
+            'account_id'  => $account->id,
+            'description' => $request->description ?: 'Ajuste de saldo',
+        ]);
+
+        return redirect()->route('accounts.show', $account)
+            ->with('status', 'Saldo ajustado correctamente.');
+    }
+
     public function create(): View
     {
         return view('pages.accounts.form', [

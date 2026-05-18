@@ -29,6 +29,9 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
     Route::resource('sources', SourceController::class)->except('show');
     Route::resource('transactions', TransactionController::class)->except('show');
+    Route::post('/transactions/{transaction}/duplicate', [TransactionController::class, 'duplicate'])->name('transactions.duplicate');
+    Route::get('/accounts/{account}/adjust', [AccountController::class, 'adjustShow'])->name('accounts.adjust.show');
+    Route::post('/accounts/{account}/adjust', [AccountController::class, 'adjustStore'])->name('accounts.adjust.store');
     Route::resource('recurring', RecurringChargeController::class)->except('show');
     Route::resource('income-plans', IncomePlanController::class)->except('show');
     Route::get('/income-plans/{incomePlan}/register',  [IncomePlanController::class, 'registerShow'])->name('income-plans.register.show');
