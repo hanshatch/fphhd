@@ -1,8 +1,6 @@
 <x-app-layout :title="$account->name">
 
 @php
-use Illuminate\Support\Carbon;
-
 $typeConfig = [
     'income'   => ['sign' => '+', 'color' => '#76a72b', 'label' => 'Ingreso'],
     'interest' => ['sign' => '+', 'color' => '#76a72b', 'label' => 'Interés'],
@@ -75,7 +73,7 @@ $now = now();
 
 @foreach($grouped as $monthKey => $txs)
 @php
-    $monthCarbon = Carbon::createFromFormat('Y-m', $monthKey);
+    $monthCarbon = \Illuminate\Support\Carbon::createFromFormat('Y-m', $monthKey);
     $isCurrentMonth = $monthKey === $now->format('Y-m');
     $isLastMonth    = $monthKey === $now->copy()->subMonth()->format('Y-m');
     $monthLabel = $isCurrentMonth

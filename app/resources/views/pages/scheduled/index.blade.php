@@ -1,8 +1,6 @@
 <x-app-layout title="Flujo programado">
 
 @php
-use Illuminate\Support\Carbon;
-
 $today     = now()->day;
 $isToday   = $month->isSameMonth(now());
 
