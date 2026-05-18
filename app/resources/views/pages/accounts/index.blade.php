@@ -16,7 +16,7 @@
         @endphp
         @foreach($accounts as $item)
         @php $account = $item['account']; $balance = $item['balance']; @endphp
-        <x-card class="p-4 flex items-center gap-4">
+        <x-card class="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('accounts.show', $account) }}'">
             {{-- Logo o color --}}
             <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
                  style="background-color: {{ $account->color }}22">

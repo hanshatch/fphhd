@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\CreditCard;
+use App\Models\Transaction;
 use App\Services\AccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,20 @@ class AccountController extends Controller
             ]);
 
         return view('pages.accounts.index', compact('accounts'));
+    }
+
+    public function show(Account $account): View
+    {
+        $balance = $this->service->balance($account);
+
+        $grouped = Transaction::with(['category', 'source', 'counterpartyAccount'])
+            ->where('account_id', $account->id)
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->groupBy(fn ($tx) => $tx->date->format('Y-m'));
+
+        return view('pages.accounts.show', compact('account', 'balance', 'grouped'));
     }
 
     public function create(): View

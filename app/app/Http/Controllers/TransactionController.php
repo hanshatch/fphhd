@@ -18,26 +18,30 @@ class TransactionController extends Controller
             ->orderBy('date', 'desc')
             ->orderBy('id', 'desc');
 
+        $hasFilter = $request->hasAny(['account_id', 'type', 'from', 'to', 'search']);
+
         if ($request->filled('account_id')) {
             $query->where('account_id', $request->account_id);
         }
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
-        if ($request->filled('from')) {
-            $query->whereDate('date', '>=', $request->from);
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('date', '<=', $request->to);
-        }
         if ($request->filled('search')) {
             $query->where('description', 'like', '%' . $request->search . '%');
         }
 
-        $transactions = $query->paginate(30)->withQueryString();
-        $accounts     = Account::where('is_active', true)->orderBy('name')->get();
+        // Con filtro de fecha explícito usa ese rango; sin filtro muestra últimos 90 días
+        if ($request->filled('from') || $request->filled('to')) {
+            if ($request->filled('from')) $query->whereDate('date', '>=', $request->from);
+            if ($request->filled('to'))   $query->whereDate('date', '<=', $request->to);
+        } elseif (! $hasFilter) {
+            $query->whereDate('date', '>=', now()->subDays(90)->toDateString());
+        }
 
-        return view('pages.transactions.index', compact('transactions', 'accounts'));
+        $grouped  = $query->get()->groupBy(fn ($tx) => $tx->date->format('Y-m'));
+        $accounts = Account::where('is_active', true)->orderBy('name')->get();
+
+        return view('pages.transactions.index', compact('grouped', 'accounts', 'hasFilter'));
     }
 
     public function create(Request $request): View
