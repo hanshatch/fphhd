@@ -64,7 +64,8 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="font-semibold text-[#373737] dark:text-white text-sm">{{ $plan->name }}</span>
-                        <span class="text-[10px] bg-[#76a72b]/10 text-[#4a7018] dark:text-[#76a72b] px-2 py-0.5 rounded-full font-semibold">
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold
+                            {{ $plan->isOnce() ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-[#76a72b]/10 text-[#4a7018] dark:text-[#76a72b]' }}">
                             {{ $plan->frequencyLabel() }}
                         </span>
                         @if(! $plan->is_active)

@@ -1,6 +1,7 @@
 <x-app-layout :title="$plan->exists ? 'Editar ingreso esperado' : 'Nuevo ingreso esperado'">
 <div class="max-w-lg mx-auto"
-     x-data="{ freq: '{{ old('frequency', $plan->frequency ?? 'biweekly') }}' }">
+     x-data="{ freq: '{{ old('frequency', $plan->frequency ?? 'biweekly') }}' }"
+>
 
     <x-page-header :title="$plan->exists ? 'Editar ingreso' : 'Nuevo ingreso esperado'" :back="route('income-plans.index')" />
 
@@ -27,8 +28,8 @@
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-2">
                     Frecuencia <span class="text-[#76a72b]">*</span>
                 </label>
-                <div class="grid grid-cols-3 gap-2">
-                    @foreach(['biweekly' => ['🗓️', 'Quincenal', 'Cada 15 días'], 'monthly' => ['📅', 'Mensual', 'Una vez al mes'], 'weekly' => ['📆', 'Semanal', 'Cada semana']] as $val => [$emoji, $label, $sub])
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    @foreach(['once' => ['⚡', 'Único', 'Un solo pago'], 'biweekly' => ['🗓️', 'Quincenal', 'Cada 15 días'], 'monthly' => ['📅', 'Mensual', 'Una vez al mes'], 'weekly' => ['📆', 'Semanal', 'Cada semana']] as $val => [$emoji, $label, $sub])
                     <label class="cursor-pointer">
                         <input type="radio" name="frequency" value="{{ $val }}" x-model="freq" class="sr-only"
                             {{ old('frequency', $plan->frequency ?? 'biweekly') === $val ? 'checked' : '' }}>
@@ -44,7 +45,7 @@
             </div>
 
             {{-- Días del mes (quincenal/mensual) --}}
-            <div x-show="freq !== 'weekly'" x-cloak>
+            <div x-show="freq !== 'weekly' && freq !== 'once'" x-cloak>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
@@ -116,12 +117,15 @@
             {{-- Próxima fecha esperada --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Próxima fecha esperada <span class="text-[#76a72b]">*</span>
+                    <span x-text="freq === 'once' ? 'Fecha esperada del pago' : 'Próxima fecha esperada'"></span>
+                    <span class="text-[#76a72b]">*</span>
                 </label>
                 <input type="date" name="next_expected_date" required
                     value="{{ old('next_expected_date', $plan->next_expected_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                <p class="mt-1 text-[10px] text-[#ababab]">La fecha se avanza automáticamente cada vez que registras un pago</p>
+                <p class="mt-1 text-[10px] text-[#ababab]"
+                   x-text="freq === 'once' ? 'Al registrar el pago, este ingreso se marca como completado.' : 'La fecha se avanza automáticamente cada vez que registras un pago'">
+                </p>
             </div>
 
             {{-- Notas --}}

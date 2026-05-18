@@ -21,9 +21,10 @@ class IncomePlan extends Model
         'is_active'         => 'boolean',
     ];
 
+    const FREQ_ONCE     = 'once';
+    const FREQ_WEEKLY   = 'weekly';
     const FREQ_BIWEEKLY = 'biweekly';
     const FREQ_MONTHLY  = 'monthly';
-    const FREQ_WEEKLY   = 'weekly';
 
     public function account(): BelongsTo  { return $this->belongsTo(Account::class); }
     public function source(): BelongsTo   { return $this->belongsTo(Source::class); }
@@ -44,11 +45,17 @@ class IncomePlan extends Model
     public function frequencyLabel(): string
     {
         return match ($this->frequency) {
+            self::FREQ_ONCE     => 'Único',
+            self::FREQ_WEEKLY   => 'Semanal',
             self::FREQ_BIWEEKLY => 'Quincenal',
             self::FREQ_MONTHLY  => 'Mensual',
-            self::FREQ_WEEKLY   => 'Semanal',
             default             => $this->frequency,
         };
+    }
+
+    public function isOnce(): bool
+    {
+        return $this->frequency === self::FREQ_ONCE;
     }
 
     public function daysUntilNext(): int
@@ -59,9 +66,10 @@ class IncomePlan extends Model
     /**
      * Calcula la siguiente fecha de pago después de registrar uno.
      */
-    public function calculateNextDate(Carbon $after): Carbon
+    public function calculateNextDate(Carbon $after): ?Carbon
     {
         return match ($this->frequency) {
+            self::FREQ_ONCE     => null,  // se desactiva, no hay siguiente
             self::FREQ_WEEKLY   => $after->copy()->addWeek(),
             self::FREQ_MONTHLY  => $this->nextMonthlyDate($after),
             self::FREQ_BIWEEKLY => $this->nextBiweeklyDate($after),

@@ -60,9 +60,15 @@ class IncomePlanService
             'description' => $description ?: $plan->name,
         ]);
 
-        // Avanzar siguiente fecha esperada
+        // Avanzar o desactivar según frecuencia
         $nextDate = $plan->calculateNextDate(Carbon::parse($date));
-        $plan->update(['next_expected_date' => $nextDate->toDateString()]);
+
+        if ($nextDate === null) {
+            // Pago único: marcar como completado
+            $plan->update(['is_active' => false]);
+        } else {
+            $plan->update(['next_expected_date' => $nextDate->toDateString()]);
+        }
 
         return $transaction;
     }
