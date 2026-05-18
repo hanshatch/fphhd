@@ -13,7 +13,7 @@
 
         {{-- Patrimonio neto --}}
         <div class="lg:col-span-1">
-            <x-card class="p-5 bg-[#373737] dark:bg-[#222] border-0 h-full flex flex-col justify-between">
+            <div class="p-5 bg-[#373737] rounded-2xl shadow-sm h-full flex flex-col justify-between">
                 <div>
                     <p class="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Patrimonio neto</p>
                     <p class="text-3xl font-bold text-white leading-none">
@@ -35,7 +35,7 @@
                         <p class="text-red-400 font-bold text-sm">${{ number_format($debts, 2) }}</p>
                     </div>
                 </div>
-            </x-card>
+            </div>
         </div>
 
         {{-- Flujo del mes --}}

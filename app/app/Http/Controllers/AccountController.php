@@ -16,7 +16,7 @@ class AccountController extends Controller
 
     public function index(): View
     {
-        $accounts = Account::orderBy('type')->orderBy('name')->get()
+        $accounts = Account::orderBy('name')->get()
             ->map(fn ($a) => [
                 'account' => $a,
                 'balance' => $this->service->balance($a),
