@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomePlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecurringChargeController;
+use App\Http\Controllers\ScheduledController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::post('/income-plans/{incomePlan}/toggle',   [IncomePlanController::class, 'toggle'])->name('income-plans.toggle');
     Route::post('/recurring/{recurring}/apply-now', [RecurringChargeController::class, 'applyNow'])->name('recurring.apply-now');
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
+    Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
 });
 
 Route::middleware('auth')->group(function () {

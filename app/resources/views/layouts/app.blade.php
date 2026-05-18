@@ -30,6 +30,7 @@
                 ['route' => 'accounts.index',     'match' => 'accounts.*',      'icon' => 'card',        'label' => 'Cuentas'],
                 ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
                 ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
+                ['route' => 'scheduled.index',    'match' => 'scheduled.*',     'icon' => 'calendar',    'label' => 'Flujo'],
                 ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
                 ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
             ];
@@ -109,8 +110,8 @@
             ['route' => 'dashboard',          'match' => 'dashboard',      'icon' => 'home',      'label' => 'Panel'],
             ['route' => 'transactions.index', 'match' => 'transactions.*', 'icon' => 'arrows',    'label' => 'Movimientos'],
             ['route' => 'transactions.create','match' => 'x',             'icon' => 'plus',       'label' => ''],
+            ['route' => 'scheduled.index',    'match' => 'scheduled.*',   'icon' => 'calendar',   'label' => 'Flujo'],
             ['route' => 'accounts.index',     'match' => 'accounts.*',    'icon' => 'card',       'label' => 'Cuentas'],
-            ['route' => 'sources.index',      'match' => 'sources.*',     'icon' => 'briefcase',  'label' => 'Más'],
         ] as $item)
         @php $active = request()->routeIs($item['match']); @endphp
         @if($item['icon'] === 'plus')
