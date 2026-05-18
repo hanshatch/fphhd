@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\TotpController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomePlanController;
@@ -36,6 +37,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::post('/recurring/{recurring}/apply-now', [RecurringChargeController::class, 'applyNow'])->name('recurring.apply-now');
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
     Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
+    Route::resource('budgets', BudgetController::class)->only(['index', 'store', 'update', 'destroy']);
 });
 
 Route::middleware('auth')->group(function () {
