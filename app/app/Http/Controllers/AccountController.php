@@ -17,13 +17,28 @@ class AccountController extends Controller
 
     public function index(): View
     {
-        $accounts = Account::orderBy('name')->get()
+        // Orden de grupos como MoneyWiz: activos primero, deuda al final
+        $typeOrder = ['debit' => 0, 'savings' => 1, 'investment' => 2, 'cash' => 3, 'credit' => 4];
+
+        $all = Account::orderBy('name')->get()
             ->map(fn ($a) => [
                 'account' => $a,
                 'balance' => $this->service->balance($a),
             ]);
 
-        return view('pages.accounts.index', compact('accounts'));
+        // Agrupar por tipo respetando el orden definido
+        $groups = $all
+            ->groupBy(fn ($item) => $item['account']->type)
+            ->sortBy(fn ($items, $type) => $typeOrder[$type] ?? 99);
+
+        // Totales por grupo y patrimonio neto global
+        $groupTotals = $groups->map(fn ($items) =>
+            $items->sum(fn ($i) => (float) $i['balance'])
+        );
+
+        $netWorth = $this->service->netWorth();
+
+        return view('pages.accounts.index', compact('groups', 'groupTotals', 'netWorth'));
     }
 
     public function show(Account $account): View
