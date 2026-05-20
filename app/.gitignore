@@ -14,7 +14,7 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# /public/build  ← incluido en repo para deploy a producción
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
