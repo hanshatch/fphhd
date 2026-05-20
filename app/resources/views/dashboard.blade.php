@@ -89,6 +89,95 @@
         </div>
     </div>
 
+    {{-- ── FASE 7: Alertas TDC (corte/pago próximos) ──────────────── --}}
+    @if($tdcAlerts->isNotEmpty())
+    <div class="mb-4">
+        <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Tarjetas de crédito</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach($tdcAlerts as $tdc)
+            @php
+                $urgentStatement = $tdc['days_statement'] <= 3;
+                $urgentPayment   = $tdc['days_payment'] <= 3;
+                $warnStatement   = !$urgentStatement && $tdc['days_statement'] <= 7;
+                $warnPayment     = !$urgentPayment   && $tdc['days_payment']   <= 7;
+                $accColor        = $tdc['account']->color ?? '#ef4444';
+            @endphp
+            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
+
+                {{-- Header cuenta --}}
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                         style="background-color: {{ $accColor }}20">
+                        @if($tdc['account']->logo_path)
+                        <img src="{{ $tdc['account']->logoUrl() }}" alt="" class="w-6 h-6 object-contain">
+                        @else
+                        <span class="font-bold text-sm" style="color: {{ $accColor }}">
+                            {{ mb_strtoupper(mb_substr($tdc['account']->name, 0, 1)) }}
+                        </span>
+                        @endif
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-sm text-[#373737] dark:text-white truncate">{{ $tdc['account']->name }}</p>
+                        <p class="text-xs text-[#ababab] tabular-nums">
+                            ${{ number_format(abs((float)$tdc['balance']), 2) }}
+                            @if($tdc['credit_limit'] > 0)
+                            / ${{ number_format((float)$tdc['credit_limit'], 2) }}
+                            @endif
+                        </p>
+                    </div>
+                    @if($tdc['utilization'] > 0)
+                    <div class="text-right flex-shrink-0">
+                        <span class="text-xs font-bold {{ $tdc['utilization'] >= 80 ? 'text-red-500' : ($tdc['utilization'] >= 50 ? 'text-amber-500' : 'text-[#76a72b]') }}">
+                            {{ $tdc['utilization'] }}%
+                        </span>
+                        <p class="text-[10px] text-[#ababab]">uso</p>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- Barra de utilización --}}
+                @if($tdc['credit_limit'] > 0)
+                <div class="h-1.5 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden mb-3">
+                    <div class="h-full rounded-full transition-all"
+                         style="width: {{ min($tdc['utilization'], 100) }}%;
+                                background-color: {{ $tdc['utilization'] >= 80 ? '#ef4444' : ($tdc['utilization'] >= 50 ? '#f97316' : '#76a72b') }}">
+                    </div>
+                </div>
+                @endif
+
+                {{-- Fechas corte/pago --}}
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-xl p-2 text-center
+                        {{ $urgentStatement ? 'bg-red-50 dark:bg-red-500/10' : ($warnStatement ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-[#efeded] dark:bg-white/5') }}">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider
+                            {{ $urgentStatement ? 'text-red-500' : ($warnStatement ? 'text-amber-500' : 'text-[#ababab]') }}">
+                            Corte
+                        </p>
+                        <p class="text-sm font-bold
+                            {{ $urgentStatement ? 'text-red-600' : ($warnStatement ? 'text-amber-600' : 'text-[#373737] dark:text-white') }}">
+                            {{ $tdc['days_statement'] === 0 ? 'Hoy' : 'En '.$tdc['days_statement'].'d' }}
+                        </p>
+                        <p class="text-[10px] text-[#ababab]">{{ $tdc['next_statement']->translatedFormat('d M') }}</p>
+                    </div>
+                    <div class="rounded-xl p-2 text-center
+                        {{ $urgentPayment ? 'bg-red-50 dark:bg-red-500/10' : ($warnPayment ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-[#efeded] dark:bg-white/5') }}">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider
+                            {{ $urgentPayment ? 'text-red-500' : ($warnPayment ? 'text-amber-500' : 'text-[#ababab]') }}">
+                            Pago
+                        </p>
+                        <p class="text-sm font-bold
+                            {{ $urgentPayment ? 'text-red-600' : ($warnPayment ? 'text-amber-600' : 'text-[#373737] dark:text-white') }}">
+                            {{ $tdc['days_payment'] === 0 ? 'Hoy' : 'En '.$tdc['days_payment'].'d' }}
+                        </p>
+                        <p class="text-[10px] text-[#ababab]">{{ $tdc['next_payment']->translatedFormat('d M') }}</p>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     {{-- ── Fila 2: Gráfica 6 meses + Top categorías ────────────────── --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
 
@@ -131,6 +220,76 @@
                 </div>
             @endif
         </x-card>
+    </div>
+
+    {{-- ── FASE 9: Indicadores financieros ────────────────────────── --}}
+    @php $ind = $indicators; @endphp
+    <div class="mb-4">
+        <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Salud financiera</p>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+            {{-- Tasa de ahorro --}}
+            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
+                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Tasa de ahorro</p>
+                @if($ind['savings_rate'] !== null)
+                @php $sr = $ind['savings_rate']; @endphp
+                <p class="text-2xl font-bold tabular-nums {{ $sr >= 20 ? 'text-[#76a72b]' : ($sr >= 0 ? 'text-amber-500' : 'text-red-500') }}">
+                    {{ $sr >= 0 ? '' : '-' }}{{ number_format(abs($sr), 1) }}<span class="text-sm">%</span>
+                </p>
+                <p class="text-[10px] text-[#ababab] mt-1">
+                    {{ $sr >= 20 ? '¡Buen ritmo!' : ($sr >= 0 ? 'Puedes mejorar' : 'Gastando más de lo que ingresa') }}
+                </p>
+                @else
+                <p class="text-sm text-[#ababab]">Sin ingresos aún</p>
+                @endif
+            </div>
+
+            {{-- Proyección de gasto --}}
+            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
+                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Proyección del mes</p>
+                <p class="text-2xl font-bold tabular-nums text-[#373737] dark:text-white">
+                    ${{ number_format($ind['projected_expense'], 0) }}
+                </p>
+                <p class="text-[10px] text-[#ababab] mt-1">
+                    Día {{ $ind['days_elapsed'] }}/{{ $ind['days_in_month'] }} ·
+                    ${{ number_format($ind['daily_pace'], 0) }}/día
+                </p>
+            </div>
+
+            {{-- Quincena disponible --}}
+            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
+                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Próximos 15 días</p>
+                <p class="text-2xl font-bold tabular-nums {{ $ind['quincena_available'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                    ${{ number_format(abs($ind['quincena_available']), 0) }}
+                </p>
+                <p class="text-[10px] text-[#ababab] mt-1">
+                    @if($ind['quincena_income'] > 0 || $ind['quincena_charges'] > 0)
+                        +${{ number_format($ind['quincena_income'], 0) }} ingresos ·
+                        -${{ number_format($ind['quincena_charges'], 0) }} cargos
+                    @else
+                        Sin movimientos programados
+                    @endif
+                </p>
+            </div>
+
+            {{-- Presupuestos --}}
+            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
+                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Presupuestos</p>
+                @if($ind['budgets_at_risk'] > 0)
+                <p class="text-2xl font-bold text-amber-500">{{ $ind['budgets_at_risk'] }}</p>
+                <p class="text-[10px] text-amber-500 mt-1 font-semibold">
+                    {{ $ind['budgets_at_risk'] === 1 ? 'categoría en riesgo' : 'categorías en riesgo' }}
+                </p>
+                <a href="{{ route('budgets.index') }}" class="text-[10px] text-[#76a72b] hover:underline font-semibold mt-1 block">
+                    Ver presupuestos →
+                </a>
+                @else
+                <p class="text-2xl font-bold text-[#76a72b]">✓</p>
+                <p class="text-[10px] text-[#76a72b] mt-1 font-semibold">Todos en orden</p>
+                @endif
+            </div>
+
+        </div>
     </div>
 
     {{-- ── Fila 3: Saldos + Rendimientos ───────────────────────────── --}}
