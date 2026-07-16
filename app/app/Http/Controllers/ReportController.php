@@ -51,7 +51,7 @@ class ReportController extends Controller
             $q = Transaction::whereBetween('date', [$from, $to]);
             if ($accountId) $q->where('account_id', $accountId);
 
-            $inc = (float) $q->clone()->whereIn('type', ['income', 'interest'])->sum('amount');
+            $inc = (float) $q->clone()->where('type', 'income')->sum('amount');
             $exp = (float) $q->clone()->whereIn('type', ['expense', 'fee'])->sum('amount');
 
             $monthLabels[] = Carbon::create($year, $m, 1)->translatedFormat('M');
@@ -107,7 +107,7 @@ class ReportController extends Controller
         $totalExpense = $byCategory->sum('total');
 
         // También ingresos del mes para contexto
-        $qInc = Transaction::whereIn('type', ['income', 'interest'])->whereBetween('date', [$from, $to]);
+        $qInc = Transaction::where('type', 'income')->whereBetween('date', [$from, $to]);
         if ($accountId) $qInc->where('account_id', $accountId);
         $totalIncome = (float) $qInc->sum('amount');
 
@@ -126,7 +126,7 @@ class ReportController extends Controller
         $to   = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
 
         $q = Transaction::with('source')
-            ->whereIn('type', ['income', 'interest'])
+            ->where('type', 'income')
             ->whereBetween('date', [$from, $to]);
         if ($accountId) $q->where('account_id', $accountId);
 
@@ -152,7 +152,7 @@ class ReportController extends Controller
             $srcLabels[] = $d->translatedFormat('M y');
 
             $qM = Transaction::with('source')
-                ->whereIn('type', ['income', 'interest'])
+                ->where('type', 'income')
                 ->whereBetween('date', [$f, $t]);
             if ($accountId) $qM->where('account_id', $accountId);
 

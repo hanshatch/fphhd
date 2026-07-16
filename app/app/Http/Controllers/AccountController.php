@@ -45,24 +45,42 @@ class AccountController extends Controller
     {
         $balance = $this->service->balance($account);
 
-        // Cargamos ASC para calcular saldo corrido, luego invertimos para mostrar
-        $transactions = Transaction::with(['category', 'source', 'counterpartyAccount'])
-            ->where('account_id', $account->id)
+        // Cargamos ASC para calcular saldo corrido, luego invertimos para mostrar.
+        // Incluye transferencias entrantes (counterparty), que también mueven el saldo.
+        $transactions = Transaction::with(['account', 'category', 'source', 'counterpartyAccount'])
+            ->where(fn ($q) => $q
+                ->where('account_id', $account->id)
+                ->orWhere(fn ($q2) => $q2
+                    ->where('counterparty_account_id', $account->id)
+                    ->where('type', 'transfer')))
             ->orderBy('date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        // Saldo corrido con bcmath (nunca float para dinero)
+        // Saldo corrido con bcmath (nunca float), espejo exacto de AccountService::balance()
         $running = (string) $account->initial_balance;
         $runningBalances = [];
 
         foreach ($transactions as $tx) {
-            if (in_array($tx->type, ['income', 'interest'])) {
-                $running = bcadd($running, (string) $tx->amount, 2);
+            $amount     = (string) $tx->amount;
+            $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
+
+            if ($account->isCredit()) {
+                // Deuda: sube con gastos/comisiones, baja con pagos y reembolsos
+                $running = match (true) {
+                    in_array($tx->type, ['expense', 'fee'])      => bcadd($running, $amount, 2),
+                    $isIncoming                                  => bcsub($running, $amount, 2),
+                    in_array($tx->type, ['income', 'interest'])  => bcsub($running, $amount, 2),
+                    default                                      => $running,
+                };
             } else {
-                // expense, fee, transfer: resta del saldo de esta cuenta
-                $running = bcsub($running, (string) $tx->amount, 2);
+                $running = match (true) {
+                    in_array($tx->type, ['income', 'interest'])  => bcadd($running, $amount, 2),
+                    $isIncoming                                  => bcadd($running, $amount, 2),
+                    default                                      => bcsub($running, $amount, 2),
+                };
             }
+
             $runningBalances[$tx->id] = $running;
         }
 
@@ -97,10 +115,17 @@ class AccountController extends Controller
             return back()->with('status', 'El saldo ya es correcto, no se creó ningún movimiento.');
         }
 
+        // En TDC el saldo es deuda: subirla = expense, bajarla = income (reembolso/ajuste).
+        // En cuentas normales es al revés.
+        $increase = bccomp($diff, '0', 2) > 0;
+        $type     = $account->isCredit()
+            ? ($increase ? 'expense' : 'income')
+            : ($increase ? 'income' : 'expense');
+
         Transaction::create([
             'date'        => $request->date,
-            'type'        => bccomp($diff, '0', 2) > 0 ? 'income' : 'expense',
-            'amount'      => number_format(abs((float) $diff), 2, '.', ''),
+            'type'        => $type,
+            'amount'      => ltrim($diff, '-'),
             'account_id'  => $account->id,
             'description' => $request->description ?: 'Ajuste de saldo',
         ]);

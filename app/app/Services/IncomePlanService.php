@@ -33,8 +33,8 @@ class IncomePlanService
             $p->next_expected_date->between($from, $to)
         )->sum(fn ($p) => (float) $p->expected_amount);
 
-        // Total ya registrado: transacciones de ingreso del mes
-        $registered = Transaction::whereIn('type', ['income', 'interest'])
+        // Total ya registrado: solo ingreso operativo (regla 4.3, sin intereses)
+        $registered = Transaction::where('type', 'income')
             ->whereBetween('date', [$from, $to])
             ->sum('amount');
 

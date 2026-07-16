@@ -67,7 +67,7 @@ class TransactionController extends Controller
             'account_id'              => 'required|exists:accounts,id',
             'category_id'             => 'nullable|exists:categories,id',
             'source_id'               => 'nullable|exists:sources,id',
-            'counterparty_account_id' => 'nullable|exists:accounts,id|different:account_id',
+            'counterparty_account_id' => 'required_if:type,transfer|nullable|exists:accounts,id|different:account_id',
             'description'             => 'nullable|string|max:500',
         ]);
 
@@ -100,7 +100,7 @@ class TransactionController extends Controller
             'account_id'              => 'required|exists:accounts,id',
             'category_id'             => 'nullable|exists:categories,id',
             'source_id'               => 'nullable|exists:sources,id',
-            'counterparty_account_id' => 'nullable|exists:accounts,id|different:account_id',
+            'counterparty_account_id' => 'required_if:type,transfer|nullable|exists:accounts,id|different:account_id',
             'description'             => 'nullable|string|max:500',
         ]);
 

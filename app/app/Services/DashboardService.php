@@ -29,8 +29,9 @@ class DashboardService
             ->groupBy('type')
             ->pluck('total', 'type');
 
-        $income   = bcadd((string)($rows['income']   ?? 0), (string)($rows['interest'] ?? 0), 2);
-        $expenses = bcadd((string)($rows['expense']  ?? 0), (string)($rows['fee']      ?? 0), 2);
+        // Regla 4.3: el interés NO es ingreso operativo (solo cuenta en rendimientos)
+        $income   = bcadd((string)($rows['income']  ?? 0), '0', 2);
+        $expenses = bcadd((string)($rows['expense'] ?? 0), (string)($rows['fee'] ?? 0), 2);
         $net      = bcsub($income, $expenses, 2);
 
         return compact('income', 'expenses', 'net', 'from', 'to');

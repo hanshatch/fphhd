@@ -159,7 +159,8 @@ input.tx-row-value::placeholder { color: #ababab; }
                     </svg>
                 </div>
                 <span class="tx-row-label">Destino</span>
-                <select name="counterparty_account_id" form="mobile-form" class="tx-row-value">
+                <select name="counterparty_account_id" form="mobile-form" class="tx-row-value"
+                        :required="type === 'transfer'">
                     <option value="">Selecciona</option>
                     @foreach($accounts as $account)
                     <option value="{{ $account->id }}"
@@ -353,7 +354,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                     Cuenta destino <span class="text-[#76a72b]">*</span>
                 </label>
-                <select name="counterparty_account_id"
+                <select name="counterparty_account_id" :required="type === 'transfer'"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                     <option value="">Selecciona destino</option>
                     @foreach($accounts as $account)

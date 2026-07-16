@@ -104,7 +104,10 @@ $now = now();
 <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl overflow-hidden border border-[#ababab]/15 shadow-sm mb-1">
     @foreach($txs as $tx)
     @php
-        $cfg = $typeConfig[$tx->type] ?? $typeConfig['expense'];
+        $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
+        $cfg = $isIncoming
+            ? ['sign' => '+', 'color' => '#878787', 'label' => 'Transferencia recibida']
+            : ($typeConfig[$tx->type] ?? $typeConfig['expense']);
         if ($tx->category) {
             $iconBg    = $tx->category->color;
             $iconLabel = mb_strtoupper(mb_substr($tx->category->name, 0, 1));
@@ -130,7 +133,10 @@ $now = now();
                 <span class="text-[#ababab]/60 text-[10px]">·</span>
                 <span class="text-[11px] text-[#ababab]">{{ $tx->category->name }}</span>
                 @endif
-                @if($tx->counterpartyAccount)
+                @if($isIncoming)
+                <span class="text-[#ababab]/60 text-[10px]">·</span>
+                <span class="text-[11px] text-[#ababab]">← {{ $tx->account->name }}</span>
+                @elseif($tx->counterpartyAccount)
                 <span class="text-[#ababab]/60 text-[10px]">·</span>
                 <span class="text-[11px] text-[#ababab]">→ {{ $tx->counterpartyAccount->name }}</span>
                 @endif
