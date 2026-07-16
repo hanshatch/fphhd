@@ -67,6 +67,7 @@ class PagesSmokeTest extends TestCase
             '/more',
             '/settings',
             '/recurring',
+            '/recurring/create',
             '/income-plans',
             '/categories',
             '/sources',

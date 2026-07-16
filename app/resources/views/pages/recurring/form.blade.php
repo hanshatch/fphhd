@@ -120,18 +120,7 @@
             {{-- Categoría --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
-                <select name="category_id"
-                    class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <option value="">Sin categoría</option>
-                    @foreach($categories->whereNull('parent_id') as $cat)
-                    <optgroup label="{{ $cat->name }}">
-                        <option value="{{ $cat->id }}" {{ old('category_id', $charge->category_id) == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                        @foreach($cat->children as $child)
-                        <option value="{{ $child->id }}" {{ old('category_id', $charge->category_id) == $child->id ? 'selected' : '' }}>↳ {{ $child->name }}</option>
-                        @endforeach
-                    </optgroup>
-                    @endforeach
-                </select>
+                <x-category-picker :categories="$categories" :selected="$charge->category_id" />
             </div>
 
             {{-- Día de cargo + Fecha inicio --}}
