@@ -179,25 +179,9 @@ input.tx-row-value::placeholder { color: #ababab; }
                     </svg>
                 </div>
                 <span class="tx-row-label">Categoría</span>
-                <select name="category_id" form="mobile-form"
-                    x-bind:disabled="type === 'transfer' || type === 'interest'"
-                    class="tx-row-value">
-                    <option value="">Sin categoría</option>
-                    @foreach($categories->whereNull('parent_id') as $cat)
-                    <optgroup label="{{ $cat->name }}">
-                        <option value="{{ $cat->id }}"
-                            {{ old('category_id', $transaction->category_id) == $cat->id ? 'selected' : '' }}>
-                            {{ $cat->name }}
-                        </option>
-                        @foreach($cat->children as $child)
-                        <option value="{{ $child->id }}"
-                            {{ old('category_id', $transaction->category_id) == $child->id ? 'selected' : '' }}>
-                            ↳ {{ $child->name }}
-                        </option>
-                        @endforeach
-                    </optgroup>
-                    @endforeach
-                </select>
+                <x-category-picker :categories="$categories" :selected="$transaction->category_id"
+                    form="mobile-form" variant="row"
+                    disabled-expr="type === 'transfer' || type === 'interest'" />
             </div>
 
             {{-- Fuente --}}
@@ -369,25 +353,8 @@ input.tx-row-value::placeholder { color: #ababab; }
             {{-- Categoría --}}
             <div x-show="type !== 'transfer' && type !== 'interest'" x-cloak>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
-                <select name="category_id"
-                    x-bind:disabled="type === 'transfer' || type === 'interest'"
-                    class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <option value="">Sin categoría</option>
-                    @foreach($categories->whereNull('parent_id') as $cat)
-                    <optgroup label="{{ $cat->name }}">
-                        <option value="{{ $cat->id }}"
-                            {{ old('category_id', $transaction->category_id) == $cat->id ? 'selected' : '' }}>
-                            {{ $cat->name }}
-                        </option>
-                        @foreach($cat->children as $child)
-                        <option value="{{ $child->id }}"
-                            {{ old('category_id', $transaction->category_id) == $child->id ? 'selected' : '' }}>
-                            ↳ {{ $child->name }}
-                        </option>
-                        @endforeach
-                    </optgroup>
-                    @endforeach
-                </select>
+                <x-category-picker :categories="$categories" :selected="$transaction->category_id"
+                    disabled-expr="type === 'transfer' || type === 'interest'" />
             </div>
 
             {{-- Fuente --}}

@@ -1,15 +1,16 @@
-@props(['categories', 'selected' => null, 'name' => 'category_id', 'placeholder' => 'Sin categoría'])
+@props(['categories', 'selected' => null, 'name' => 'category_id', 'placeholder' => 'Sin categoría', 'variant' => 'default', 'disabledExpr' => null])
 
 @php
     $flat = $categories->flatMap(fn ($c) => collect([$c])->merge($c->children ?? collect()));
-    $selectedCat = $selected ? $flat->firstWhere('id', (int) $selected) : null;
+    $current = old($name, $selected);
+    $selectedCat = $current ? $flat->firstWhere('id', (int) $current) : null;
     $parents = $categories->whereNull('parent_id');
     $kindLabels = ['expense' => 'Egresos', 'income' => 'Ingresos'];
 @endphp
 
-<div x-data="{
+<div @if($variant === 'row') class="contents" @endif x-data="{
         open: false,
-        value: '{{ old($name, $selected) }}',
+        value: '{{ $current }}',
         label: @js($selectedCat?->name),
         color: @js($selectedCat?->color),
         q: '',
@@ -20,9 +21,20 @@
     }"
     x-on:keydown.escape.window="open = false">
 
-    <input type="hidden" name="{{ $name }}" x-model="value" {{ $attributes->only('form') }}>
+    <input type="hidden" name="{{ $name }}" x-model="value" {{ $attributes->only('form') }}
+        @if($disabledExpr) x-bind:disabled="{{ $disabledExpr }}" @endif>
 
     {{-- Trigger --}}
+    @if($variant === 'row')
+    <button type="button" data-no-spinner="true" x-on:click="show()"
+        {{ $attributes->except('form')->merge(['class' => 'tx-row-value flex items-center justify-end gap-1.5']) }}>
+        <template x-if="label">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" x-bind:style="`background-color: ${color || '#76a72b'}`"></span>
+        </template>
+        <span class="truncate" x-text="label || '{{ $placeholder }}'"></span>
+        <svg class="w-3.5 h-3.5 text-[#ababab] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    @else
     <button type="button" data-no-spinner="true" x-on:click="show()"
         {{ $attributes->except('form')->merge(['class' => 'w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-left flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition']) }}>
         <template x-if="label">
@@ -32,6 +44,7 @@
               x-text="label || '{{ $placeholder }}'"></span>
         <svg class="w-4 h-4 text-[#ababab] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
+    @endif
 
     {{-- Modal --}}
     <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
