@@ -32,9 +32,15 @@
 ## En curso / siguiente
 
 - Fase 9 restante: metas de ahorro y simulador.
-- Desplegar a producción las correcciones (incluye `php artisan migrate` por audit_logs
-  y re-enrolar 2FA: el secret ahora se guarda cifrado, los secrets viejos en claro no descifran).
-- En producción verificar: APP_DEBUG=false, APP_ENV=production, SESSION_SECURE_COOKIE=true.
+
+## Deploy a producción (2026-07-16)
+
+- Desplegado commit 1724491 en Hostinger (`~/domains/hanshatch.com/public_html/_fphhd`,
+  SSH `ssh -p 65002 u863784331@191.96.54.156`, PHP 8.4).
+- `.env` de prod corregido: APP_ENV=production, APP_DEBUG=false (¡estaba en local/true!),
+  SESSION_ENCRYPT=true, SESSION_SECURE_COOKIE=true.
+- Migración audit_logs corrida; config/route/view cacheados.
+- Al primer login en prod el 2FA pedirá re-enrolarse (secret legado → auto-reset).
 
 ## Bloqueos / decisiones pendientes
 
