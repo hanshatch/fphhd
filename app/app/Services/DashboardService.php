@@ -14,6 +14,7 @@ class DashboardService
     public function __construct(
         private AccountService $accountService,
         private BudgetService $budgetService,
+        private YieldService $yieldService,
     ) {}
 
     /**
@@ -251,6 +252,7 @@ class DashboardService
             'chart'             => $this->monthlyChart(6),
             'topCategories'     => $this->topExpenseCategories(5),
             'monthlyInterest'   => $monthlyInterest,
+            'yieldPending'      => $this->yieldService->pendingCaptures(),
             'tdcAlerts'         => $this->tdcAlerts($accounts, $balances),
             'indicators'        => $this->financialIndicators(),
             'recent'            => Transaction::with('account', 'category', 'source')

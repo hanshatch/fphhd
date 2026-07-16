@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Services\ReportService;
+use App\Services\YieldService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ReportController extends Controller
 {
-    public function __construct(private ReportService $service) {}
+    public function __construct(
+        private ReportService $service,
+        private YieldService $yieldService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -21,6 +25,7 @@ class ReportController extends Controller
         $data = match ($type) {
             'categories' => $this->service->categories($month, $accountId),
             'sources'    => $this->service->sources($month, $accountId),
+            'yields'     => $this->yieldService->report(),
             default      => $this->service->annual($year, $accountId),
         };
 

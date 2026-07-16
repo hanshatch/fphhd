@@ -337,7 +337,23 @@
         {{-- Rendimientos del mes --}}
         <div class="lg:col-span-1">
             <x-card class="p-5 h-full">
-                <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-4">Rendimientos del mes</p>
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Rendimientos del mes</p>
+                    <a href="{{ route('reports.index', ['type' => 'yields']) }}" class="text-[10px] text-[#76a72b] font-semibold hover:underline">Ver reporte →</a>
+                </div>
+
+                @if($yieldPending->isNotEmpty())
+                <div class="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                    <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Falta capturar</p>
+                    @foreach($yieldPending as $p)
+                    <a href="{{ route('transactions.create') }}" class="block text-xs text-amber-700 dark:text-amber-300 hover:underline">
+                        {{ $p['account']->name }}
+                        <span class="text-amber-500">· {{ $p['last'] ? 'último '.$p['last']->translatedFormat('j M') : 'sin capturas' }}</span>
+                    </a>
+                    @endforeach
+                </div>
+                @endif
+
                 @if($monthlyInterest->isEmpty())
                     <div class="text-center py-6">
                         <svg class="mx-auto w-8 h-8 text-[#ababab] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>

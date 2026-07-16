@@ -19,6 +19,12 @@
 - [x] Cargos recurrentes + MSI (2026-05-17)
 - [x] Planeación de ingresos variables (income-plans) con frecuencia "Único" (2026-05-18)
 - [x] Vista de cuentas agrupada por tipo estilo MoneyWiz + saldo corrido (2026-05-19)
+- [x] Módulo de rendimientos sofipos (2026-07-16): pestaña "Rendimientos" en Reportes con
+  interés mensual por cuenta (gráfica apilada), APR efectivo (interés ÷ saldo promedio,
+  anualizado) vs APR nominal, y alerta de captura pendiente en dashboard cuando una cuenta
+  savings/investment no tiene transacción `interest` desde el inicio del mes anterior.
+  `YieldService` + `YieldReportTest`. Captura manual: el rendimiento real se registra como
+  transacción tipo interés al recibir el abono de cada sofipo (Klar, Nu, Revolut, MercadoPago).
 
 ## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
 
