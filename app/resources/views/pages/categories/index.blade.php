@@ -17,8 +17,10 @@
                 @foreach($data['list'] as $cat)
                 <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between p-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 rounded-full" style="background-color: {{ $cat->color }}"></div>
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style="background-color: {{ $cat->color }}">
+                                <x-category-icon :name="$cat->icon" class="w-4 h-4" />
+                            </div>
                             <span class="font-medium text-gray-900 dark:text-white text-sm">{{ $cat->name }}</span>
                             @if($cat->children->count()) <span class="text-xs text-gray-400">({{ $cat->children->count() }})</span> @endif
                         </div>
@@ -38,7 +40,10 @@
                     <div class="border-t border-gray-100 dark:border-gray-800 pl-8 pr-3 py-1 space-y-1">
                         @foreach($cat->children as $child)
                         <div class="flex items-center justify-between py-1.5">
-                            <span class="text-sm text-gray-600 dark:text-gray-300">{{ $child->name }}</span>
+                            <div class="flex items-center gap-2">
+                                <x-category-icon :name="$child->icon" class="w-3.5 h-3.5" style="color: {{ $child->color }}" />
+                                <span class="text-sm text-gray-600 dark:text-gray-300">{{ $child->name }}</span>
+                            </div>
                             <div class="flex items-center gap-1">
                                 <a href="{{ route('categories.edit', $child) }}" class="p-1 text-[#ababab] hover:text-[#76a72b] rounded">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>

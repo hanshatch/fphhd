@@ -79,6 +79,7 @@ class ReportService
             ->map(fn ($txs) => [
                 'name'  => $txs->first()->category?->name ?? 'Sin categoría',
                 'color' => $txs->first()->category?->color ?? '#ababab',
+                'icon'  => $txs->first()->category?->icon ?? 'tag',
                 'total' => bcsum($txs->pluck('amount')),
                 'count' => $txs->count(),
             ])

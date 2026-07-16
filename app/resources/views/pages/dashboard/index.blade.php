@@ -202,7 +202,9 @@
                     <div>
                         <div class="flex items-center justify-between mb-1">
                             <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $cat['color'] }}"></div>
+                                <div class="w-5 h-5 rounded-md flex items-center justify-center text-white flex-shrink-0" style="background-color: {{ $cat['color'] }}">
+                                    <x-category-icon :name="$cat['icon'] ?? 'tag'" class="w-3 h-3" />
+                                </div>
                                 <span class="text-sm text-[#373737] dark:text-white font-medium truncate max-w-[140px]">{{ $cat['name'] }}</span>
                             </div>
                             <span class="text-sm font-bold text-[#373737] dark:text-white">${{ number_format($cat['total'], 2) }}</span>

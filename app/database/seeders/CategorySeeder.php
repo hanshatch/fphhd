@@ -19,6 +19,12 @@ class CategorySeeder extends Seeder
             ['name' => 'Ropa',           'color' => '#f59e0b', 'icon' => 'shirt',       'children' => []],
             ['name' => 'Tecnología',     'color' => '#6366f1', 'icon' => 'laptop',      'children' => ['Software', 'Hardware', 'Accesorios']],
             ['name' => 'Finanzas',       'color' => '#10b981', 'icon' => 'landmark',    'children' => ['Comisiones bancarias', 'Seguros', 'Intereses TDC']],
+            ['name' => 'Impuestos',      'color' => '#b91c1c', 'icon' => 'receipt',     'children' => ['SAT / Declaraciones', 'Contador']],
+            ['name' => 'Viajes',         'color' => '#0ea5e9', 'icon' => 'plane',       'children' => ['Vuelos', 'Hospedaje']],
+            ['name' => 'Regalos y donaciones', 'color' => '#e11d48', 'icon' => 'gift',  'children' => []],
+            ['name' => 'Cuidado personal',     'color' => '#14b8a6', 'icon' => 'scissors', 'children' => []],
+            ['name' => 'Mascotas',       'color' => '#a16207', 'icon' => 'paw-print',   'children' => []],
+            ['name' => 'Familia',        'color' => '#7c3aed', 'icon' => 'users',       'children' => []],
             ['name' => 'Otros gastos',   'color' => '#6b7280', 'icon' => 'ellipsis',    'children' => []],
         ];
 

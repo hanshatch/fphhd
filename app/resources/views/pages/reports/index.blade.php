@@ -177,9 +177,9 @@
             <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                              style="background-color:{{ $cat['color'] }}">
-                            {{ mb_strtoupper(mb_substr($cat['name'], 0, 1)) }}
+                            <x-category-icon :name="$cat['icon'] ?? 'tag'" class="w-3.5 h-3.5" />
                         </div>
                         <span class="font-semibold text-[#373737] dark:text-white">{{ $cat['name'] }}</span>
                     </div>

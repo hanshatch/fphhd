@@ -85,6 +85,7 @@ class DashboardService
         return $rows->map(fn ($r) => [
             'name'    => $r->category->name ?? 'Sin categoría',
             'color'   => $r->category->color ?? '#ababab',
+            'icon'    => $r->category->icon ?? 'tag',
             'total'   => (float) $r->total,
             'percent' => round(((float) $r->total / $max) * 100),
         ]);

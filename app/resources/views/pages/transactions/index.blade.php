@@ -130,7 +130,11 @@ $now = now();
         {{-- Ícono de categoría --}}
         <div class="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 text-white font-bold text-sm select-none"
              style="background-color: {{ $iconBg }}">
-            {{ $iconLabel }}
+            @if($tx->category)
+                <x-category-icon :name="$tx->category->icon" class="w-5 h-5" />
+            @else
+                {{ $iconLabel }}
+            @endif
         </div>
 
         {{-- Descripción + meta --}}
