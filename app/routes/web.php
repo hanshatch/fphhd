@@ -43,6 +43,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
     Route::resource('budgets', BudgetController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::view('/more', 'pages.more.index')->name('more');
 });
 
 Route::middleware('auth')->group(function () {

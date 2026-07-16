@@ -24,27 +24,39 @@
         {{-- Nav --}}
         <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             @php
-            $navItems = [
-                ['route' => 'dashboard',          'match' => 'dashboard',       'icon' => 'home',        'label' => 'Panel'],
-                ['route' => 'transactions.index', 'match' => 'transactions.*',  'icon' => 'arrows',      'label' => 'Movimientos'],
-                ['route' => 'accounts.index',     'match' => 'accounts.*',      'icon' => 'card',        'label' => 'Cuentas'],
-                ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
-                ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
-                ['route' => 'scheduled.index',    'match' => 'scheduled.*',     'icon' => 'calendar',    'label' => 'Flujo'],
-                ['route' => 'reports.index',      'match' => 'reports.*',       'icon' => 'chart',       'label' => 'Reportes'],
-                ['route' => 'budgets.index',      'match' => 'budgets.*',       'icon' => 'budget',      'label' => 'Presupuestos'],
-                ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
-                ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
+            $navGroups = [
+                '' => [
+                    ['route' => 'dashboard',          'match' => 'dashboard',       'icon' => 'home',        'label' => 'Panel'],
+                    ['route' => 'transactions.index', 'match' => 'transactions.*',  'icon' => 'arrows',      'label' => 'Movimientos'],
+                    ['route' => 'accounts.index',     'match' => 'accounts.*',      'icon' => 'card',        'label' => 'Cuentas'],
+                    ['route' => 'reports.index',      'match' => 'reports.*',       'icon' => 'chart',       'label' => 'Reportes'],
+                ],
+                'Planeación' => [
+                    ['route' => 'scheduled.index',    'match' => 'scheduled.*',     'icon' => 'calendar',    'label' => 'Flujo'],
+                    ['route' => 'budgets.index',      'match' => 'budgets.*',       'icon' => 'budget',      'label' => 'Presupuestos'],
+                    ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
+                    ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
+                ],
+                'Configuración' => [
+                    ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
+                    ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
+                    ['route' => 'profile.edit',       'match' => 'profile.*',       'icon' => 'user',        'label' => 'Perfil'],
+                ],
             ];
             @endphp
 
-            @foreach($navItems as $item)
-            @php $active = request()->routeIs($item['match']); @endphp
-            <a href="{{ route($item['route']) }}"
-               class="{{ $active ? 'bg-[#76a72b] text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }} group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
-                @include('layouts._icon', ['name' => $item['icon'], 'class' => 'w-5 h-5 flex-shrink-0'])
-                {{ $item['label'] }}
-            </a>
+            @foreach($navGroups as $groupLabel => $items)
+                @if($groupLabel !== '')
+                <p class="px-3 pt-5 pb-1.5 text-[10px] font-bold text-white/30 uppercase tracking-widest">{{ $groupLabel }}</p>
+                @endif
+                @foreach($items as $item)
+                @php $active = request()->routeIs($item['match']); @endphp
+                <a href="{{ route($item['route']) }}"
+                   class="{{ $active ? 'bg-[#76a72b] text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }} group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                    @include('layouts._icon', ['name' => $item['icon'], 'class' => 'w-5 h-5 flex-shrink-0'])
+                    {{ $item['label'] }}
+                </a>
+                @endforeach
             @endforeach
         </nav>
 
@@ -112,8 +124,8 @@
             ['route' => 'dashboard',          'match' => 'dashboard',      'icon' => 'home',      'label' => 'Panel'],
             ['route' => 'transactions.index', 'match' => 'transactions.*', 'icon' => 'arrows',    'label' => 'Movimientos'],
             ['route' => 'transactions.create','match' => 'x',             'icon' => 'plus',       'label' => ''],
-            ['route' => 'scheduled.index',    'match' => 'scheduled.*',   'icon' => 'calendar',   'label' => 'Flujo'],
             ['route' => 'accounts.index',     'match' => 'accounts.*',    'icon' => 'card',       'label' => 'Cuentas'],
+            ['route' => 'more',               'match' => 'more',          'icon' => 'dots',       'label' => 'Más'],
         ] as $item)
         @php $active = request()->routeIs($item['match']); @endphp
         @if($item['icon'] === 'plus')

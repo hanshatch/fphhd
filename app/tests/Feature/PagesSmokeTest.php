@@ -63,6 +63,8 @@ class PagesSmokeTest extends TestCase
             '/reports?type=annual',
             '/reports?type=categories',
             '/reports?type=sources',
+            '/reports?type=yields',
+            '/more',
             '/recurring',
             '/income-plans',
             '/categories',
