@@ -18,10 +18,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'totp_secret',
-        'totp_enabled',
-        'failed_login_attempts',
-        'locked_until',
     ];
 
     protected $hidden = [
@@ -35,6 +31,7 @@ class User extends Authenticatable
         return [
             'email_verified_at'      => 'datetime',
             'password'               => 'hashed',
+            'totp_secret'            => 'encrypted',
             'totp_enabled'           => 'boolean',
             'locked_until'           => 'datetime',
             'failed_login_attempts'  => 'integer',
@@ -59,18 +56,18 @@ class User extends Authenticatable
     {
         $attempts = $this->failed_login_attempts + 1;
 
-        $this->update([
+        $this->forceFill([
             'failed_login_attempts' => $attempts,
             'locked_until'          => $attempts >= 5 ? Carbon::now()->addMinutes(15) : null,
-        ]);
+        ])->save();
     }
 
     public function clearFailedLogins(): void
     {
-        $this->update([
+        $this->forceFill([
             'failed_login_attempts' => 0,
             'locked_until'          => null,
-        ]);
+        ])->save();
     }
 
     public function auditLogs(): HasMany

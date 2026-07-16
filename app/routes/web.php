@@ -47,9 +47,13 @@ Route::middleware(['auth', 'totp'])->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/totp/setup', [TotpController::class, 'setupShow'])->name('totp.setup');
-    Route::post('/totp/setup', [TotpController::class, 'setupConfirm'])->name('totp.setup.confirm');
+    Route::post('/totp/setup', [TotpController::class, 'setupConfirm'])
+        ->middleware('throttle:5,1')
+        ->name('totp.setup.confirm');
     Route::get('/totp/challenge', [TotpController::class, 'challengeShow'])->name('totp.challenge');
-    Route::post('/totp/challenge', [TotpController::class, 'challengeVerify'])->name('totp.challenge.verify');
+    Route::post('/totp/challenge', [TotpController::class, 'challengeVerify'])
+        ->middleware('throttle:5,1')
+        ->name('totp.challenge.verify');
 });
 
 require __DIR__.'/auth.php';

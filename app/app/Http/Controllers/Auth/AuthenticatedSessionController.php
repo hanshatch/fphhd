@@ -60,14 +60,8 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('totp.challenge');
         }
 
-        // Si no tiene TOTP aún, forzar enrolamiento
-        if (! $user->totp_enabled && ! $user->totp_secret) {
-            return redirect()->route('totp.setup');
-        }
-
-        AuditLog::record(AuditLog::ACTION_LOGIN);
-
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Si no tiene TOTP habilitado (incluso con enrolamiento a medias), forzar enrolamiento
+        return redirect()->route('totp.setup');
     }
 
     public function destroy(Request $request): RedirectResponse

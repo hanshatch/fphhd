@@ -35,8 +35,8 @@ class RequireTotp
             }
         }
 
-        // Si aún no tiene TOTP configurado, forzar setup
-        if (! $user->totp_secret && ! $request->routeIs('totp.setup', 'totp.setup.confirm', 'logout')) {
+        // Si aún no tiene TOTP habilitado (aunque exista un secret a medio enrolar), forzar setup
+        if (! $user->totp_enabled && ! $request->routeIs('totp.setup', 'totp.setup.confirm', 'logout')) {
             return redirect()->route('totp.setup');
         }
 

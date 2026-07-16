@@ -22,7 +22,7 @@ class TotpController extends Controller
 
     // ── Setup (enrolamiento inicial) ──────────────────────────────────────────
 
-    public function setupShow(): View|RedirectResponse
+    public function setupShow(Request $request): View|RedirectResponse
     {
         $user = Auth::user();
 
@@ -30,20 +30,23 @@ class TotpController extends Controller
             return redirect()->route('dashboard');
         }
 
-        // Generar secreto nuevo si no tiene
-        if (! $user->totp_secret) {
+        // El secret pendiente vive SOLO en sesión hasta que el código se confirme;
+        // así nunca queda un enrolamiento a medias persistido en la base.
+        $secret = $request->session()->get('totp_pending_secret');
+
+        if (! $secret) {
             $secret = $this->google2fa->generateSecretKey();
-            $user->update(['totp_secret' => $secret]);
+            $request->session()->put('totp_pending_secret', $secret);
         }
 
         $qrCodeUrl = $this->google2fa->getQRCodeUrl(
             config('app.name'),
             $user->email,
-            $user->totp_secret
+            $secret
         );
 
         return view('auth.totp-setup', [
-            'secret'    => $user->totp_secret,
+            'secret'    => $secret,
             'qrCodeUrl' => $qrCodeUrl,
         ]);
     }
@@ -57,9 +60,14 @@ class TotpController extends Controller
             'code.digits'   => 'El código debe tener exactamente 6 dígitos.',
         ]);
 
-        $user = Auth::user();
+        $user   = Auth::user();
+        $secret = $request->session()->get('totp_pending_secret');
 
-        $valid = $this->google2fa->verifyKey($user->totp_secret, $request->code, 1);
+        if (! $secret) {
+            return redirect()->route('totp.setup');
+        }
+
+        $valid = $this->google2fa->verifyKey($secret, $request->code, 1);
 
         if (! $valid) {
             throw ValidationException::withMessages([
@@ -67,7 +75,13 @@ class TotpController extends Controller
             ]);
         }
 
-        $user->update(['totp_enabled' => true]);
+        $user->forceFill([
+            'totp_secret'  => $secret,
+            'totp_enabled' => true,
+        ])->save();
+
+        $request->session()->forget('totp_pending_secret');
+        $request->session()->put('totp_verified', true);
 
         AuditLog::record(AuditLog::ACTION_TOTP_ENABLE);
 

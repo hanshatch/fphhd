@@ -12,10 +12,10 @@ trait WithTotpSession
      */
     protected function actingAsVerified(User $user): static
     {
-        $user->update([
+        $user->forceFill([
             'totp_secret'  => 'JBSWY3DPEHPK3PXP',
             'totp_enabled' => true,
-        ]);
+        ])->save();
 
         return $this
             ->actingAs($user)
