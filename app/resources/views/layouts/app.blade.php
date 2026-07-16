@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'FP' }} · Finanzas</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Oculta elementos con x-cloak hasta que Alpine inicializa (evita el
+         flash de modales/listas expandidas al cargar la página) --}}
+    <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="h-full bg-[#efeded] dark:bg-[#1a1a1a] antialiased">
 
