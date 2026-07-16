@@ -37,11 +37,6 @@
                     ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
                     ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
                 ],
-                'Configuración' => [
-                    ['route' => 'categories.index',   'match' => 'categories.*',    'icon' => 'tag',         'label' => 'Categorías'],
-                    ['route' => 'sources.index',      'match' => 'sources.*',       'icon' => 'briefcase',   'label' => 'Fuentes'],
-                    ['route' => 'profile.edit',       'match' => 'profile.*',       'icon' => 'user',        'label' => 'Perfil'],
-                ],
             ];
             @endphp
 
@@ -61,7 +56,13 @@
         </nav>
 
         {{-- Footer sidebar --}}
-        <div class="p-3 border-t border-white/10">
+        <div class="p-3 border-t border-white/10 space-y-0.5">
+            @php $settingsActive = request()->routeIs('settings') || request()->routeIs('categories.*') || request()->routeIs('sources.*') || request()->routeIs('profile.*'); @endphp
+            <a href="{{ route('settings') }}"
+               class="{{ $settingsActive ? 'bg-[#76a72b] text-white' : 'text-white/50 hover:text-white hover:bg-white/10' }} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                @include('layouts._icon', ['name' => 'settings', 'class' => 'w-5 h-5 flex-shrink-0'])
+                Configuración
+            </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit"

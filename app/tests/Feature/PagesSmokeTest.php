@@ -65,6 +65,7 @@ class PagesSmokeTest extends TestCase
             '/reports?type=sources',
             '/reports?type=yields',
             '/more',
+            '/settings',
             '/recurring',
             '/income-plans',
             '/categories',
