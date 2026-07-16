@@ -1,10 +1,10 @@
 <x-app-layout title="Cargos recurrentes">
     <x-page-header title="Cargos recurrentes" action-route="{{ route('recurring.create') }}" action-label="Nuevo cargo" />
 
-    {{-- Próximos 30 días --}}
+    {{-- Pendientes del mes vigente --}}
     @if($upcoming->isNotEmpty())
     <div class="mb-5">
-        <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider mb-2">Próximos 30 días</h2>
+        <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider mb-2">Este mes · {{ now()->translatedFormat('F') }}</h2>
         <div class="flex gap-2 overflow-x-auto pb-1">
             @foreach($upcoming->take(6) as $item)
             @php $days = now()->diffInDays($item->next_application_date, false); @endphp

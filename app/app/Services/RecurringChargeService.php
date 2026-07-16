@@ -91,6 +91,21 @@ class RecurringChargeService
     }
 
     /**
+     * Cargos pendientes que caen dentro del mes vigente (de hoy a fin de mes).
+     */
+    public function upcomingThisMonth(): Collection
+    {
+        $from = Carbon::today()->toDateString();
+        $to   = Carbon::today()->endOfMonth()->toDateString();
+
+        return RecurringCharge::active()
+            ->whereBetween('next_application_date', [$from, $to])
+            ->with('account', 'category')
+            ->orderBy('next_application_date')
+            ->get();
+    }
+
+    /**
      * Cargos próximos en los siguientes N días (para el dashboard).
      */
     public function upcoming(int $days = 30): Collection

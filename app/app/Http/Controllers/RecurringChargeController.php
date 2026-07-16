@@ -19,7 +19,7 @@ class RecurringChargeController extends Controller
     {
         $active    = RecurringCharge::active()->with('account', 'category')->orderBy('next_application_date')->get();
         $completed = RecurringCharge::where('is_active', false)->with('account', 'category')->orderByDesc('updated_at')->limit(20)->get();
-        $upcoming  = $this->service->upcoming(30);
+        $upcoming  = $this->service->upcomingThisMonth();
 
         return view('pages.recurring.index', compact('active', 'completed', 'upcoming'));
     }
