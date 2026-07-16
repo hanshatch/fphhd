@@ -1,7 +1,7 @@
 <x-app-layout title="Fuentes de ingreso">
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-bold text-gray-900 dark:text-white">Fuentes de ingreso</h1>
-        <a href="{{ route('sources.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <a href="{{ route('sources.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-[#76a72b] hover:bg-[#659220] text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Nueva fuente
         </a>
@@ -9,13 +9,13 @@
 
     {{-- Links rápidos --}}
     <div class="flex gap-3 mb-4">
-        <a href="{{ route('categories.index') }}" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Ver categorías →</a>
+        <a href="{{ route('categories.index') }}" class="text-sm text-[#4a7018] dark:text-[#76a72b] hover:underline">Ver categorías →</a>
     </div>
 
     @if($sources->isEmpty())
         <div class="text-center py-16">
             <p class="text-gray-500 dark:text-gray-400">No hay fuentes de ingreso registradas.</p>
-            <a href="{{ route('sources.create') }}" class="mt-3 inline-block text-indigo-600 text-sm hover:underline">Crear primera fuente →</a>
+            <a href="{{ route('sources.create') }}" class="mt-3 inline-block text-[#4a7018] dark:text-[#76a72b] text-sm hover:underline">Crear primera fuente →</a>
         </div>
     @else
         @php $kindLabels = ['agency' => 'Agencia', 'university' => 'Universidad', 'training' => 'Capacitación', 'other' => 'Otro']; @endphp
@@ -32,7 +32,7 @@
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ $kindLabels[$source->kind] ?? $source->kind }}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a href="{{ route('sources.edit', $source) }}" class="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <a href="{{ route('sources.edit', $source) }}" class="p-2 text-[#ababab] hover:text-[#76a72b] rounded-lg hover:bg-[#76a72b]/10 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </a>
                     <form method="POST" action="{{ route('sources.destroy', $source) }}" onsubmit="return confirm('¿Eliminar {{ addslashes($source->name) }}?')">
