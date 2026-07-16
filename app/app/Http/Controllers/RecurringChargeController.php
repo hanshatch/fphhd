@@ -90,6 +90,8 @@ class RecurringChargeController extends Controller
 
     private function validateCharge(Request $request): array
     {
+        $this->normalizeMoney($request, ['amount', 'original_amount']);
+
         $data = $request->validate([
             'name'               => 'required|string|max:150',
             'description'        => 'nullable|string|max:500',
@@ -106,10 +108,7 @@ class RecurringChargeController extends Controller
             'notes'              => 'nullable|string|max:500',
         ]);
 
-        $data['amount']          = number_format((float) $data['amount'], 2, '.', '');
-        $data['original_amount'] = $data['original_amount']
-            ? number_format((float) $data['original_amount'], 2, '.', '')
-            : null;
+        $data['original_amount'] = $data['original_amount'] ?: null;
         $data['is_msi']          = $request->boolean('is_msi');
 
         // Si es MSI, calcular end_date automáticamente

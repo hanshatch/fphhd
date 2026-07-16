@@ -79,6 +79,8 @@ class IncomePlanController extends Controller
     /** Guardar el ingreso real como transacción */
     public function registerStore(Request $request, IncomePlan $incomePlan): RedirectResponse
     {
+        $this->normalizeMoney($request, ['amount']);
+
         $request->validate([
             'amount'      => 'required|numeric|min:0.01',
             'date'        => 'required|date',
@@ -87,7 +89,7 @@ class IncomePlanController extends Controller
 
         $this->service->register(
             $incomePlan,
-            (float) $request->amount,
+            $request->amount,
             $request->date,
             $request->description
         );
@@ -108,6 +110,8 @@ class IncomePlanController extends Controller
 
     private function validate(Request $request): array
     {
+        $this->normalizeMoney($request, ['expected_amount']);
+
         $data = $request->validate([
             'name'               => 'required|string|max:150',
             'notes'              => 'nullable|string|max:500',
@@ -121,7 +125,6 @@ class IncomePlanController extends Controller
             'next_expected_date' => 'required|date',
         ]);
 
-        $data['expected_amount'] = number_format((float) $data['expected_amount'], 2, '.', '');
         return $data;
     }
 }

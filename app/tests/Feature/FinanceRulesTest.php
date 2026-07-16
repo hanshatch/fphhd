@@ -167,6 +167,39 @@ class FinanceRulesTest extends TestCase
         $this->assertSame('300.00', $runningBalances[$transfer->id]);
     }
 
+    // ── Regla 4.1: parseo de montos ────────────────────────────────────────
+
+    public function test_amount_with_thousands_comma_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $a    = $this->debitAccount();
+
+        $response = $this->actingAsVerified($user)->post('/transactions', [
+            'date'       => now()->toDateString(),
+            'type'       => 'expense',
+            'amount'     => '1,234.56',
+            'account_id' => $a->id,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame('1234.56', (string) Transaction::first()->amount);
+    }
+
+    public function test_amount_with_leading_dot_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $a    = $this->debitAccount();
+
+        $this->actingAsVerified($user)->post('/transactions', [
+            'date'       => now()->toDateString(),
+            'type'       => 'expense',
+            'amount'     => '.50',
+            'account_id' => $a->id,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('0.50', (string) Transaction::first()->amount);
+    }
+
     // ── Ajuste de saldo ─────────────────────────────────────────────────────
 
     public function test_adjust_balance_on_debit_account(): void

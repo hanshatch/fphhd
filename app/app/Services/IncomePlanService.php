@@ -29,31 +29,38 @@ class IncomePlanService
         $plans = IncomePlan::active()->with('source')->get();
 
         // Total esperado: planes que tienen next_expected_date en este mes
-        $expected = $plans->filter(fn ($p) =>
-            $p->next_expected_date->between($from, $to)
-        )->sum(fn ($p) => (float) $p->expected_amount);
+        $expected = bcsum(
+            $plans->filter(fn ($p) => $p->next_expected_date->between($from, $to))
+                ->pluck('expected_amount')
+        );
 
         // Total ya registrado: solo ingreso operativo (regla 4.3, sin intereses)
-        $registered = Transaction::where('type', 'income')
+        $registered = (string) (Transaction::where('type', 'income')
             ->whereBetween('date', [$from, $to])
-            ->sum('amount');
+            ->sum('amount') ?: 0);
+        $registered = bcadd($registered, '0', 2);
+
+        $pending = bcsub($expected, $registered, 2);
+        if (bccomp($pending, '0', 2) < 0) {
+            $pending = '0.00';
+        }
 
         return [
-            'expected'   => number_format($expected, 2, '.', ''),
-            'registered' => number_format((float) $registered, 2, '.', ''),
-            'pending'    => number_format(max(0, $expected - (float) $registered), 2, '.', ''),
+            'expected'   => $expected,
+            'registered' => $registered,
+            'pending'    => $pending,
         ];
     }
 
     /**
      * Registra el ingreso real y avanza la fecha del plan.
      */
-    public function register(IncomePlan $plan, float $amount, string $date, ?string $description = null): Transaction
+    public function register(IncomePlan $plan, string $amount, string $date, ?string $description = null): Transaction
     {
         $transaction = Transaction::create([
             'date'        => $date,
             'type'        => 'income',
-            'amount'      => number_format($amount, 2, '.', ''),
+            'amount'      => parse_money($amount),
             'account_id'  => $plan->account_id,
             'source_id'   => $plan->source_id,
             'category_id' => $plan->category_id,

@@ -194,19 +194,15 @@ class DashboardService
         $next15from = $today->toDateString();
         $next15to   = $today->copy()->addDays(14)->toDateString();
 
-        $incomePlanned = IncomePlan::active()
+        $incomePlanned = bcadd((string) (IncomePlan::active()
             ->whereBetween('next_expected_date', [$next15from, $next15to])
-            ->sum('expected_amount');
+            ->sum('expected_amount') ?: 0), '0', 2);
 
-        $chargesPlanned = RecurringCharge::active()
+        $chargesPlanned = bcadd((string) (RecurringCharge::active()
             ->whereBetween('next_application_date', [$next15from, $next15to])
-            ->sum('amount');
+            ->sum('amount') ?: 0), '0', 2);
 
-        $quincenaDisponible = bcsub(
-            number_format((float) $incomePlanned, 2, '.', ''),
-            number_format((float) $chargesPlanned, 2, '.', ''),
-            2
-        );
+        $quincenaDisponible = bcsub($incomePlanned, $chargesPlanned, 2);
 
         // Alertas de presupuesto: cuántos están en riesgo (>80%)
         $budgetsAtRisk = Budget::with('category')->get()

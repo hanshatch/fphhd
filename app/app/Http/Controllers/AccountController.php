@@ -101,6 +101,8 @@ class AccountController extends Controller
 
     public function adjustStore(Request $request, Account $account): RedirectResponse
     {
+        $this->normalizeMoney($request, ['target_balance']);
+
         $request->validate([
             'target_balance' => 'required|numeric',
             'date'           => 'required|date',
@@ -108,7 +110,7 @@ class AccountController extends Controller
         ]);
 
         $current  = $this->service->balance($account);
-        $target   = number_format((float) $request->target_balance, 2, '.', '');
+        $target   = parse_money($request->target_balance);
         $diff     = bcsub($target, $current, 2);
 
         if ($diff == '0.00') {
@@ -144,6 +146,8 @@ class AccountController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeMoney($request, ['initial_balance', 'credit_limit']);
+
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'type'            => 'required|in:debit,credit,savings,investment,cash',
@@ -158,7 +162,7 @@ class AccountController extends Controller
             'logo'            => 'nullable|image|max:2048',
         ]);
 
-        $data['initial_balance'] = number_format((float) $data['initial_balance'], 2, '.', '');
+        $data['initial_balance'] = parse_money($data['initial_balance']);
 
         if ($request->hasFile('logo')) {
             $data['logo_path'] = $request->file('logo')->store('account-logos', 'public');
@@ -171,7 +175,7 @@ class AccountController extends Controller
             $account->creditCard()->create([
                 'statement_day'   => $request->input('statement_day') ?? 1,
                 'payment_day'     => $request->input('payment_day')   ?? 20,
-                'credit_limit'    => number_format((float) ($request->input('credit_limit') ?? 0), 2, '.', ''),
+                'credit_limit'    => parse_money($request->input('credit_limit')) ?? '0.00',
                 'apr'             => null,
                 'min_payment_pct' => 1.5,
             ]);
@@ -190,6 +194,8 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account): RedirectResponse
     {
+        $this->normalizeMoney($request, ['initial_balance', 'credit_limit']);
+
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'type'            => 'required|in:debit,credit,savings,investment,cash',
@@ -206,7 +212,7 @@ class AccountController extends Controller
             'remove_logo'     => 'nullable|boolean',
         ]);
 
-        $data['initial_balance'] = number_format((float) $data['initial_balance'], 2, '.', '');
+        $data['initial_balance'] = parse_money($data['initial_balance']);
         $data['is_active']       = $request->boolean('is_active', true);
 
         // Eliminar logo si se pidió
@@ -233,7 +239,7 @@ class AccountController extends Controller
                 [
                     'statement_day' => $request->input('statement_day') ?? 1,
                     'payment_day'   => $request->input('payment_day')   ?? 20,
-                    'credit_limit'  => number_format((float) ($request->input('credit_limit') ?? 0), 2, '.', ''),
+                    'credit_limit'  => parse_money($request->input('credit_limit')) ?? '0.00',
                 ]
             );
         }

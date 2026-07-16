@@ -60,6 +60,8 @@ class TransactionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeMoney($request, ['amount']);
+
         $data = $request->validate([
             'date'                    => 'required|date',
             'type'                    => 'required|in:income,expense,transfer,interest,fee',
@@ -70,8 +72,6 @@ class TransactionController extends Controller
             'counterparty_account_id' => 'required_if:type,transfer|nullable|exists:accounts,id|different:account_id',
             'description'             => 'nullable|string|max:500',
         ]);
-
-        $data['amount'] = number_format((float) $data['amount'], 2, '.', '');
 
         Transaction::create($data);
 
@@ -93,6 +93,8 @@ class TransactionController extends Controller
 
     public function update(Request $request, Transaction $transaction): RedirectResponse
     {
+        $this->normalizeMoney($request, ['amount']);
+
         $data = $request->validate([
             'date'                    => 'required|date',
             'type'                    => 'required|in:income,expense,transfer,interest,fee',
@@ -103,8 +105,6 @@ class TransactionController extends Controller
             'counterparty_account_id' => 'required_if:type,transfer|nullable|exists:accounts,id|different:account_id',
             'description'             => 'nullable|string|max:500',
         ]);
-
-        $data['amount'] = number_format((float) $data['amount'], 2, '.', '');
 
         $transaction->update($data);
 

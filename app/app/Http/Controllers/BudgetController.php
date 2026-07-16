@@ -44,13 +44,13 @@ class BudgetController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeMoney($request, ['amount']);
+
         $data = $request->validate([
             'category_id' => 'required|exists:categories,id|unique:budgets,category_id',
             'amount'      => 'required|numeric|min:1',
             'notes'       => 'nullable|string|max:255',
         ]);
-
-        $data['amount'] = number_format((float) $data['amount'], 2, '.', '');
 
         Budget::create($data);
 
@@ -59,12 +59,12 @@ class BudgetController extends Controller
 
     public function update(Request $request, Budget $budget): RedirectResponse
     {
+        $this->normalizeMoney($request, ['amount']);
+
         $data = $request->validate([
             'amount' => 'required|numeric|min:1',
             'notes'  => 'nullable|string|max:255',
         ]);
-
-        $data['amount'] = number_format((float) $data['amount'], 2, '.', '');
 
         $budget->update($data);
 
