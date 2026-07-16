@@ -7,7 +7,16 @@
                   action="{{ $account->exists ? route('accounts.update', $account) : route('accounts.store') }}"
                   enctype="multipart/form-data"
                   class="space-y-5"
-                  x-data="{ type: '{{ old('type', $account->type ?? 'debit') }}' }">
+                  x-data="{
+                      type: '{{ old('type', $account->type ?? 'debit') }}',
+                      institution: '{{ old('institution', $account->institution ?? 'banamex') }}',
+                      formatMoney(el) {
+                          const clean = el.value.replace(/[^0-9.]/g, '');
+                          const parts = clean.split('.');
+                          const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                          el.value = parts.length > 1 ? int + '.' + parts.slice(1).join('').slice(0, 2) : int;
+                      }
+                  }">
                 @csrf
                 @if($account->exists) @method('PATCH') @endif
 
@@ -33,7 +42,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Institución <span class="text-[#76a72b]">*</span></label>
-                        <select name="institution" required
+                        <select name="institution" required x-model="institution"
                             x-on:change="if ($event.target.value === 'efectivo') type = 'cash'"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                             @foreach(['banamex' => 'Banamex', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu', 'revolut' => 'Revolut', 'amex' => 'American Express', 'efectivo' => 'Efectivo', 'other' => 'Otra'] as $val => $label)
@@ -98,18 +107,24 @@
                         </div>
                     </div>
 
-                    {{-- Límite de crédito --}}
-                    <div>
+                    {{-- Límite de crédito (no aplica para AMEX: tarjeta de servicio sin límite preestablecido) --}}
+                    <div x-show="institution !== 'amex'">
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Límite de crédito</label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
-                            <input type="number" name="credit_limit" step="0.01" min="0" inputmode="decimal"
-                                value="{{ old('credit_limit', $creditCard->credit_limit ?? '') }}"
-                                placeholder="ej. 50000.00"
-                                class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                            <input type="text" name="credit_limit" inputmode="decimal"
+                                x-bind:disabled="institution === 'amex'"
+                                x-on:input="formatMoney($event.target)"
+                                value="{{ old('credit_limit', isset($creditCard->credit_limit) && $creditCard->credit_limit !== null ? number_format((float) $creditCard->credit_limit, 2) : '') }}"
+                                placeholder="ej. 50,000.00"
+                                class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
                             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
                         </div>
+                        @error('credit_limit')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                     </div>
+                    <p x-show="institution === 'amex'" x-cloak class="text-xs text-[#878787]">
+                        American Express es tarjeta de servicio: no aplica límite de crédito.
+                    </p>
                 </div>
 
                 {{-- APR (cajas de ahorro) --}}
