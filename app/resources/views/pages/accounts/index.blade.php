@@ -9,7 +9,7 @@ $typeConfig = [
     'credit'     => ['label' => 'Tarjetas de crédito',     'color' => '#ef4444', 'icon' => 'credit'],
 ];
 $instLabels = [
-    'banamex' => 'Banamex', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu',
+    'banamex' => 'Banamex', 'klar' => 'Klar', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu',
     'revolut' => 'Revolut', 'amex' => 'American Express', 'efectivo' => 'Efectivo', 'other' => 'Otra',
 ];
 @endphp

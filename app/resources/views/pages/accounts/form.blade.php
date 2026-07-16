@@ -45,7 +45,7 @@
                         <select name="institution" required x-model="institution"
                             x-on:change="if ($event.target.value === 'efectivo') type = 'cash'"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                            @foreach(['banamex' => 'Banamex', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu', 'revolut' => 'Revolut', 'amex' => 'American Express', 'efectivo' => 'Efectivo', 'other' => 'Otra'] as $val => $label)
+                            @foreach(['banamex' => 'Banamex', 'klar' => 'Klar', 'mercadopago' => 'MercadoPago', 'nu' => 'Nu', 'revolut' => 'Revolut', 'amex' => 'American Express', 'efectivo' => 'Efectivo', 'other' => 'Otra'] as $val => $label)
                                 <option value="{{ $val }}" {{ old('institution', $account->institution) === $val ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>

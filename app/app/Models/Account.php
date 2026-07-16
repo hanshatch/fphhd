@@ -27,6 +27,7 @@ class Account extends Model
     const TYPE_CASH       = 'cash';
 
     const INST_BANAMEX     = 'banamex';
+    const INST_KLAR        = 'klar';
     const INST_MERCADOPAGO = 'mercadopago';
     const INST_NU          = 'nu';
     const INST_REVOLUT     = 'revolut';
