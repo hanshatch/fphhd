@@ -106,7 +106,7 @@ class DashboardService
             ->map(fn ($r) => [
                 'name'  => $r->account->name,
                 'color' => $r->account->color,
-                'total' => (float) $r->total,
+                'total' => bcadd((string) $r->total, '0', 2),
             ]);
     }
 
@@ -236,8 +236,13 @@ class DashboardService
         $accounts = Account::where('is_active', true)->with('creditCard')->get();
         $balances = $this->accountService->balances($accounts);
 
+        $monthlyInterest = $this->monthlyInterest();
+
         return [
             'netWorth'          => $this->accountService->netWorth($accounts, $balances),
+            'assets'            => bcsum($accounts->reject(fn ($a) => $a->isCredit())->map(fn ($a) => $balances[$a->id])),
+            'debts'             => bcsum($accounts->filter(fn ($a) => $a->isCredit())->map(fn ($a) => $balances[$a->id])),
+            'interestTotal'     => bcsum($monthlyInterest->pluck('total')),
             'accounts'          => $accounts->map(fn ($a) => [
                                         'account' => $a,
                                         'balance' => $balances[$a->id],
@@ -245,7 +250,7 @@ class DashboardService
             'flow'              => $this->monthlyFlow(),
             'chart'             => $this->monthlyChart(6),
             'topCategories'     => $this->topExpenseCategories(5),
-            'monthlyInterest'   => $this->monthlyInterest(),
+            'monthlyInterest'   => $monthlyInterest,
             'tdcAlerts'         => $this->tdcAlerts($accounts, $balances),
             'indicators'        => $this->financialIndicators(),
             'recent'            => Transaction::with('account', 'category', 'source')

@@ -86,19 +86,25 @@ class IncomePlan extends Model
 
     private function nextBiweeklyDate(Carbon $after): Carbon
     {
-        // Si tiene day_1 y day_2 definidos (ej. 15 y 30), alterna entre ellos
+        // Si tiene day_1 y day_2 definidos (ej. 15 y 30), la siguiente fecha es
+        // la próxima quincena estrictamente posterior a la fecha registrada
         if ($this->day_1 && $this->day_2) {
             $currentDay = $after->day;
-            if ($currentDay <= $this->day_1) {
-                // Siguiente es day_2 del mismo mes
-                $day = min($this->day_2, $after->daysInMonth);
-                return $after->copy()->setDay($day);
-            } else {
-                // Siguiente es day_1 del mes siguiente
-                $next = $after->copy()->addMonth()->startOfMonth();
-                $day  = min($this->day_1, $next->daysInMonth);
-                return $next->setDay($day);
+
+            if ($currentDay < $this->day_1) {
+                // Aún no llega la primera quincena de este mes
+                return $after->copy()->setDay(min($this->day_1, $after->daysInMonth));
             }
+
+            if ($currentDay < $this->day_2) {
+                // Entre ambas: sigue day_2 del mismo mes
+                return $after->copy()->setDay(min($this->day_2, $after->daysInMonth));
+            }
+
+            // Después de day_2: sigue day_1 del mes siguiente
+            $next = $after->copy()->addMonth()->startOfMonth();
+
+            return $next->setDay(min($this->day_1, $next->daysInMonth));
         }
 
         // Fallback: simplemente +15 días

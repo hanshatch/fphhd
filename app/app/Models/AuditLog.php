@@ -22,6 +22,7 @@ class AuditLog extends Model
     const ACTION_LOGIN_FAIL     = 'login_fail';
     const ACTION_LOGOUT         = 'logout';
     const ACTION_PASSWORD_CHANGE = 'password_change';
+    const ACTION_PROFILE_UPDATE  = 'profile_update';
     const ACTION_TOTP_ENABLE    = 'totp_enable';
     const ACTION_TOTP_DISABLE   = 'totp_disable';
     const ACTION_DATA_EXPORT    = 'data_export';

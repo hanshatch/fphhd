@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +33,12 @@ class ProfileController extends Controller
             $request->user()->email_verified_at = null;
         }
 
+        $changes = array_keys($request->user()->getDirty());
         $request->user()->save();
+
+        if ($changes !== []) {
+            AuditLog::record(AuditLog::ACTION_PROFILE_UPDATE, ['fields' => $changes]);
+        }
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

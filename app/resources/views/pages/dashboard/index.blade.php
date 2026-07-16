@@ -22,10 +22,6 @@
                     <p class="text-white/30 text-xs mt-1">MXN</p>
                 </div>
                 <div class="flex gap-5 mt-4">
-                    @php
-                    $assets = $accounts->filter(fn($i) => !$i['account']->isCredit())->sum(fn($i) => (float)$i['balance']);
-                    $debts  = $accounts->filter(fn($i) =>  $i['account']->isCredit())->sum(fn($i) => (float)$i['balance']);
-                    @endphp
                     <div>
                         <p class="text-white/30 text-[10px] uppercase tracking-wider">Activos</p>
                         <p class="text-[#76a72b] font-bold text-sm">${{ number_format($assets, 2) }}</p>
@@ -349,10 +345,9 @@
                         <p class="text-[10px] text-[#ababab] mt-1">Registra movimientos tipo "Interés"</p>
                     </div>
                 @else
-                    @php $totalInterest = array_sum(array_column($monthlyInterest->toArray(), 'total')); @endphp
                     <div class="mb-4 p-3 bg-[#76a72b]/10 rounded-xl text-center">
                         <p class="text-xs text-[#76a72b] font-semibold">Total del mes</p>
-                        <p class="text-xl font-bold text-[#76a72b]">${{ number_format($totalInterest, 2) }}</p>
+                        <p class="text-xl font-bold text-[#76a72b]">{{ format_currency($interestTotal) }}</p>
                     </div>
                     <div class="space-y-3">
                         @foreach($monthlyInterest as $r)

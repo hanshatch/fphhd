@@ -119,7 +119,7 @@ class IncomePlanController extends Controller
             'source_id'          => 'nullable|exists:sources,id',
             'category_id'        => 'nullable|exists:categories,id',
             'expected_amount'    => 'required|numeric|min:0.01',
-            'frequency'          => 'required|in:biweekly,monthly,weekly',
+            'frequency'          => 'required|in:biweekly,monthly,weekly,once',
             'day_1'              => 'nullable|integer|min:1|max:31',
             'day_2'              => 'nullable|integer|min:1|max:31',
             'next_expected_date' => 'required|date',

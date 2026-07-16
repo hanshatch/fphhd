@@ -13,6 +13,6 @@ class DashboardController extends Controller
     {
         $data = $this->dashboard->summary();
 
-        return view('dashboard', $data);
+        return view('pages.dashboard.index', $data);
     }
 }
