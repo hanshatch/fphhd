@@ -20,14 +20,27 @@
 - [x] Planeación de ingresos variables (income-plans) con frecuencia "Único" (2026-05-18)
 - [x] Vista de cuentas agrupada por tipo estilo MoneyWiz + saldo corrido (2026-05-19)
 
+## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
+
+- [x] Fase A — Seguridad: bypass TOTP cerrado, secret cifrado, throttle login/TOTP, .env.example endurecido
+- [x] Fase B — Finanzas: fix crítico de saldos (whereIn acumulado), interés fuera de ingreso operativo, transferencias íntegras, ajuste TDC
+- [x] Fase C — parse_money/format_currency/bcsum; montos con coma aceptados
+- [x] Fase D — ReportService/ScheduledService/BudgetService; saldos en 2 queries (antes 4×cuenta)
+- [x] Fase E — Política de contraseñas 12+, audit log completo, frecuencia 'once', quincenas
+- Suite de tests: 31 → 50 (FinanceRulesTest, TotpTest, PagesSmokeTest)
+
 ## En curso / siguiente
 
 - Fase 9 restante: metas de ahorro y simulador.
-- Verificar que producción tenga el último código desplegado.
+- Desplegar a producción las correcciones (incluye `php artisan migrate` por audit_logs
+  y re-enrolar 2FA: el secret ahora se guarda cifrado, los secrets viejos en claro no descifran).
+- En producción verificar: APP_DEBUG=false, APP_ENV=production, SESSION_SECURE_COOKIE=true.
 
 ## Bloqueos / decisiones pendientes
 
-- (2026-07-15) Ninguno activo.
+- Decidir: exponer tipo `fee` en el form de movimientos o eliminarlo (hoy inaccesible por UI).
+- Decidir: ¿netWorth debe incluir cuentas inactivas con saldo ≠ 0? (hoy las excluye).
+- Producción: usuario de DB dedicado con privilegios mínimos (no root).
 
 ## Decisiones de producto
 
