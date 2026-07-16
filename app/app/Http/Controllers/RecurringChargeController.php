@@ -38,7 +38,7 @@ class RecurringChargeController extends Controller
         $data = $this->validateCharge($request);
 
         // Calcular next_application_date desde start_date y day_of_month
-        $data['next_application_date'] = $this->computeFirstDate(
+        $data['next_application_date'] = $this->service->firstApplicationDate(
             $data['start_date'],
             (int) $data['day_of_month']
         );
@@ -120,10 +120,4 @@ class RecurringChargeController extends Controller
         return $data;
     }
 
-    private function computeFirstDate(string $startDate, int $day): string
-    {
-        $start = Carbon::parse($startDate);
-        $day   = min($day, $start->daysInMonth);
-        return $start->setDay($day)->toDateString();
-    }
 }

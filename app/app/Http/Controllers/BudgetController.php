@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Budget;
 use App\Models\Category;
+use App\Services\BudgetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -11,23 +12,19 @@ use Illuminate\View\View;
 
 class BudgetController extends Controller
 {
+    public function __construct(private BudgetService $service) {}
+
     public function index(Request $request): View
     {
         $month = $request->filled('month')
             ? Carbon::createFromFormat('Y-m', $request->month)->startOfMonth()
             : now()->startOfMonth();
 
-        $budgets = Budget::with('category')
-            ->get()
-            ->sortBy(fn ($b) => $b->category?->name)
-            ->map(fn ($b) => [
-                'budget'  => $b,
-                'spent'   => $b->spent($month),
-                'percent' => $b->percentUsed($month),
-            ]);
-
-        $totalLimit = $budgets->sum(fn ($b) => (float) $b['budget']->amount);
-        $totalSpent = $budgets->sum(fn ($b) => (float) $b['spent']);
+        [
+            'budgets'    => $budgets,
+            'totalLimit' => $totalLimit,
+            'totalSpent' => $totalSpent,
+        ] = $this->service->overview($month);
 
         // Categorías de egreso sin presupuesto aún (para el selector del form)
         $usedIds = Budget::pluck('category_id');

@@ -17,72 +17,14 @@ class AccountController extends Controller
 
     public function index(): View
     {
-        // Orden de grupos como MoneyWiz: activos primero, deuda al final
-        $typeOrder = ['debit' => 0, 'savings' => 1, 'investment' => 2, 'cash' => 3, 'credit' => 4];
-
-        $all = Account::orderBy('name')->get()
-            ->map(fn ($a) => [
-                'account' => $a,
-                'balance' => $this->service->balance($a),
-            ]);
-
-        // Agrupar por tipo respetando el orden definido
-        $groups = $all
-            ->groupBy(fn ($item) => $item['account']->type)
-            ->sortBy(fn ($items, $type) => $typeOrder[$type] ?? 99);
-
-        // Totales por grupo y patrimonio neto global
-        $groupTotals = $groups->map(fn ($items) =>
-            $items->sum(fn ($i) => (float) $i['balance'])
-        );
-
-        $netWorth = $this->service->netWorth();
-
-        return view('pages.accounts.index', compact('groups', 'groupTotals', 'netWorth'));
+        return view('pages.accounts.index', $this->service->groupedWithBalances());
     }
 
     public function show(Account $account): View
     {
         $balance = $this->service->balance($account);
 
-        // Cargamos ASC para calcular saldo corrido, luego invertimos para mostrar.
-        // Incluye transferencias entrantes (counterparty), que también mueven el saldo.
-        $transactions = Transaction::with(['account', 'category', 'source', 'counterpartyAccount'])
-            ->where(fn ($q) => $q
-                ->where('account_id', $account->id)
-                ->orWhere(fn ($q2) => $q2
-                    ->where('counterparty_account_id', $account->id)
-                    ->where('type', 'transfer')))
-            ->orderBy('date', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        // Saldo corrido con bcmath (nunca float), espejo exacto de AccountService::balance()
-        $running = (string) $account->initial_balance;
-        $runningBalances = [];
-
-        foreach ($transactions as $tx) {
-            $amount     = (string) $tx->amount;
-            $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
-
-            if ($account->isCredit()) {
-                // Deuda: sube con gastos/comisiones, baja con pagos y reembolsos
-                $running = match (true) {
-                    in_array($tx->type, ['expense', 'fee'])      => bcadd($running, $amount, 2),
-                    $isIncoming                                  => bcsub($running, $amount, 2),
-                    in_array($tx->type, ['income', 'interest'])  => bcsub($running, $amount, 2),
-                    default                                      => $running,
-                };
-            } else {
-                $running = match (true) {
-                    in_array($tx->type, ['income', 'interest'])  => bcadd($running, $amount, 2),
-                    $isIncoming                                  => bcadd($running, $amount, 2),
-                    default                                      => bcsub($running, $amount, 2),
-                };
-            }
-
-            $runningBalances[$tx->id] = $running;
-        }
+        [$transactions, $runningBalances] = $this->service->runningBalances($account);
 
         // Invertir y agrupar por mes para mostrar (más reciente primero)
         $grouped = $transactions->reverse()->values()
@@ -109,28 +51,16 @@ class AccountController extends Controller
             'description'    => 'nullable|string|max:255',
         ]);
 
-        $current  = $this->service->balance($account);
-        $target   = parse_money($request->target_balance);
-        $diff     = bcsub($target, $current, 2);
+        $created = $this->service->adjustBalance(
+            $account,
+            $request->target_balance,
+            $request->date,
+            $request->description
+        );
 
-        if ($diff == '0.00') {
+        if (! $created) {
             return back()->with('status', 'El saldo ya es correcto, no se creó ningún movimiento.');
         }
-
-        // En TDC el saldo es deuda: subirla = expense, bajarla = income (reembolso/ajuste).
-        // En cuentas normales es al revés.
-        $increase = bccomp($diff, '0', 2) > 0;
-        $type     = $account->isCredit()
-            ? ($increase ? 'expense' : 'income')
-            : ($increase ? 'income' : 'expense');
-
-        Transaction::create([
-            'date'        => $request->date,
-            'type'        => $type,
-            'amount'      => ltrim($diff, '-'),
-            'account_id'  => $account->id,
-            'description' => $request->description ?: 'Ajuste de saldo',
-        ]);
 
         return redirect()->route('accounts.show', $account)
             ->with('status', 'Saldo ajustado correctamente.');

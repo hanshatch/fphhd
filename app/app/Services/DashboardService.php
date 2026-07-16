@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Account;
-use App\Models\Budget;
 use App\Models\IncomePlan;
 use App\Models\RecurringCharge;
 use App\Models\Transaction;
@@ -12,7 +11,10 @@ use Illuminate\Support\Collection;
 
 class DashboardService
 {
-    public function __construct(private AccountService $accountService) {}
+    public function __construct(
+        private AccountService $accountService,
+        private BudgetService $budgetService,
+    ) {}
 
     /**
      * Resumen del mes: ingresos, egresos, neto.
@@ -114,18 +116,21 @@ class DashboardService
      * Retorna TDCs con días restantes hasta corte y pago.
      * Alerta cuando faltan ≤ 7 días.
      */
-    public function tdcAlerts(): Collection
+    public function tdcAlerts(?Collection $accounts = null, ?array $balances = null): Collection
     {
         $today = now();
 
-        return Account::where('type', 'credit')
-            ->where('is_active', true)
-            ->with('creditCard')
-            ->get()
+        $credit = ($accounts ?? Account::where('is_active', true)->with('creditCard')->get())
+            ->where('type', 'credit')
             ->filter(fn ($a) => $a->creditCard !== null)
-            ->map(function ($account) use ($today) {
+            ->values();
+
+        $balances ??= $this->accountService->balances($credit);
+
+        return $credit
+            ->map(function ($account) use ($today, $balances) {
                 $cc      = $account->creditCard;
-                $balance = $this->accountService->balance($account);
+                $balance = $balances[$account->id] ?? '0.00';
 
                 // Calcular próxima fecha de corte y pago en el mes actual o siguiente
                 $statDay = (int) $cc->statement_day;
@@ -205,9 +210,7 @@ class DashboardService
         $quincenaDisponible = bcsub($incomePlanned, $chargesPlanned, 2);
 
         // Alertas de presupuesto: cuántos están en riesgo (>80%)
-        $budgetsAtRisk = Budget::with('category')->get()
-            ->filter(fn ($b) => $b->percentUsed() >= 80)
-            ->count();
+        $budgetsAtRisk = $this->budgetService->countAtRisk(80);
 
         return [
             'savings_rate'        => $savingsRate,
@@ -229,20 +232,21 @@ class DashboardService
      */
     public function summary(): array
     {
-        $accounts = Account::where('is_active', true)->get()
-            ->map(fn ($a) => [
-                'account' => $a,
-                'balance' => $this->accountService->balance($a),
-            ]);
+        // Saldos calculados UNA sola vez y compartidos entre secciones
+        $accounts = Account::where('is_active', true)->with('creditCard')->get();
+        $balances = $this->accountService->balances($accounts);
 
         return [
-            'netWorth'          => $this->accountService->netWorth(),
-            'accounts'          => $accounts,
+            'netWorth'          => $this->accountService->netWorth($accounts, $balances),
+            'accounts'          => $accounts->map(fn ($a) => [
+                                        'account' => $a,
+                                        'balance' => $balances[$a->id],
+                                    ]),
             'flow'              => $this->monthlyFlow(),
             'chart'             => $this->monthlyChart(6),
             'topCategories'     => $this->topExpenseCategories(5),
             'monthlyInterest'   => $this->monthlyInterest(),
-            'tdcAlerts'         => $this->tdcAlerts(),
+            'tdcAlerts'         => $this->tdcAlerts($accounts, $balances),
             'indicators'        => $this->financialIndicators(),
             'recent'            => Transaction::with('account', 'category', 'source')
                                     ->orderBy('date', 'desc')->orderBy('id', 'desc')

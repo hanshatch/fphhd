@@ -10,6 +10,24 @@ use Illuminate\Support\Collection;
 class RecurringChargeService
 {
     /**
+     * Primera fecha de aplicación de un cargo nuevo: el day_of_month del mes
+     * de start_date, o del mes siguiente si ese día ya quedó antes del inicio
+     * (evita aplicar de inmediato un cargo con fecha ya pasada).
+     */
+    public function firstApplicationDate(string $startDate, int $day): string
+    {
+        $start = Carbon::parse($startDate);
+        $first = $start->copy()->setDay(min($day, $start->daysInMonth));
+
+        if ($first->lt($start)) {
+            $next  = $start->copy()->addMonthNoOverflow()->startOfMonth();
+            $first = $next->setDay(min($day, $next->daysInMonth));
+        }
+
+        return $first->toDateString();
+    }
+
+    /**
      * Aplica todos los cargos vencidos a hoy.
      * Se llama desde el scheduler diario a las 6:00 AM.
      * Retorna los cargos que fueron aplicados.
