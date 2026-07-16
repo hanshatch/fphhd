@@ -87,6 +87,26 @@ class TotpTest extends TestCase
         $this->assertSame('JBSWY3DPEHPK3PXP', $user->totp_secret);
     }
 
+    public function test_legacy_plaintext_secret_forces_re_enrollment_instead_of_500(): void
+    {
+        $user = User::factory()->create(['totp_enabled' => true]);
+
+        // Simular secret legado guardado en texto plano (previo al cast encrypted)
+        \Illuminate\Support\Facades\DB::table('users')
+            ->where('id', $user->id)
+            ->update(['totp_secret' => 'JBSWY3DPEHPK3PXP']);
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password']);
+
+        $response = $this->post(route('totp.challenge.verify'), ['code' => '123456']);
+
+        $response->assertRedirect(route('totp.setup'));
+
+        $user->refresh();
+        $this->assertFalse($user->totp_enabled);
+        $this->assertNull($user->totp_secret);
+    }
+
     public function test_totp_challenge_is_rate_limited(): void
     {
         $user = User::factory()->create([

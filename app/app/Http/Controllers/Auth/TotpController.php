@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -114,7 +115,19 @@ class TotpController extends Controller
 
         $user = Auth::user();
 
-        $valid = $this->google2fa->verifyKey($user->totp_secret, $request->code, 1);
+        try {
+            $secret = $user->totp_secret;
+        } catch (DecryptException) {
+            // Secret legado en texto plano (previo al cast 'encrypted'):
+            // se resetea el 2FA y se fuerza un nuevo enrolamiento.
+            $user->forceFill(['totp_secret' => null, 'totp_enabled' => false])->save();
+            $request->session()->forget('totp_pending');
+
+            return redirect()->route('totp.setup')
+                ->with('status', 'Tu 2FA necesita reconfigurarse. Escanea el código de nuevo.');
+        }
+
+        $valid = $this->google2fa->verifyKey($secret, $request->code, 1);
 
         if (! $valid) {
             throw ValidationException::withMessages([
