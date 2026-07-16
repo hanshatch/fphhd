@@ -1,7 +1,7 @@
 <x-app-layout title="Categorías">
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-bold text-gray-900 dark:text-white">Categorías</h1>
-        <a href="{{ route('categories.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <a href="{{ route('categories.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-[#76a72b] hover:bg-[#659220] text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Nueva
         </a>
@@ -23,7 +23,7 @@
                             @if($cat->children->count()) <span class="text-xs text-gray-400">({{ $cat->children->count() }})</span> @endif
                         </div>
                         <div class="flex items-center gap-1">
-                            <a href="{{ route('categories.edit', $cat) }}" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <a href="{{ route('categories.edit', $cat) }}" class="p-1.5 text-[#ababab] hover:text-[#76a72b] rounded hover:bg-[#76a72b]/10">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </a>
                             <form method="POST" action="{{ route('categories.destroy', $cat) }}" onsubmit="return confirm('¿Eliminar {{ addslashes($cat->name) }}?')">
@@ -40,7 +40,7 @@
                         <div class="flex items-center justify-between py-1.5">
                             <span class="text-sm text-gray-600 dark:text-gray-300">{{ $child->name }}</span>
                             <div class="flex items-center gap-1">
-                                <a href="{{ route('categories.edit', $child) }}" class="p-1 text-gray-400 hover:text-indigo-600 rounded">
+                                <a href="{{ route('categories.edit', $child) }}" class="p-1 text-[#ababab] hover:text-[#76a72b] rounded">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 </a>
                                 <form method="POST" action="{{ route('categories.destroy', $child) }}" onsubmit="return confirm('¿Eliminar {{ addslashes($child->name) }}?')">
