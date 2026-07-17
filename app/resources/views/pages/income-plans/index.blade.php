@@ -87,9 +87,10 @@
                     <div class="font-bold text-sm text-[#76a72b]">~${{ number_format((float)$plan->expected_amount, 2) }}</div>
                     <div class="text-[10px] text-[#ababab]">estimado</div>
                 </div>
+            </div>
 
-                {{-- Acciones --}}
-                <div class="flex flex-col gap-1 flex-shrink-0">
+            {{-- Acciones --}}
+            <div class="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-[#efeded] dark:border-white/10">
                     {{-- Registrar --}}
                     @if($plan->is_active)
                     <a href="{{ route('income-plans.register.show', $plan) }}"
@@ -125,7 +126,6 @@
                             </svg>
                         </button>
                     </form>
-                </div>
             </div>
         </x-card>
         @endforeach
