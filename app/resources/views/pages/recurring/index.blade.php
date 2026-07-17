@@ -7,7 +7,7 @@
         <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider mb-2">Este mes · {{ now()->translatedFormat('F') }}</h2>
         <div class="flex gap-2 overflow-x-auto pb-1">
             @foreach($upcoming->take(6) as $item)
-            @php $days = now()->diffInDays($item->next_application_date, false); @endphp
+            @php $days = (int) now()->startOfDay()->diffInDays($item->next_application_date->startOfDay(), false); @endphp
             <div class="flex-shrink-0 bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 rounded-xl p-3 min-w-[140px]">
                 <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">
                     {{ $days === 0 ? 'Hoy' : ($days === 1 ? 'Mañana' : "En {$days} días") }}
@@ -35,7 +35,7 @@
     <div class="space-y-3 mb-6">
         @foreach($active as $charge)
         @php
-            $daysUntil = now()->diffInDays($charge->next_application_date, false);
+            $daysUntil = (int) now()->startOfDay()->diffInDays($charge->next_application_date->startOfDay(), false);
             $urgency   = $daysUntil <= 3 ? 'red' : ($daysUntil <= 7 ? 'amber' : 'green');
         @endphp
         <x-card class="p-4">
