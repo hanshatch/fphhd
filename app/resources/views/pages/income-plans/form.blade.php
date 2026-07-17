@@ -95,7 +95,7 @@
                         <option value="">Selecciona</option>
                         @foreach($accounts as $account)
                             <option value="{{ $account->id }}" {{ old('account_id', $plan->account_id) == $account->id ? 'selected' : '' }}>
-                                {{ $account->name }}
+                                {{ $account->displayLabel() }}
                             </option>
                         @endforeach
                     </select>

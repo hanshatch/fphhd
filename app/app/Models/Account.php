@@ -50,6 +50,37 @@ class Account extends Model
         return $this->hasOne(CreditCard::class);
     }
 
+    public const INSTITUTION_LABELS = [
+        self::INST_BANAMEX     => 'Banamex',
+        self::INST_KLAR        => 'Klar',
+        self::INST_MERCADOPAGO => 'MercadoPago',
+        self::INST_NU          => 'Nu',
+        self::INST_REVOLUT     => 'Revolut',
+        self::INST_AMEX        => 'American Express',
+        self::INST_EFECTIVO    => 'Efectivo',
+        self::INST_OTHER       => 'Otra',
+    ];
+
+    public function institutionLabel(): string
+    {
+        return self::INSTITUTION_LABELS[$this->institution] ?? ucfirst((string) $this->institution);
+    }
+
+    /**
+     * "Institución · Nombre" para selects y botones; si el nombre ya
+     * menciona la institución, se muestra solo el nombre.
+     */
+    public function displayLabel(): string
+    {
+        $label = $this->institutionLabel();
+
+        if (mb_stripos($this->name, $label) !== false) {
+            return $this->name;
+        }
+
+        return $label . ' · ' . $this->name;
+    }
+
     public function logoUrl(): ?string
     {
         return $this->logo_path ? asset('storage/' . $this->logo_path) : null;

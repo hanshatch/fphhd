@@ -145,7 +145,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                     @foreach($accounts as $account)
                     <option value="{{ $account->id }}"
                         {{ old('account_id', $transaction->account_id) == $account->id ? 'selected' : '' }}>
-                        {{ $account->name }}
+                        {{ $account->displayLabel() }}
                     </option>
                     @endforeach
                 </select>
@@ -165,7 +165,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                     @foreach($accounts as $account)
                     <option value="{{ $account->id }}"
                         {{ old('counterparty_account_id', $transaction->counterparty_account_id) == $account->id ? 'selected' : '' }}>
-                        {{ $account->name }}
+                        {{ $account->displayLabel() }}
                     </option>
                     @endforeach
                 </select>
@@ -326,7 +326,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                     @foreach($accounts as $account)
                     <option value="{{ $account->id }}"
                         {{ old('account_id', $transaction->account_id) == $account->id ? 'selected' : '' }}>
-                        {{ $account->name }}
+                        {{ $account->displayLabel() }}
                     </option>
                     @endforeach
                 </select>
@@ -344,7 +344,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                     @foreach($accounts as $account)
                     <option value="{{ $account->id }}"
                         {{ old('counterparty_account_id', $transaction->counterparty_account_id) == $account->id ? 'selected' : '' }}>
-                        {{ $account->name }}
+                        {{ $account->displayLabel() }}
                     </option>
                     @endforeach
                 </select>

@@ -319,7 +319,7 @@ class TelegramExpenseService
             ->orderBy('name')
             ->get()
             ->map(fn (Account $account) => [
-                'text'          => $account->name,
+                'text'          => $account->displayLabel(),
                 'callback_data' => 'acc:' . $account->id,
             ]);
 

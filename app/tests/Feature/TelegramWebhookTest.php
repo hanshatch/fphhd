@@ -24,8 +24,10 @@ class TelegramWebhookTest extends TestCase
             'services.telegram.bot_token'      => 'test-token',
             'services.telegram.chat_id'        => self::CHAT_ID,
             'services.telegram.webhook_secret' => self::SECRET,
+            'services.deepseek.api_key'        => null,
         ]);
 
+        Http::preventStrayRequests();
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
     }
 
