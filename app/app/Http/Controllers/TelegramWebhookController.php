@@ -13,6 +13,7 @@ class TelegramWebhookController extends Controller
         $secret = config('services.telegram.webhook_secret');
 
         if (! $secret || ! hash_equals($secret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token'))) {
+            \Log::warning('Telegram webhook: secret inválido', ['ip' => $request->ip()]);
             abort(403);
         }
 
