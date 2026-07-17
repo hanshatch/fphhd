@@ -125,12 +125,113 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame('Uber aeropuerto', $tx->description);
     }
 
+    public function test_expense_with_relative_date_is_registered_yesterday(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->postUpdate($this->textMessage('250 comida tacos ayer'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame(now()->subDay()->toDateString(), $tx->date->toDateString());
+        $this->assertSame('Comida tacos', $tx->description);
+    }
+
+    public function test_expense_with_explicit_date_uses_it(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->postUpdate($this->textMessage('300 comida 15/07'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame(now()->year . '-07-15', $tx->date->toDateString());
+    }
+
+    public function test_future_or_invalid_date_falls_back_to_today(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        // 31/02 no existe → queda como parte de la descripción y fecha de hoy
+        $this->postUpdate($this->textMessage('100 comida 31/02'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame(now()->toDateString(), $tx->date->toDateString());
+    }
+
     public function test_non_amount_message_gets_help_and_creates_nothing(): void
     {
         $this->postUpdate($this->textMessage('hola'))->assertNoContent();
         $this->postUpdate($this->textMessage('/start'))->assertNoContent();
 
         $this->assertSame(0, Transaction::count());
+    }
+
+    public function test_natural_language_message_is_parsed_with_deepseek(): void
+    {
+        config(['services.deepseek.api_key' => 'test-ds-key']);
+
+        $account  = $this->account();
+        $category = $this->category('Comida');
+
+        Http::fake([
+            'api.telegram.org/*' => Http::response(['ok' => true, 'result' => []]),
+            'api.deepseek.com/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'amount'      => '250.00',
+                    'description' => 'Tacos',
+                    'date'        => now()->subDay()->toDateString(),
+                    'category'    => 'Comida',
+                ])]]],
+            ]),
+        ]);
+
+        $this->postUpdate($this->textMessage('gasté doscientos cincuenta en tacos ayer'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('250.00', $tx->amount);
+        $this->assertSame('Tacos', $tx->description);
+        $this->assertSame($category->id, $tx->category_id);
+        $this->assertSame(now()->subDay()->toDateString(), $tx->date->toDateString());
+    }
+
+    public function test_llm_future_date_is_clamped_to_today(): void
+    {
+        config(['services.deepseek.api_key' => 'test-ds-key']);
+
+        $account = $this->account();
+        $this->category('Comida');
+
+        Http::fake([
+            'api.telegram.org/*' => Http::response(['ok' => true, 'result' => []]),
+            'api.deepseek.com/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'amount'      => '100.00',
+                    'description' => 'Cena',
+                    'date'        => now()->addDays(5)->toDateString(),
+                    'category'    => 'Comida',
+                ])]]],
+            ]),
+        ]);
+
+        $this->postUpdate($this->textMessage('cien de la cena'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $this->assertSame(now()->toDateString(), Transaction::sole()->date->toDateString());
+    }
+
+    public function test_without_deepseek_key_natural_language_gets_help(): void
+    {
+        // setUp no define api_key de deepseek → fallback inactivo
+        $this->postUpdate($this->textMessage('gasté un dineral en tacos'))->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'deepseek'));
     }
 
     public function test_callback_after_expiry_does_not_create_transaction(): void

@@ -45,6 +45,13 @@
   Nota deploy: tras cambiar rutas/config en prod correr `php artisan config:cache && php artisan route:cache`
   (el 404 inicial fue por route cache viejo). Tests: `TelegramWebhookTest` (6).
 
+- [x] Bot de Telegram — fechas y LLM (2026-07-17): el mensaje acepta fecha ("ayer", "antier",
+  "15/07", "15/07/2026"; validada: real y no futura, default hoy) y la confirmación siempre la muestra.
+  Fallback opcional con DeepSeek (`DeepSeekService`, config `services.deepseek`, var DEEPSEEK_API_KEY)
+  para mensajes en lenguaje natural ("gasté 250 en tacos ayer"): extrae monto/descripción/fecha/categoría
+  con JSON mode, montos como string (sin float), fecha sanitizada (no futura, máx 2 años atrás).
+  Sin API key el fallback queda inactivo y el bot solo acepta el formato corto. Tests: 6 nuevos (12 total).
+
 ## En curso / siguiente
 
 - Fase 9 restante: metas de ahorro y simulador.
