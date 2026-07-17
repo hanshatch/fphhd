@@ -1,8 +1,0 @@
-# Planes de arquitectura (docs internos, no van al repo)
-00-plan-arquitectura.md
-01-plan-trabajo-claude-code.md
-
-# Evitar que composer accidental en raíz se suba
-/vendor/
-/composer.json
-/composer.lock
