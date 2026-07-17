@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'totp' => \App\Http\Middleware\RequireTotp::class,
         ]);
+
+        // El webhook de Telegram lo llama su API, no un navegador con sesión
+        $middleware->validateCsrfTokens(except: [
+            'telegram/webhook',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

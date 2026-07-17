@@ -19,6 +19,10 @@ Route::get('/', function () {
     return Auth::check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
 
+// Webhook del bot de Telegram (validado por secret token + chat_id, sin sesión)
+Route::post('/telegram/webhook', \App\Http\Controllers\TelegramWebhookController::class)
+    ->name('telegram.webhook');
+
 Route::middleware(['auth', 'totp'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
