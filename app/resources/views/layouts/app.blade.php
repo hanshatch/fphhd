@@ -190,6 +190,20 @@
         btn.dataset.originalHtml = btn.innerHTML;
         btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
     });
+    // Inputs de dinero [data-money]: al salir del campo, formatear con
+    // comas de miles y 2 decimales. El backend re-parsea con parse_money.
+    document.addEventListener('focusout', function (e) {
+        const el = e.target;
+        if (!el.matches || !el.matches('input[data-money]')) return;
+
+        const raw = el.value.replace(/[$,\s]/g, '');
+        if (raw === '' || isNaN(raw)) return;
+
+        el.value = Number(raw).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    });
 }());
 </script>
 </body>

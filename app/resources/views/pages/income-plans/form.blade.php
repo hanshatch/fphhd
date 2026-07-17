@@ -74,7 +74,7 @@
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
-                    <input type="number" name="expected_amount" step="0.01" min="0.01" inputmode="decimal" required
+                    <input type="text" name="expected_amount" data-money inputmode="decimal" required
                         value="{{ old('expected_amount', $plan->expected_amount) }}"
                         placeholder="Aproximado — lo ajustas al registrar"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">

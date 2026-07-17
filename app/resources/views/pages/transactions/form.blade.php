@@ -306,7 +306,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
-                    <input type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" required
+                    <input type="text" name="amount" data-money inputmode="decimal" required
                         value="{{ old('amount', $transaction->amount) }}"
                         placeholder="0.00"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">

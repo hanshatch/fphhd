@@ -31,7 +31,7 @@
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] text-lg font-semibold">$</span>
-                    <input type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" required autofocus
+                    <input type="text" name="amount" data-money inputmode="decimal" required autofocus
                         value="{{ old('amount', $plan->expected_amount) }}"
                         class="w-full rounded-xl border-2 border-[#ababab]/30 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-4 text-2xl font-bold text-[#373737] dark:text-white focus:outline-none focus:border-[#76a72b] transition"
                         placeholder="0.00">

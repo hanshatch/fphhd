@@ -60,7 +60,7 @@
                     </label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
-                        <input type="number" name="initial_balance" step="0.01" min="0" inputmode="decimal" required
+                        <input type="text" name="initial_balance" data-money inputmode="decimal" required
                             value="{{ old('initial_balance', $account->initial_balance ?? '0.00') }}"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
@@ -112,7 +112,7 @@
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Límite de crédito</label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
-                            <input type="text" name="credit_limit" inputmode="decimal"
+                            <input type="text" name="credit_limit" data-money inputmode="decimal"
                                 x-bind:disabled="institution === 'amex'"
                                 x-on:input="formatMoney($event.target)"
                                 value="{{ old('credit_limit', isset($creditCard->credit_limit) && $creditCard->credit_limit !== null ? number_format((float) $creditCard->credit_limit, 2) : '') }}"
