@@ -5,7 +5,6 @@
     $sections = [
         'Planeación' => [
             ['route' => 'scheduled.index',    'icon' => 'calendar',    'label' => 'Flujo',        'desc' => 'Próximos cargos e ingresos'],
-            ['route' => 'budgets.index',      'icon' => 'budget',      'label' => 'Presupuestos', 'desc' => 'Límites de gasto por categoría'],
             ['route' => 'recurring.index',    'icon' => 'repeat',      'label' => 'Recurrentes',  'desc' => 'Suscripciones y compras a MSI'],
             ['route' => 'income-plans.index', 'icon' => 'trending-up', 'label' => 'Ingresos',     'desc' => 'Planeación de ingresos variables'],
         ],

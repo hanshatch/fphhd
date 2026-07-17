@@ -73,6 +73,10 @@
 
 ## Decisiones de producto
 
+- **Presupuestos eliminado (2026-07-17)**: Hans no usa el módulo ni piensa usarlo. Se eliminó
+  completo (modelo, servicio, controlador, vistas, rutas, indicador del dashboard, nav) y la
+  tabla `budgets` se tiró con migración (estaba vacía en local y prod).
+
 - **Importación eliminada**: La función de importar estados de cuenta se desarrolló y se eliminó.
   Razón: el Excel del banco no trae suficiente detalle y al cabo de un mes no se recuerdan los movimientos.
   Decisión: captura manual en tiempo real al momento de cada pago/movimiento.

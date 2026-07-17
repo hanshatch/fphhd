@@ -13,7 +13,6 @@ class DashboardService
 {
     public function __construct(
         private AccountService $accountService,
-        private BudgetService $budgetService,
         private YieldService $yieldService,
     ) {}
 
@@ -211,9 +210,6 @@ class DashboardService
 
         $quincenaDisponible = bcsub($incomePlanned, $chargesPlanned, 2);
 
-        // Alertas de presupuesto: cuántos están en riesgo (>80%)
-        $budgetsAtRisk = $this->budgetService->countAtRisk(80);
-
         return [
             'savings_rate'        => $savingsRate,
             'daily_pace'          => round($dailyPace, 2),
@@ -223,7 +219,6 @@ class DashboardService
             'quincena_income'     => (float) $incomePlanned,
             'quincena_charges'    => (float) $chargesPlanned,
             'quincena_available'  => (float) $quincenaDisponible,
-            'budgets_at_risk'     => $budgetsAtRisk,
             'days_elapsed'        => $elapsed,
             'days_in_month'       => $daysInMonth,
         ];

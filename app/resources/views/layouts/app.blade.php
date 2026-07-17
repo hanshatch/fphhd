@@ -36,7 +36,6 @@
                 ],
                 'Planeación' => [
                     ['route' => 'scheduled.index',    'match' => 'scheduled.*',     'icon' => 'calendar',    'label' => 'Flujo'],
-                    ['route' => 'budgets.index',      'match' => 'budgets.*',       'icon' => 'budget',      'label' => 'Presupuestos'],
                     ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
                     ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
                 ],

@@ -270,23 +270,6 @@
                 </p>
             </div>
 
-            {{-- Presupuestos --}}
-            <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
-                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Presupuestos</p>
-                @if($ind['budgets_at_risk'] > 0)
-                <p class="text-2xl font-bold text-amber-500">{{ $ind['budgets_at_risk'] }}</p>
-                <p class="text-[10px] text-amber-500 mt-1 font-semibold">
-                    {{ $ind['budgets_at_risk'] === 1 ? 'categoría en riesgo' : 'categorías en riesgo' }}
-                </p>
-                <a href="{{ route('budgets.index') }}" class="text-[10px] text-[#76a72b] hover:underline font-semibold mt-1 block">
-                    Ver presupuestos →
-                </a>
-                @else
-                <p class="text-2xl font-bold text-[#76a72b]">✓</p>
-                <p class="text-[10px] text-[#76a72b] mt-1 font-semibold">Todos en orden</p>
-                @endif
-            </div>
-
         </div>
     </div>
 

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
-use App\Models\Budget;
 use App\Models\Category;
 use App\Models\CreditCard;
 use App\Models\Transaction;
@@ -48,7 +47,6 @@ class PagesSmokeTest extends TestCase
             'account_id' => $debit->id, 'counterparty_account_id' => $tdc->id,
         ]);
 
-        Budget::create(['category_id' => $cat->id, 'amount' => '2000.00']);
 
         $routes = [
             '/dashboard',
@@ -58,7 +56,6 @@ class PagesSmokeTest extends TestCase
             route('accounts.adjust.show', $debit),
             '/transactions',
             '/transactions/create',
-            '/budgets',
             '/scheduled',
             '/reports?type=annual',
             '/reports?type=categories',
