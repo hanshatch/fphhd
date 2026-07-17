@@ -53,6 +53,18 @@ class IncomePlanController extends Controller
         ]);
     }
 
+    public function duplicate(IncomePlan $incomePlan): RedirectResponse
+    {
+        // Clona el plan y redirige al form de edición para ajustar
+        $copy = $incomePlan->replicate(['created_at', 'updated_at']);
+        $copy->name      = $incomePlan->name . ' (copia)';
+        $copy->is_active = true;
+        $copy->save();
+
+        return redirect()->route('income-plans.edit', $copy)
+            ->with('status', 'Ingreso clonado. Ajusta los datos y guarda.');
+    }
+
     public function update(Request $request, IncomePlan $incomePlan): RedirectResponse
     {
         $data = $this->validate($request);

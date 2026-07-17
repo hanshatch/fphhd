@@ -42,6 +42,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::get('/income-plans/{incomePlan}/register',  [IncomePlanController::class, 'registerShow'])->name('income-plans.register.show');
     Route::post('/income-plans/{incomePlan}/register', [IncomePlanController::class, 'registerStore'])->name('income-plans.register.store');
     Route::post('/income-plans/{incomePlan}/toggle',   [IncomePlanController::class, 'toggle'])->name('income-plans.toggle');
+    Route::post('/income-plans/{incomePlan}/duplicate', [IncomePlanController::class, 'duplicate'])->name('income-plans.duplicate');
     Route::post('/recurring/{recurring}/apply-now', [RecurringChargeController::class, 'applyNow'])->name('recurring.apply-now');
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
     Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
