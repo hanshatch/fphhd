@@ -60,6 +60,21 @@ class RecurringChargeController extends Controller
     public function update(Request $request, RecurringCharge $recurring): RedirectResponse
     {
         $data = $this->validateCharge($request);
+
+        // Si cambió el día del mes o el inicio, recalcular la próxima aplicación
+        // (nunca antes de hoy, para no re-aplicar fechas ya pasadas)
+        $dayChanged   = (int) $data['day_of_month'] !== (int) $recurring->day_of_month;
+        $startChanged = $data['start_date'] !== $recurring->start_date?->toDateString();
+
+        if ($dayChanged || $startChanged) {
+            $base = max($data['start_date'], now()->toDateString());
+
+            $data['next_application_date'] = $this->service->firstApplicationDate(
+                $base,
+                (int) $data['day_of_month']
+            );
+        }
+
         $recurring->update($data);
 
         return redirect()->route('recurring.index')->with('status', 'Cargo actualizado.');
@@ -108,7 +123,7 @@ class RecurringChargeController extends Controller
             'notes'              => 'nullable|string|max:500',
         ]);
 
-        $data['original_amount'] = $data['original_amount'] ?: null;
+        $data['original_amount'] = ($data['original_amount'] ?? null) ?: null;
         $data['is_msi']          = $request->boolean('is_msi');
 
         // Si es MSI, calcular end_date automáticamente
