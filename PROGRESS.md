@@ -35,6 +35,16 @@
 - [x] Fase E — Política de contraseñas 12+, audit log completo, frecuencia 'once', quincenas
 - Suite de tests: 31 → 50 (FinanceRulesTest, TotpTest, PagesSmokeTest)
 
+- [x] Bot de Telegram para captura de gastos (2026-07-17): webhook `POST /telegram/webhook`
+  validado con secret token + chat_id único (config en `services.telegram`, vars TELEGRAM_* en .env).
+  Flujo: "250 tacos" → parsea monto con `parse_money`, adivina categoría de gasto por nombre en la
+  descripción, pregunta cuenta (y categoría si no adivinó) con botones inline, crea `Transaction`
+  expense con fecha de hoy y registra en `audit_logs`. Pendiente en cache 30 min.
+  `TelegramService` (cliente Bot API) + `TelegramExpenseService` + comando `php artisan telegram:webhook`
+  (--info / --remove). Webhook activo en prod apuntando a fp.hanshatch.com; bot @FP_hatch_bot.
+  Nota deploy: tras cambiar rutas/config en prod correr `php artisan config:cache && php artisan route:cache`
+  (el 404 inicial fue por route cache viejo). Tests: `TelegramWebhookTest` (6).
+
 ## En curso / siguiente
 
 - Fase 9 restante: metas de ahorro y simulador.
