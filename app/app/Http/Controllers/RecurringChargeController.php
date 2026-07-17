@@ -86,11 +86,25 @@ class RecurringChargeController extends Controller
         return redirect()->route('recurring.index')->with('status', 'Cargo eliminado.');
     }
 
-    /** Aplicar manualmente un cargo ahora */
-    public function applyNow(RecurringCharge $recurring): RedirectResponse
+    /** Pantalla de confirmación antes de aplicar: monto final editable */
+    public function applyShow(RecurringCharge $recurring): View
     {
-        $this->service->applyCharge($recurring);
-        return redirect()->route('recurring.index')->with('status', "Cargo «{$recurring->name}» aplicado manualmente.");
+        return view('pages.recurring.apply', ['charge' => $recurring->load('account', 'category')]);
+    }
+
+    /** Aplicar el cargo con el monto/fecha confirmados por Hans */
+    public function applyStore(Request $request, RecurringCharge $recurring): RedirectResponse
+    {
+        $this->normalizeMoney($request, ['amount']);
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'date'   => 'required|date',
+        ]);
+
+        $this->service->applyCharge($recurring, $data['amount'], $data['date']);
+
+        return redirect()->route('recurring.index')->with('status', "Cargo «{$recurring->name}» aplicado.");
     }
 
     /** Pausar / reactivar */

@@ -48,17 +48,19 @@ class RecurringChargeService
 
     /**
      * Aplica un cargo individual: crea la transacción y avanza la fecha.
+     * $amount y $date opcionales permiten ajustar el monto final (cargos en
+     * USD que varían con el tipo de cambio) y la fecha real del cobro.
      */
-    public function applyCharge(RecurringCharge $charge): Transaction
+    public function applyCharge(RecurringCharge $charge, ?string $amount = null, ?string $date = null): Transaction
     {
         $label = $charge->is_msi
             ? "{$charge->name} — cuota " . ($charge->applied_installments + 1) . " de {$charge->total_installments}"
             : $charge->name;
 
         $transaction = Transaction::create([
-            'date'        => $charge->next_application_date->toDateString(),
+            'date'        => $date ?? $charge->next_application_date->toDateString(),
             'type'        => $charge->type,
-            'amount'      => $charge->amount,
+            'amount'      => $amount ?? $charge->amount,
             'account_id'  => $charge->account_id,
             'category_id' => $charge->category_id,
             'description' => $label,
