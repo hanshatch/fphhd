@@ -283,16 +283,18 @@ class TelegramWebhookTest extends TestCase
             ['amount' => '500.00', 'description' => 'Devolución', 'date' => null, 'type' => 'income', 'category' => 'Otros ingresos'],
         ]);
 
-        // Foto → resumen + pregunta cuenta del primer movimiento
+        // Foto → resumen + pregunta el tipo del primer movimiento
         $this->postUpdate($this->photoMessage())->assertNoContent();
 
-        // Cargo 1: cuenta → sin categoría adivinada → categoría → creado
+        // Mov 1: Hans dice cargo → cuenta → sin categoría adivinada → categoría → creado
+        $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('cat:' . $comida->id))->assertNoContent();
 
         $this->assertSame(1, Transaction::count());
 
-        // Cargo 2 (abono, categoría empatada) : solo cuenta → creado
+        // Mov 2: Hans dice abono → categoría empatada por pista → solo cuenta → creado
+        $this->postUpdate($this->callbackUpdate('typ:income'))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
 
         $this->assertSame(2, Transaction::count());
@@ -308,6 +310,25 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame('500.00', $second->amount);
         $this->assertSame($ingreso->id, $second->category_id);
         $this->assertSame(now()->toDateString(), $second->date->toDateString());
+    }
+
+    public function test_photo_movement_marked_as_interest_skips_category(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->fakeVision([
+            ['amount' => '45.30', 'description' => 'Rendimientos', 'date' => null, 'type' => 'income', 'category' => null],
+        ]);
+
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('typ:interest'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('interest', $tx->type);
+        $this->assertSame('45.30', $tx->amount);
+        $this->assertNull($tx->category_id);
     }
 
     public function test_photo_without_vision_key_informs_user(): void

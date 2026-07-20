@@ -91,12 +91,15 @@ class TelegramExpenseService
             return;
         }
 
+        // Hans decide el tipo de cada movimiento; lo del modelo es solo pista
         $queue = array_map(fn (array $item) => [
-            'amount'      => $item['amount'],
-            'description' => Str::limit(Str::ucfirst($item['description']), 500, ''),
-            'date'        => $this->sanitizeDate($item['date']),
-            'type'        => $item['type'],
-            'category_id' => $this->matchCategoryId($item['category'], $item['type']),
+            'amount'        => $item['amount'],
+            'description'   => Str::limit(Str::ucfirst($item['description']), 500, ''),
+            'date'          => $this->sanitizeDate($item['date']),
+            'type'          => $item['type'],
+            'category_hint' => $item['category'],
+            'category_id'   => null,
+            'ask_type'      => true,
         ], $items);
 
         if (count($queue) > 1) {
@@ -112,7 +115,9 @@ class TelegramExpenseService
     }
 
     /**
-     * Toma el primer item de la cola como pendiente activo y pregunta la cuenta.
+     * Toma el primer item de la cola como pendiente activo. Si viene de un
+     * screenshot pregunta primero el tipo (cargo/abono/interés); si no,
+     * directo la cuenta.
      */
     private function startPending(int|string $chatId, array $queue, int $total): void
     {
@@ -123,13 +128,36 @@ class TelegramExpenseService
         Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
 
         $position = $total > 1 ? ($total - count($queue)) . "/{$total} · " : '';
-        $question = $pending['type'] === 'income' ? '¿A qué cuenta se abona?' : '¿De qué cuenta se descuenta?';
+
+        if ($pending['ask_type'] ?? false) {
+            $this->telegram->sendMessage(
+                $chatId,
+                $position . $this->pendingSummary($pending) . "\n¿Qué es este movimiento?",
+                [[
+                    ['text' => '💸 Cargo',   'callback_data' => 'typ:expense'],
+                    ['text' => '💰 Abono',   'callback_data' => 'typ:income'],
+                ], [
+                    ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
+                ]]
+            );
+
+            return;
+        }
 
         $this->telegram->sendMessage(
             $chatId,
-            $position . $this->pendingSummary($pending) . "\n" . $question,
+            $position . $this->pendingSummary($pending) . "\n" . $this->accountQuestion($pending['type']),
             $this->accountKeyboard()
         );
+    }
+
+    private function accountQuestion(string $type): string
+    {
+        return match ($type) {
+            'income'   => '¿A qué cuenta se abona?',
+            'interest' => '¿En qué cuenta se generó?',
+            default    => '¿De qué cuenta o tarjeta se descuenta?',
+        };
     }
 
     private function handleMessage(array $message): void
@@ -186,10 +214,29 @@ class TelegramExpenseService
 
         [$action, $id] = array_pad(explode(':', $data, 2), 2, null);
 
+        // Hans define el tipo del movimiento detectado en el screenshot
+        if ($action === 'typ' && in_array($id, ['expense', 'income', 'interest'], true)) {
+            $pending['type'] = $id;
+            unset($pending['ask_type']);
+
+            // Con el tipo ya definido, empatar/adivinar la categoría en ese kind
+            $pending['category_id'] = $id === 'interest' ? null
+                : ($this->matchCategoryId($pending['category_hint'] ?? null, $id)
+                    ?? $this->guessCategoryId($pending['description'], $id));
+
+            Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+            $this->telegram->editMessageText($chatId, $messageId, $this->pendingSummary($pending));
+            $this->telegram->sendMessage($chatId, $this->accountQuestion($id), $this->accountKeyboard());
+
+            return;
+        }
+
         if ($action === 'acc' && ctype_digit((string) $id)) {
             $pending['account_id'] = (int) $id;
 
-            if ($pending['category_id'] !== null) {
+            // Interés no lleva categoría; con categoría resuelta se guarda directo
+            if (($pending['type'] ?? 'expense') === 'interest' || $pending['category_id'] !== null) {
                 $this->storeExpense($chatId, $messageId, $pending);
 
                 return;
@@ -211,9 +258,11 @@ class TelegramExpenseService
 
     private function storeExpense(int|string $chatId, int $messageId, array $pending): void
     {
-        $type = ($pending['type'] ?? 'expense') === 'income'
-            ? Transaction::TYPE_INCOME
-            : Transaction::TYPE_EXPENSE;
+        $type = match ($pending['type'] ?? 'expense') {
+            'income'   => Transaction::TYPE_INCOME,
+            'interest' => Transaction::TYPE_INTEREST,
+            default    => Transaction::TYPE_EXPENSE,
+        };
 
         $transaction = Transaction::create([
             'date'        => $pending['date'] ?? now()->toDateString(),
@@ -233,7 +282,11 @@ class TelegramExpenseService
         $this->telegram->editMessageText(
             $chatId,
             $messageId,
-            '✅ ' . ($type === Transaction::TYPE_INCOME ? 'Abono' : 'Gasto') . " registrado\n"
+            '✅ ' . match ($type) {
+                Transaction::TYPE_INCOME   => 'Abono',
+                Transaction::TYPE_INTEREST => 'Interés',
+                default                    => 'Gasto',
+            } . " registrado\n"
                 . format_currency($transaction->amount) . ' · ' . $transaction->description . "\n"
                 . $transaction->account->name
                 . ($transaction->category ? ' · ' . $transaction->category->name : '')
@@ -398,7 +451,11 @@ class TelegramExpenseService
     private function pendingSummary(array $pending): string
     {
         $date  = \Illuminate\Support\Carbon::parse($pending['date']);
-        $emoji = ($pending['type'] ?? 'expense') === 'income' ? '💰' : '💸';
+        $emoji = match ($pending['type'] ?? 'expense') {
+            'income'   => '💰',
+            'interest' => '📈',
+            default    => '💸',
+        };
 
         return $emoji . ' ' . format_currency($pending['amount'])
             . ' · ' . $pending['description']
@@ -409,13 +466,15 @@ class TelegramExpenseService
      * Busca una categoría de gasto cuyo nombre aparezca en la descripción
      * (sin acentos ni mayúsculas). Si hay varias, gana el nombre más largo.
      */
-    private function guessCategoryId(string $description): ?int
+    private function guessCategoryId(string $description, string $type = 'expense'): ?int
     {
         $haystack = $this->normalize($description);
         $bestId   = null;
         $bestLen  = 0;
 
-        $categories = Category::active()->ofKind(Category::KIND_EXPENSE)->get();
+        $categories = Category::active()
+            ->ofKind($type === 'income' ? Category::KIND_INCOME : Category::KIND_EXPENSE)
+            ->get();
 
         foreach ($categories as $category) {
             $needle = $this->normalize($category->name);
