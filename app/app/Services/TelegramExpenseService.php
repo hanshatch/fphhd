@@ -158,12 +158,7 @@ class TelegramExpenseService
             $this->telegram->sendMessage(
                 $chatId,
                 $position . $this->pendingSummary($pending) . "\n¿Qué es este movimiento?",
-                [[
-                    ['text' => '💸 Cargo',   'callback_data' => 'typ:expense'],
-                    ['text' => '💰 Abono',   'callback_data' => 'typ:income'],
-                ], [
-                    ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
-                ]]
+                $this->typeKeyboard()
             );
 
             return;
@@ -203,6 +198,32 @@ class TelegramExpenseService
             'account'     => $existing->account->name,
             'date'        => $existing->date->translatedFormat('j M Y'),
         ];
+    }
+
+    /** Descarta el pendiente actual y continúa con la cola si hay más */
+    private function skipPending(int|string $chatId, int $messageId, array $pending, string $reason): void
+    {
+        $queue = $pending['queue'] ?? [];
+        $total = $pending['total'] ?? 1;
+
+        Cache::forget($this->pendingKey($chatId));
+
+        $this->telegram->editMessageText($chatId, $messageId, '⏭ ' . $this->pendingSummary($pending) . " — {$reason}.");
+
+        if ($queue !== []) {
+            $this->startPending($chatId, $queue, $total);
+        }
+    }
+
+    private function typeKeyboard(): array
+    {
+        return [[
+            ['text' => '💸 Cargo', 'callback_data' => 'typ:expense'],
+            ['text' => '💰 Abono', 'callback_data' => 'typ:income'],
+        ], [
+            ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
+            ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+        ]];
     }
 
     private function accountQuestion(string $type): string
@@ -268,19 +289,17 @@ class TelegramExpenseService
 
         [$action, $id] = array_pad(explode(':', $data, 2), 2, null);
 
+        // No registrar el movimiento actual (en cualquier paso)
+        if ($action === 'skp') {
+            $this->skipPending($chatId, $messageId, $pending, 'no registrado');
+
+            return;
+        }
+
         // Resolución de posible duplicado: registrar u omitir
         if ($action === 'dup' && in_array($id, ['keep', 'skip'], true)) {
             if ($id === 'skip') {
-                $queue = $pending['queue'] ?? [];
-                $total = $pending['total'] ?? 1;
-
-                Cache::forget($this->pendingKey($chatId));
-
-                $this->telegram->editMessageText($chatId, $messageId, '⏭ ' . $this->pendingSummary($pending) . ' — omitido (ya estaba registrado).');
-
-                if ($queue !== []) {
-                    $this->startPending($chatId, $queue, $total);
-                }
+                $this->skipPending($chatId, $messageId, $pending, 'omitido, ya estaba registrado');
 
                 return;
             }
@@ -291,12 +310,7 @@ class TelegramExpenseService
             $this->telegram->editMessageText($chatId, $messageId, $this->pendingSummary($pending));
 
             if ($pending['ask_type'] ?? false) {
-                $this->telegram->sendMessage($chatId, '¿Qué es este movimiento?', [[
-                    ['text' => '💸 Cargo', 'callback_data' => 'typ:expense'],
-                    ['text' => '💰 Abono', 'callback_data' => 'typ:income'],
-                ], [
-                    ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
-                ]]);
+                $this->telegram->sendMessage($chatId, '¿Qué es este movimiento?', $this->typeKeyboard());
             } else {
                 $this->telegram->sendMessage($chatId, $this->accountQuestion($pending['type'] ?? 'expense'), $this->accountKeyboard());
             }
@@ -588,7 +602,10 @@ class TelegramExpenseService
                 'callback_data' => 'acc:' . $account->id,
             ]);
 
-        return array_chunk($buttons->all(), 2);
+        $rows   = array_chunk($buttons->all(), 2);
+        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+
+        return $rows;
     }
 
     private function categoryKeyboard(string $type = 'expense'): array
@@ -602,7 +619,10 @@ class TelegramExpenseService
                 'callback_data' => 'cat:' . $category->id,
             ]);
 
-        return array_chunk($buttons->all(), 2);
+        $rows   = array_chunk($buttons->all(), 2);
+        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+
+        return $rows;
     }
 
     private function normalize(string $value): string

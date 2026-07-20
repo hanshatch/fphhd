@@ -386,6 +386,33 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame($comida->id, Transaction::orderByDesc('id')->first()->category_id);
     }
 
+    public function test_movement_can_be_discarded_at_any_step(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->fakeVision([
+            ['amount' => '100.00', 'description' => 'Uno', 'date' => null, 'type' => 'expense', 'category' => null],
+            ['amount' => '200.00', 'description' => 'Dos', 'date' => null, 'type' => 'expense', 'category' => null],
+        ]);
+
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+
+        // Mov 1: descartado desde la pregunta de tipo
+        $this->postUpdate($this->callbackUpdate('skp:1'))->assertNoContent();
+        $this->assertSame(0, Transaction::count());
+
+        // Mov 2: avanza a cuenta y se descarta ahí
+        $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('skp:1'))->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
+
+        // Ya no hay pendientes: nada que crear
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $this->assertSame(0, Transaction::count());
+    }
+
     public function test_photo_without_vision_key_informs_user(): void
     {
         $this->postUpdate($this->photoMessage())->assertNoContent();
