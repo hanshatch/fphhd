@@ -33,6 +33,11 @@ return [
         'model'   => env('DEEPSEEK_MODEL', 'deepseek-chat'),
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model'   => env('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
+    ],
+
     'telegram' => [
         'bot_token'      => env('TELEGRAM_BOT_TOKEN'),
         'chat_id'        => env('TELEGRAM_CHAT_ID'),

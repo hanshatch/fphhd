@@ -28,7 +28,18 @@ class TelegramWebhookTest extends TestCase
         ]);
 
         Http::preventStrayRequests();
-        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
+        Http::fake([
+            'api.telegram.org/*' => function ($request) {
+                if (str_contains($request->url(), '/getFile')) {
+                    return Http::response(['ok' => true, 'result' => ['file_path' => 'photos/test.jpg']]);
+                }
+                if (str_contains($request->url(), '/file/bot')) {
+                    return Http::response('fake-image-bytes');
+                }
+
+                return Http::response(['ok' => true, 'result' => []]);
+            },
+        ]);
     }
 
     private function account(): Account
@@ -234,6 +245,87 @@ class TelegramWebhookTest extends TestCase
 
         $this->assertSame(0, Transaction::count());
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'deepseek'));
+    }
+
+    private function photoMessage(?string $caption = null): array
+    {
+        $message = ['chat' => ['id' => self::CHAT_ID], 'photo' => [
+            ['file_id' => 'small', 'width' => 90],
+            ['file_id' => 'big', 'width' => 800],
+        ]];
+
+        if ($caption !== null) {
+            $message['caption'] = $caption;
+        }
+
+        return ['message' => $message];
+    }
+
+    private function fakeVision(array $charges): void
+    {
+        config(['services.openai.api_key' => 'test-oa-key']);
+
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode(['charges' => $charges])]]],
+            ]),
+        ]);
+    }
+
+    public function test_photo_with_multiple_charges_registers_each_one(): void
+    {
+        $account  = $this->account();
+        $comida   = $this->category('Comida');
+        $ingreso  = Category::create(['name' => 'Otros ingresos', 'kind' => 'income']);
+
+        $this->fakeVision([
+            ['amount' => '129.00', 'description' => 'Spotify', 'date' => now()->subDay()->toDateString(), 'type' => 'expense', 'category' => null],
+            ['amount' => '500.00', 'description' => 'Devolución', 'date' => null, 'type' => 'income', 'category' => 'Otros ingresos'],
+        ]);
+
+        // Foto → resumen + pregunta cuenta del primer movimiento
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+
+        // Cargo 1: cuenta → sin categoría adivinada → categoría → creado
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('cat:' . $comida->id))->assertNoContent();
+
+        $this->assertSame(1, Transaction::count());
+
+        // Cargo 2 (abono, categoría empatada) : solo cuenta → creado
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $this->assertSame(2, Transaction::count());
+
+        $first = Transaction::where('description', 'Spotify')->sole();
+        $this->assertSame('expense', $first->type);
+        $this->assertSame('129.00', $first->amount);
+        $this->assertSame($comida->id, $first->category_id);
+        $this->assertSame(now()->subDay()->toDateString(), $first->date->toDateString());
+
+        $second = Transaction::where('description', 'Devolución')->sole();
+        $this->assertSame('income', $second->type);
+        $this->assertSame('500.00', $second->amount);
+        $this->assertSame($ingreso->id, $second->category_id);
+        $this->assertSame(now()->toDateString(), $second->date->toDateString());
+    }
+
+    public function test_photo_without_vision_key_informs_user(): void
+    {
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'openai'));
+    }
+
+    public function test_photo_with_no_readable_charges_creates_nothing(): void
+    {
+        $this->account();
+        $this->fakeVision([]);
+
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
     }
 
     public function test_callback_after_expiry_does_not_create_transaction(): void

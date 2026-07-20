@@ -56,6 +56,24 @@ class TelegramService
         return $this->api('getWebhookInfo', []);
     }
 
+    /** Ruta interna del archivo en los servidores de Telegram */
+    public function getFilePath(string $fileId): ?string
+    {
+        $result = $this->api('getFile', ['file_id' => $fileId]);
+
+        return $result['result']['file_path'] ?? null;
+    }
+
+    /** Descarga el binario de un archivo (fotos ≤ 20 MB) */
+    public function downloadFile(string $filePath): ?string
+    {
+        $token = config('services.telegram.bot_token');
+
+        $response = Http::timeout(30)->get("https://api.telegram.org/file/bot{$token}/{$filePath}");
+
+        return $response->successful() ? $response->body() : null;
+    }
+
     private function api(string $method, array $params): array
     {
         $token = config('services.telegram.bot_token');
