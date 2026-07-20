@@ -92,23 +92,30 @@ class TelegramExpenseService
         }
 
         // Hans decide el tipo de cada movimiento; lo del modelo es solo pista
-        $queue = array_map(fn (array $item) => [
-            'amount'        => $item['amount'],
-            'description'   => Str::limit(Str::ucfirst($item['description']), 500, ''),
-            'date'          => $this->sanitizeDate($item['date']),
-            'type'          => $item['type'],
-            'category_hint' => $item['category'],
-            'category_id'   => null,
-            'ask_type'      => true,
-        ], $items);
+        $queue = array_map(function (array $item) {
+            $pending = [
+                'amount'        => $item['amount'],
+                'description'   => Str::limit(Str::ucfirst($item['description']), 500, ''),
+                'date'          => $this->sanitizeDate($item['date']),
+                'type'          => $item['type'],
+                'category_hint' => $item['category'],
+                'category_id'   => null,
+                'ask_type'      => true,
+            ];
+
+            $pending['duplicate'] = $this->findPossibleDuplicate($pending);
+
+            return $pending;
+        }, $items);
 
         if (count($queue) > 1) {
             $summary = collect($queue)
                 ->map(fn ($q, $i) => ($i + 1) . '. ' . ($q['type'] === 'income' ? '+' : '−')
-                    . format_currency($q['amount']) . ' · ' . $q['description'])
+                    . format_currency($q['amount']) . ' · ' . $q['description']
+                    . ($q['duplicate'] ? ' ⚠️' : ''))
                 ->implode("\n");
 
-            $this->telegram->sendMessage($chatId, '📷 Detecté ' . count($queue) . " movimientos:\n\n" . $summary . "\n\nVamos uno por uno 👇");
+            $this->telegram->sendMessage($chatId, '📷 Detecté ' . count($queue) . " movimientos (⚠️ = posible duplicado):\n\n" . $summary . "\n\nVamos uno por uno 👇");
         }
 
         $this->startPending($chatId, $queue, count($queue));
@@ -128,6 +135,24 @@ class TelegramExpenseService
         Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
 
         $position = $total > 1 ? ($total - count($queue)) . "/{$total} · " : '';
+
+        if (! empty($pending['duplicate'])) {
+            $d = $pending['duplicate'];
+
+            $this->telegram->sendMessage(
+                $chatId,
+                $position . $this->pendingSummary($pending)
+                    . "\n\n⚠️ Ya tienes un movimiento parecido registrado:\n"
+                    . format_currency($d['amount']) . ' · ' . $d['description'] . ' · ' . $d['account'] . ' · ' . $d['date']
+                    . "\n\n¿Lo registro de todos modos?",
+                [[
+                    ['text' => '✅ Registrar de todos modos', 'callback_data' => 'dup:keep'],
+                    ['text' => '⏭ Omitir', 'callback_data' => 'dup:skip'],
+                ]]
+            );
+
+            return;
+        }
 
         if ($pending['ask_type'] ?? false) {
             $this->telegram->sendMessage(
@@ -149,6 +174,35 @@ class TelegramExpenseService
             $position . $this->pendingSummary($pending) . "\n" . $this->accountQuestion($pending['type']),
             $this->accountKeyboard()
         );
+    }
+
+    /**
+     * Busca un movimiento ya registrado con el mismo monto y fecha cercana
+     * (±3 días) — típico al re-subir un screenshot del estado de cuenta.
+     */
+    private function findPossibleDuplicate(array $pending): ?array
+    {
+        $date = \Illuminate\Support\Carbon::parse($pending['date']);
+
+        $existing = Transaction::with('account')
+            ->where('amount', $pending['amount'])
+            ->whereBetween('date', [
+                $date->copy()->subDays(3)->toDateString(),
+                $date->copy()->addDays(3)->toDateString(),
+            ])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existing === null) {
+            return null;
+        }
+
+        return [
+            'amount'      => (string) $existing->amount,
+            'description' => $existing->description ?: 'Sin descripción',
+            'account'     => $existing->account->name,
+            'date'        => $existing->date->translatedFormat('j M Y'),
+        ];
     }
 
     private function accountQuestion(string $type): string
@@ -213,6 +267,42 @@ class TelegramExpenseService
         }
 
         [$action, $id] = array_pad(explode(':', $data, 2), 2, null);
+
+        // Resolución de posible duplicado: registrar u omitir
+        if ($action === 'dup' && in_array($id, ['keep', 'skip'], true)) {
+            if ($id === 'skip') {
+                $queue = $pending['queue'] ?? [];
+                $total = $pending['total'] ?? 1;
+
+                Cache::forget($this->pendingKey($chatId));
+
+                $this->telegram->editMessageText($chatId, $messageId, '⏭ ' . $this->pendingSummary($pending) . ' — omitido (ya estaba registrado).');
+
+                if ($queue !== []) {
+                    $this->startPending($chatId, $queue, $total);
+                }
+
+                return;
+            }
+
+            unset($pending['duplicate']);
+            Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+            $this->telegram->editMessageText($chatId, $messageId, $this->pendingSummary($pending));
+
+            if ($pending['ask_type'] ?? false) {
+                $this->telegram->sendMessage($chatId, '¿Qué es este movimiento?', [[
+                    ['text' => '💸 Cargo', 'callback_data' => 'typ:expense'],
+                    ['text' => '💰 Abono', 'callback_data' => 'typ:income'],
+                ], [
+                    ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
+                ]]);
+            } else {
+                $this->telegram->sendMessage($chatId, $this->accountQuestion($pending['type'] ?? 'expense'), $this->accountKeyboard());
+            }
+
+            return;
+        }
 
         // Hans define el tipo del movimiento detectado en el screenshot
         if ($action === 'typ' && in_array($id, ['expense', 'income', 'interest'], true)) {

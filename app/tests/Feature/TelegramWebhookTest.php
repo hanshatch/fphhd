@@ -331,6 +331,61 @@ class TelegramWebhookTest extends TestCase
         $this->assertNull($tx->category_id);
     }
 
+    public function test_photo_duplicate_can_be_skipped(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        // Ya existe un movimiento igual (mismo monto, fecha cercana)
+        Transaction::create([
+            'date'       => now()->subDay()->toDateString(),
+            'type'       => 'expense',
+            'amount'     => '129.00',
+            'account_id' => $account->id,
+            'description' => 'Spotify',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '129.00', 'description' => 'Spotify', 'date' => now()->toDateString(), 'type' => 'expense', 'category' => null],
+        ]);
+
+        // Foto → advertencia de duplicado → omitir
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('dup:skip'))->assertNoContent();
+
+        $this->assertSame(1, Transaction::count()); // solo el preexistente
+
+        // Y ya no hay pendiente activo: un callback posterior no crea nada
+        $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
+        $this->assertSame(1, Transaction::count());
+    }
+
+    public function test_photo_duplicate_can_be_registered_anyway(): void
+    {
+        $account = $this->account();
+        $comida  = $this->category('Comida');
+
+        Transaction::create([
+            'date'       => now()->toDateString(),
+            'type'       => 'expense',
+            'amount'     => '129.00',
+            'account_id' => $account->id,
+            'description' => 'Spotify',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '129.00', 'description' => 'Spotify', 'date' => now()->toDateString(), 'type' => 'expense', 'category' => 'Comida'],
+        ]);
+
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('dup:keep'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $this->assertSame(2, Transaction::count());
+        $this->assertSame($comida->id, Transaction::orderByDesc('id')->first()->category_id);
+    }
+
     public function test_photo_without_vision_key_informs_user(): void
     {
         $this->postUpdate($this->photoMessage())->assertNoContent();
