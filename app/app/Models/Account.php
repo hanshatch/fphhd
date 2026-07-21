@@ -30,6 +30,7 @@ class Account extends Model
     const INST_KLAR        = 'klar';
     const INST_MERCADOPAGO = 'mercadopago';
     const INST_NU          = 'nu';
+    const INST_OPENBANK    = 'openbank';
     const INST_REVOLUT     = 'revolut';
     const INST_AMEX        = 'amex';
     const INST_EFECTIVO    = 'efectivo';
@@ -55,6 +56,7 @@ class Account extends Model
         self::INST_KLAR        => 'Klar',
         self::INST_MERCADOPAGO => 'MercadoPago',
         self::INST_NU          => 'Nu',
+        self::INST_OPENBANK    => 'OpenBank',
         self::INST_REVOLUT     => 'Revolut',
         self::INST_AMEX        => 'American Express',
         self::INST_EFECTIVO    => 'Efectivo',

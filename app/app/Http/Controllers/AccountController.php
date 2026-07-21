@@ -80,7 +80,7 @@ class AccountController extends Controller
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'type'            => 'required|in:debit,credit,savings,investment,cash',
-            'institution'     => 'required|in:banamex,klar,mercadopago,nu,revolut,amex,efectivo,other',
+            'institution'     => 'required|in:banamex,klar,mercadopago,nu,openbank,revolut,amex,efectivo,other',
             'initial_balance' => 'required|numeric|min:0',
             'color'           => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
             'invest_apr'      => 'nullable|numeric|min:0|max:100',
@@ -128,7 +128,7 @@ class AccountController extends Controller
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'type'            => 'required|in:debit,credit,savings,investment,cash',
-            'institution'     => 'required|in:banamex,klar,mercadopago,nu,revolut,amex,efectivo,other',
+            'institution'     => 'required|in:banamex,klar,mercadopago,nu,openbank,revolut,amex,efectivo,other',
             'initial_balance' => 'required|numeric|min:0',
             'color'           => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
             'is_active'       => 'boolean',
