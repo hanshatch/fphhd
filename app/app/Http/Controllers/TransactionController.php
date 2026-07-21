@@ -46,7 +46,9 @@ class TransactionController extends Controller
 
     public function create(Request $request): View
     {
-        $accounts   = Account::where('is_active', true)->orderBy('name')->get();
+        $accounts = Account::where('is_active', true)->get()
+            ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))
+            ->values();
         $categories = Category::active()->with('children')->orderBy('kind')->orderBy('name')->get();
         $sources    = Source::active()->orderBy('name')->get();
 
@@ -84,7 +86,9 @@ class TransactionController extends Controller
 
     public function edit(Transaction $transaction): View
     {
-        $accounts   = Account::where('is_active', true)->orderBy('name')->get();
+        $accounts = Account::where('is_active', true)->get()
+            ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))
+            ->values();
         $categories = Category::active()->with('children')->orderBy('kind')->orderBy('name')->get();
         $sources    = Source::active()->orderBy('name')->get();
 

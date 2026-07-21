@@ -595,8 +595,9 @@ class TelegramExpenseService
     private function accountKeyboard(): array
     {
         $buttons = Account::where('is_active', true)
-            ->orderBy('name')
             ->get()
+            ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))
+            ->values()
             ->map(fn (Account $account) => [
                 'text'          => $account->displayLabel(),
                 'callback_data' => 'acc:' . $account->id,
