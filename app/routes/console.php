@@ -13,11 +13,6 @@ Artisan::command('inspire', function () {
 // (dailyAt('08:00') sí; dailyAt('08:03') jamás se ejecutaría).
 // ─────────────────────────────────────────────────────────────────────
 
-// Heartbeat TEMPORAL para verificar que el cron corre — quitar tras confirmar
-Schedule::call(function () {
-    file_put_contents(storage_path('logs/scheduler.log'), '[' . now()->toDateTimeString() . "] heartbeat\n", FILE_APPEND);
-})->everyFiveMinutes()->name('heartbeat-verificacion');
-
 // Cargos recurrentes: NUNCA se aplican solos. Cada vencido genera SU
 // PROPIA notificación de Telegram con botones (aplicar / ajustar / hoy no).
 Schedule::command('telegram:notify-due')
