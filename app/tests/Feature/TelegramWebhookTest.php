@@ -431,6 +431,54 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame(0, Transaction::count());
     }
 
+    public function test_recurring_notification_apply_button_creates_transaction(): void
+    {
+        $account = $this->account();
+
+        $charge = \App\Models\RecurringCharge::create([
+            'name'                  => 'Netflix',
+            'account_id'            => $account->id,
+            'type'                  => 'expense',
+            'amount'                => '199.00',
+            'day_of_month'          => now()->day,
+            'start_date'            => now()->subMonths(2)->toDateString(),
+            'next_application_date' => now()->toDateString(),
+            'is_active'             => true,
+        ]);
+
+        $this->postUpdate($this->callbackUpdate('rec:apply:' . $charge->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('expense', $tx->type);
+        $this->assertSame('199.00', $tx->amount);
+        $this->assertSame(now()->toDateString(), $tx->date->toDateString());
+
+        // La fecha del cargo avanzó: segundo clic no duplica
+        $this->postUpdate($this->callbackUpdate('rec:apply:' . $charge->id))->assertNoContent();
+        $this->assertSame(1, Transaction::count());
+    }
+
+    public function test_recurring_notification_skip_button_changes_nothing(): void
+    {
+        $account = $this->account();
+
+        $charge = \App\Models\RecurringCharge::create([
+            'name'                  => 'Spotify',
+            'account_id'            => $account->id,
+            'type'                  => 'expense',
+            'amount'                => '129.00',
+            'day_of_month'          => now()->day,
+            'start_date'            => now()->subMonth()->toDateString(),
+            'next_application_date' => now()->toDateString(),
+            'is_active'             => true,
+        ]);
+
+        $this->postUpdate($this->callbackUpdate('rec:skip:' . $charge->id))->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
+        $this->assertSame(now()->toDateString(), $charge->fresh()->next_application_date->toDateString());
+    }
+
     public function test_callback_after_expiry_does_not_create_transaction(): void
     {
         $account = $this->account();

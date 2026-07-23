@@ -93,6 +93,46 @@ class RecurringChargeService
     }
 
     /**
+     * Manda una notificación de Telegram POR CADA cargo vencido, con botones
+     * para aplicarlo (monto configurado), ajustar el monto en la web u omitir.
+     * Devuelve cuántas notificaciones se enviaron.
+     */
+    public function notifyDueViaTelegram(TelegramService $telegram): int
+    {
+        if (! config('services.telegram.bot_token') || ! config('services.telegram.chat_id')) {
+            return 0;
+        }
+
+        $due = RecurringCharge::dueOn(Carbon::today()->toDateString())
+            ->with('account', 'category')
+            ->orderBy('next_application_date')
+            ->get();
+
+        foreach ($due as $charge) {
+            $msi = $charge->is_msi
+                ? ' (cuota ' . ($charge->applied_installments + 1) . ' de ' . $charge->total_installments . ')'
+                : '';
+
+            $telegram->sendMessage(
+                config('services.telegram.chat_id'),
+                "📅 Cargo recurrente por aplicar:\n\n"
+                    . format_currency($charge->amount) . ' · ' . $charge->name . $msi . "\n"
+                    . $charge->account->displayLabel()
+                    . ($charge->category ? ' · ' . $charge->category->name : '')
+                    . "\nVence: " . $charge->next_application_date->translatedFormat('j M Y'),
+                [[
+                    ['text' => '✅ Aplicar ' . format_currency($charge->amount), 'callback_data' => 'rec:apply:' . $charge->id],
+                ], [
+                    ['text' => '✏️ Ajustar monto', 'url' => route('recurring.apply.show', $charge)],
+                    ['text' => '⏭ Hoy no', 'callback_data' => 'rec:skip:' . $charge->id],
+                ]]
+            );
+        }
+
+        return $due->count();
+    }
+
+    /**
      * Cargos pendientes que caen dentro del mes vigente (de hoy a fin de mes).
      */
     public function upcomingThisMonth(): Collection

@@ -59,9 +59,20 @@ class TelegramService
     /** Ruta interna del archivo en los servidores de Telegram */
     public function getFilePath(string $fileId): ?string
     {
-        $result = $this->api('getFile', ['file_id' => $fileId]);
+        $token = config('services.telegram.bot_token');
 
-        return $result['result']['file_path'] ?? null;
+        try {
+            $response = Http::asForm()
+                ->timeout(30)
+                ->retry(2, 1000)
+                ->post("https://api.telegram.org/bot{$token}/getFile", ['file_id' => $fileId]);
+
+            return $response->json('result.file_path');
+        } catch (\Throwable $e) {
+            \Log::warning('Telegram getFile falló', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /** Descarga el binario de un archivo (fotos ≤ 20 MB) */
@@ -69,9 +80,17 @@ class TelegramService
     {
         $token = config('services.telegram.bot_token');
 
-        $response = Http::timeout(30)->get("https://api.telegram.org/file/bot{$token}/{$filePath}");
+        try {
+            $response = Http::timeout(30)
+                ->retry(2, 1000)
+                ->get("https://api.telegram.org/file/bot{$token}/{$filePath}");
 
-        return $response->successful() ? $response->body() : null;
+            return $response->successful() ? $response->body() : null;
+        } catch (\Throwable $e) {
+            \Log::warning('Telegram downloadFile falló', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     private function api(string $method, array $params): array

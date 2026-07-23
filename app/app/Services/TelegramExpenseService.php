@@ -200,6 +200,59 @@ class TelegramExpenseService
         ];
     }
 
+    /**
+     * Botones de la notificación de cargo recurrente: aplicar con el monto
+     * configurado (fecha de hoy) u omitir (se re-notifica al día siguiente).
+     */
+    private function handleRecurringCallback(int|string $chatId, int $messageId, string $data): void
+    {
+        [, $action, $id] = array_pad(explode(':', $data, 3), 3, null);
+
+        $charge = ctype_digit((string) $id)
+            ? \App\Models\RecurringCharge::with('account', 'category')->find((int) $id)
+            : null;
+
+        if ($charge === null) {
+            $this->telegram->editMessageText($chatId, $messageId, 'ℹ️ Este cargo recurrente ya no existe.');
+
+            return;
+        }
+
+        if ($action === 'skip') {
+            $this->telegram->editMessageText(
+                $chatId,
+                $messageId,
+                '⏭ «' . $charge->name . '» pospuesto — te lo recuerdo mañana.'
+            );
+
+            return;
+        }
+
+        if ($action === 'apply') {
+            // Evitar doble aplicación si el botón se pica dos veces
+            if (! $charge->is_active || $charge->next_application_date->gt(now()->startOfDay())) {
+                $this->telegram->editMessageText($chatId, $messageId, 'ℹ️ «' . $charge->name . '» ya no está pendiente de aplicar.');
+
+                return;
+            }
+
+            $transaction = app(RecurringChargeService::class)->applyCharge($charge, null, now()->toDateString());
+
+            AuditLog::record('telegram_recurring_apply', [
+                'transaction_id'      => $transaction->id,
+                'recurring_charge_id' => $charge->id,
+            ]);
+
+            $this->telegram->editMessageText(
+                $chatId,
+                $messageId,
+                "✅ Cargo aplicado\n"
+                    . format_currency($transaction->amount) . ' · ' . $transaction->description . "\n"
+                    . $charge->account->displayLabel() . ' · ' . $transaction->date->translatedFormat('j M Y')
+            );
+        }
+    }
+
     /** Descarta el pendiente actual y continúa con la cola si hay más */
     private function skipPending(int|string $chatId, int $messageId, array $pending, string $reason): void
     {
@@ -278,6 +331,13 @@ class TelegramExpenseService
         $data      = $callback['data'] ?? '';
 
         $this->telegram->answerCallbackQuery($callback['id']);
+
+        // Confirmación de cargos recurrentes (independiente del flujo pendiente)
+        if (str_starts_with($callback['data'] ?? '', 'rec:')) {
+            $this->handleRecurringCallback($chatId, $messageId, $callback['data']);
+
+            return;
+        }
 
         $pending = Cache::get($this->pendingKey($chatId));
 
