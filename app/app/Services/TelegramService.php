@@ -23,13 +23,19 @@ class TelegramService
         return $this->api('sendMessage', $params);
     }
 
-    public function editMessageText(int|string $chatId, int $messageId, string $text): array
+    public function editMessageText(int|string $chatId, int $messageId, string $text, ?array $inlineKeyboard = null): array
     {
-        return $this->api('editMessageText', [
+        $params = [
             'chat_id'    => $chatId,
             'message_id' => $messageId,
             'text'       => $text,
-        ]);
+        ];
+
+        if ($inlineKeyboard !== null) {
+            $params['reply_markup'] = json_encode(['inline_keyboard' => $inlineKeyboard]);
+        }
+
+        return $this->api('editMessageText', $params);
     }
 
     public function answerCallbackQuery(string $callbackQueryId): array

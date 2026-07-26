@@ -293,9 +293,10 @@ class TelegramWebhookTest extends TestCase
 
         $this->assertSame(1, Transaction::count());
 
-        // Mov 2: Hans dice abono → categoría empatada por pista → solo cuenta → creado
+        // Mov 2: Hans dice abono → cuenta → categoría (la pista sale como ⭐ sugerida)
         $this->postUpdate($this->callbackUpdate('typ:income'))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('cat:' . $ingreso->id))->assertNoContent();
 
         $this->assertSame(2, Transaction::count());
 
@@ -310,6 +311,32 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame('500.00', $second->amount);
         $this->assertSame($ingreso->id, $second->category_id);
         $this->assertSame(now()->toDateString(), $second->date->toDateString());
+    }
+
+    public function test_category_keyboard_navigates_group_to_child(): void
+    {
+        $account = $this->account();
+        $root    = $this->category('Alimentación');
+        $child   = Category::create(['name' => 'Restaurantes', 'kind' => 'expense', 'parent_id' => $root->id]);
+
+        $this->fakeVision([
+            ['amount' => '350.00', 'description' => 'Cena', 'date' => null, 'type' => 'expense', 'category' => null],
+        ]);
+
+        $this->postUpdate($this->photoMessage())->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        // Abrir grupo, regresar, abrir de nuevo y elegir subcategoría
+        $this->postUpdate($this->callbackUpdate('catg:' . $root->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('catb:1'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('catg:' . $root->id))->assertNoContent();
+        $this->assertSame(0, Transaction::count());
+
+        $this->postUpdate($this->callbackUpdate('cat:' . $child->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame($child->id, $tx->category_id);
     }
 
     public function test_photo_movement_marked_as_interest_skips_category(): void
@@ -381,6 +408,7 @@ class TelegramWebhookTest extends TestCase
         $this->postUpdate($this->callbackUpdate('dup:keep'))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('typ:expense'))->assertNoContent();
         $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('cat:' . $comida->id))->assertNoContent();
 
         $this->assertSame(2, Transaction::count());
         $this->assertSame($comida->id, Transaction::orderByDesc('id')->first()->category_id);

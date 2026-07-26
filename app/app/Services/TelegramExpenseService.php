@@ -383,8 +383,9 @@ class TelegramExpenseService
             $pending['type'] = $id;
             unset($pending['ask_type']);
 
-            // Con el tipo ya definido, empatar/adivinar la categoría en ese kind
-            $pending['category_id'] = $id === 'interest' ? null
+            // La categoría SIEMPRE se pregunta; el empate solo queda como sugerencia
+            $pending['category_id'] = null;
+            $pending['category_suggested'] = $id === 'interest' ? null
                 : ($this->matchCategoryId($pending['category_hint'] ?? null, $id)
                     ?? $this->guessCategoryId($pending['description'], $id));
 
@@ -409,7 +410,33 @@ class TelegramExpenseService
             Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
 
             $this->telegram->editMessageText($chatId, $messageId, $this->pendingSummary($pending));
-            $this->telegram->sendMessage($chatId, '¿Qué categoría?', $this->categoryKeyboard($pending['type'] ?? 'expense'));
+            $this->telegram->sendMessage(
+                $chatId,
+                '¿Qué categoría?',
+                $this->categoryRootKeyboard($pending['type'] ?? 'expense', $pending['category_suggested'] ?? null)
+            );
+
+            return;
+        }
+
+        // Navegación del teclado de categorías: abrir grupo / volver a grupos
+        if ($action === 'catg' && ctype_digit((string) $id)) {
+            $root = Category::active()->find((int) $id);
+
+            if ($root !== null) {
+                $this->telegram->editMessageText($chatId, $messageId, '¿Qué categoría? · ' . $root->name, $this->categoryChildrenKeyboard($root));
+            }
+
+            return;
+        }
+
+        if ($action === 'catb') {
+            $this->telegram->editMessageText(
+                $chatId,
+                $messageId,
+                '¿Qué categoría?',
+                $this->categoryRootKeyboard($pending['type'] ?? 'expense', $pending['category_suggested'] ?? null)
+            );
 
             return;
         }
@@ -669,19 +696,54 @@ class TelegramExpenseService
         return $rows;
     }
 
-    private function categoryKeyboard(string $type = 'expense'): array
+    /**
+     * Nivel 1 del selector de categorías: sugerencia (si hay) + grupos raíz.
+     * Los grupos con hijas abren submenú (catg:); las raíces sin hijas
+     * se eligen directo (cat:).
+     */
+    private function categoryRootKeyboard(string $type = 'expense', ?int $suggestedId = null): array
     {
-        $buttons = Category::active()
+        $rows = [];
+
+        if ($suggestedId !== null && ($suggested = Category::active()->find($suggestedId))) {
+            $rows[] = [['text' => '⭐ Sugerida: ' . $suggested->name, 'callback_data' => 'cat:' . $suggested->id]];
+        }
+
+        $roots = Category::active()
             ->ofKind($type === 'income' ? Category::KIND_INCOME : Category::KIND_EXPENSE)
+            ->whereNull('parent_id')
+            ->withCount('children')
+            ->orderBy('name')
+            ->get();
+
+        $buttons = $roots->map(fn (Category $root) => $root->children_count > 0
+            ? ['text' => $root->name . ' ▸', 'callback_data' => 'catg:' . $root->id]
+            : ['text' => $root->name, 'callback_data' => 'cat:' . $root->id]);
+
+        $rows   = array_merge($rows, array_chunk($buttons->all(), 2));
+        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+
+        return $rows;
+    }
+
+    /** Nivel 2: subcategorías de un grupo + usar el grupo general + volver */
+    private function categoryChildrenKeyboard(Category $root): array
+    {
+        $buttons = $root->children()
+            ->where('is_archived', false)
             ->orderBy('name')
             ->get()
-            ->map(fn (Category $category) => [
-                'text'          => $category->name,
-                'callback_data' => 'cat:' . $category->id,
+            ->map(fn (Category $child) => [
+                'text'          => $child->name,
+                'callback_data' => 'cat:' . $child->id,
             ]);
 
         $rows   = array_chunk($buttons->all(), 2);
-        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+        $rows[] = [['text' => '📁 ' . $root->name . ' (general)', 'callback_data' => 'cat:' . $root->id]];
+        $rows[] = [
+            ['text' => '◀️ Volver', 'callback_data' => 'catb:1'],
+            ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+        ];
 
         return $rows;
     }
