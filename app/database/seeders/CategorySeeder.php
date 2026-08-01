@@ -31,7 +31,7 @@ class CategorySeeder extends Seeder
 
         $incomes = [
             ['name' => 'Honorarios',     'color' => '#10b981', 'icon' => 'briefcase',   'children' => []],
-            ['name' => 'Docencia',       'color' => '#06b6d4', 'icon' => 'school',      'children' => []],
+            ['name' => 'Docencia',       'color' => '#06b6d4', 'icon' => 'school',      'children' => ['TEC', 'ITAM', 'Anáhuac']],
             ['name' => 'Capacitaciones', 'color' => '#8b5cf6', 'icon' => 'presentation','children' => []],
             ['name' => 'Otros ingresos', 'color' => '#6b7280', 'icon' => 'ellipsis',    'children' => []],
         ];
@@ -55,12 +55,21 @@ class CategorySeeder extends Seeder
         }
 
         foreach ($incomes as $data) {
-            Category::create([
+            $parent = Category::create([
                 'name'  => $data['name'],
                 'kind'  => Category::KIND_INCOME,
                 'color' => $data['color'],
                 'icon'  => $data['icon'],
             ]);
+            foreach ($data['children'] as $child) {
+                Category::create([
+                    'parent_id' => $parent->id,
+                    'name'      => $child,
+                    'kind'      => Category::KIND_INCOME,
+                    'color'     => $data['color'],
+                    'icon'      => $data['icon'],
+                ]);
+            }
         }
     }
 }
