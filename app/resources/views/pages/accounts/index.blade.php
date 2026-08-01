@@ -119,15 +119,34 @@ $instLabels = [
 
             {{-- Info --}}
             <div class="flex-1 min-w-0">
+                @php
+                    // Cajas de ahorro / inversión: tasa y tope a la vista
+                    $showYield = in_array($account->type, ['savings', 'investment'], true) && $account->invest_apr;
+                    $cap       = $account->invest_cap !== null ? (float) $account->invest_cap : null;
+                    $overCap   = $cap && (float) $balance > $cap;
+                @endphp
                 <div class="flex items-center gap-2">
                     <span class="font-semibold text-[#373737] dark:text-white text-sm truncate">{{ $account->name }}</span>
+                    @if($showYield)
+                    <span class="text-[10px] bg-[#76a72b]/10 text-[#76a72b] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 tabular-nums">
+                        {{ rtrim(rtrim(number_format((float) $account->invest_apr, 2), '0'), '.') }}%
+                    </span>
+                    @endif
                     @if(! $account->is_active)
                     <span class="text-[10px] bg-[#efeded] dark:bg-white/10 text-[#ababab] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">Inactiva</span>
                     @endif
                 </div>
                 <p class="text-[11px] text-[#ababab] mt-0.5">
                     {{ $instLabels[$account->institution] ?? $account->institution }}
+                    @if($showYield && $cap)
+                        · tope ${{ number_format($cap, 2) }}
+                    @endif
                 </p>
+                @if($overCap)
+                <p class="text-[11px] text-amber-500 font-semibold mt-0.5 tabular-nums">
+                    ${{ number_format((float) $balance - $cap, 2) }} arriba del tope
+                </p>
+                @endif
             </div>
 
             {{-- Saldo --}}
