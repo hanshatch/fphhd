@@ -101,6 +101,60 @@ class TransactionModalEditTest extends TestCase
         $this->assertNull(Transaction::find($tx->id));
     }
 
+    public function test_el_modal_de_nuevo_movimiento_precarga_la_cuenta(): void
+    {
+        $user    = User::factory()->create();
+        $account = $this->account();
+
+        $response = $this->actingAsVerified($user)
+            ->get(route('transactions.create.modal', [
+                'account_id'  => $account->id,
+                'redirect_to' => '/accounts/' . $account->id,
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('value="' . $account->id . '" selected', false);
+        $response->assertSee('Registrar');
+        $response->assertDontSee('<html', false);
+    }
+
+    public function test_registrar_desde_el_modal_regresa_a_la_cuenta(): void
+    {
+        $user    = User::factory()->create();
+        $account = $this->account();
+
+        $response = $this->actingAsVerified($user)
+            ->post(route('transactions.store'), [
+                'date'        => now()->toDateString(),
+                'type'        => 'expense',
+                'amount'      => '120.50',
+                'account_id'  => $account->id,
+                'description' => 'Taxi',
+                'redirect_to' => '/accounts/' . $account->id,
+            ]);
+
+        $response->assertRedirect('/accounts/' . $account->id);
+        $this->assertSame('120.50', Transaction::latest('id')->first()->amount);
+    }
+
+    public function test_registrar_y_agregar_otro_reabre_el_modal_en_la_cuenta(): void
+    {
+        $user    = User::factory()->create();
+        $account = $this->account();
+
+        $response = $this->actingAsVerified($user)
+            ->post(route('transactions.store'), [
+                'date'         => now()->toDateString(),
+                'type'         => 'expense',
+                'amount'       => '80.00',
+                'account_id'   => $account->id,
+                'redirect_to'  => '/accounts/' . $account->id,
+                'save_and_new' => '1',
+            ]);
+
+        $response->assertRedirect('/accounts/' . $account->id . '?new=1');
+    }
+
     public function test_duplicar_desde_la_cuenta_vuelve_con_el_modal_abierto(): void
     {
         $user    = User::factory()->create();

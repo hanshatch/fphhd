@@ -77,11 +77,18 @@ class TransactionController extends Controller
 
         Transaction::create($data);
 
+        $back = $this->safeRedirectTo($request->input('redirect_to'));
+
         if ($request->has('save_and_new')) {
-            return redirect()->route('transactions.create')->with('status', 'Movimiento guardado.');
+            // Desde una cuenta: vuelve ahí con el modal listo para el siguiente
+            $target = $back
+                ? $back . (str_contains($back, '?') ? '&' : '?') . 'new=1'
+                : route('transactions.create');
+
+            return redirect($target)->with('status', 'Movimiento guardado.');
         }
 
-        return redirect()->route('transactions.index')->with('status', 'Movimiento guardado.');
+        return redirect($back ?: route('transactions.index'))->with('status', 'Movimiento guardado.');
     }
 
     public function edit(Transaction $transaction): View
@@ -100,6 +107,21 @@ class TransactionController extends Controller
      * abre desde la vista de cuenta (no saca a Hans de /accounts/{id}).
      */
     public function editModal(Request $request, Transaction $transaction): View
+    {
+        return $this->modalForm($request, $transaction);
+    }
+
+    /** Igual que editModal pero para un movimiento nuevo */
+    public function createModal(Request $request): View
+    {
+        return $this->modalForm($request, new Transaction([
+            'date'       => now()->format('Y-m-d'),
+            'type'       => $request->query('type', 'expense'),
+            'account_id' => $request->query('account_id'),
+        ]));
+    }
+
+    private function modalForm(Request $request, Transaction $transaction): View
     {
         $accounts = Account::where('is_active', true)->get()
             ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))

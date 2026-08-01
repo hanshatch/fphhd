@@ -8,6 +8,8 @@
     $typeColor  = ['expense' => '#ef4444', 'income' => '#76a72b', 'transfer' => '#878787', 'interest' => '#3b82f6', 'fee' => '#ef4444'];
     $typeLabels = ['expense' => 'Egreso', 'income' => 'Ingreso', 'transfer' => 'Transfer.', 'interest' => 'Interés'];
     $initType   = $transaction->type ?? 'expense';
+    $exists     = $transaction->exists;
+    $action     = $exists ? route('transactions.update', $transaction) : route('transactions.store');
 @endphp
 
 <div x-data="{
@@ -16,9 +18,9 @@
         get accent() { return this.colors[this.type] || this.colors.expense; }
      }">
 
-    <form method="POST" action="{{ route('transactions.update', $transaction) }}" class="space-y-4">
+    <form method="POST" action="{{ $action }}" class="space-y-4">
         @csrf
-        @method('PATCH')
+        @if($exists) @method('PATCH') @endif
         <input type="hidden" name="redirect_to" value="{{ $redirectTo }}">
 
         {{-- Tipo --}}
@@ -44,7 +46,7 @@
             <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
                 <input type="text" name="amount" data-money inputmode="decimal" required
-                    value="{{ $transaction->amount }}"
+                    value="{{ $transaction->amount }}" placeholder="0.00" @if(! $exists) autofocus @endif
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
             </div>
@@ -57,6 +59,9 @@
             </label>
             <select name="account_id" required
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                @unless($transaction->account_id)
+                <option value="">Selecciona una cuenta</option>
+                @endunless
                 @foreach($accounts->groupBy(fn ($a) => $a->institutionLabel()) as $institution => $group)
                 <optgroup label="{{ $institution }}">
                     @foreach($group as $account)
@@ -137,8 +142,16 @@
             <button type="submit"
                 class="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors"
                 :style="`background:${accent}`">
-                Guardar cambios
+                {{ $exists ? 'Guardar cambios' : 'Registrar' }}
             </button>
         </div>
+
+        @if(! $exists)
+        <button type="submit" name="save_and_new" value="1"
+            class="w-full text-center text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            :style="`background:${accent}15;color:${accent}`">
+            + Registrar y agregar otro
+        </button>
+        @endif
     </form>
 </div>

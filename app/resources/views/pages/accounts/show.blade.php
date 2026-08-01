@@ -52,14 +52,14 @@ $now = now();
     </div>
 
     {{-- Acciones rápidas --}}
-    <div class="grid grid-cols-2 gap-2">
-        <a href="{{ route('transactions.create') }}?account_id={{ $account->id }}"
+    <div class="grid grid-cols-2 gap-2" x-data>
+        <button type="button" data-no-spinner="true" x-on:click="$dispatch('new-tx')"
            class="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#ababab]/40 text-[#878787] hover:border-[#76a72b] hover:text-[#76a72b] transition-colors text-sm font-semibold">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
             </svg>
             Nuevo movimiento
-        </a>
+        </button>
         <a href="{{ route('accounts.adjust.show', $account) }}"
            class="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#ababab]/40 text-[#878787] hover:border-amber-500 hover:text-amber-500 transition-colors text-sm font-semibold">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,23 +75,32 @@ $now = now();
         open: false,
         loading: false,
         html: '',
-        async edit(id) {
+        title: 'Editar movimiento',
+        back: '{{ urlencode(route('accounts.show', $account, false)) }}',
+        async load(url, title) {
+            this.title = title;
             this.open = true;
             this.loading = true;
             this.html = '';
-            const url = '/transactions/' + id + '/edit-modal?redirect_to={{ urlencode(route('accounts.show', $account, false)) }}';
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             this.html = res.ok
                 ? await res.text()
-                : '<p class=\'text-sm text-red-500\'>No se pudo cargar el movimiento.</p>';
+                : '<p class=\'text-sm text-red-500\'>No se pudo cargar el formulario.</p>';
             this.loading = false;
+        },
+        edit(id) {
+            return this.load('/transactions/' + id + '/edit-modal?redirect_to=' + this.back, 'Editar movimiento');
+        },
+        create() {
+            return this.load('/transactions/create-modal?account_id={{ $account->id }}&redirect_to=' + this.back, 'Nuevo movimiento');
         },
         close() { this.open = false; this.html = ''; }
      }"
      x-on:edit-tx.window="edit($event.detail)"
+     x-on:new-tx.window="create()"
      x-on:close-tx-modal="close()"
      x-on:keydown.escape.window="close()"
-     x-init="@if(request()->filled('edit')) edit({{ (int) request('edit') }}) @endif">
+     x-init="@if(request()->filled('edit')) edit({{ (int) request('edit') }}) @elseif(request()->boolean('new')) create() @endif">
 
     <div x-show="open" x-cloak class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
         <div class="absolute inset-0 bg-black/50" x-on:click="close()"></div>
@@ -102,7 +111,7 @@ $now = now();
              x-transition:enter-end="translate-y-0 opacity-100">
 
             <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
-                <h2 class="text-base font-bold text-[#373737] dark:text-white">Editar movimiento</h2>
+                <h2 class="text-base font-bold text-[#373737] dark:text-white" x-text="title"></h2>
                 <button type="button" data-no-spinner="true" x-on:click="close()"
                     class="w-9 h-9 flex items-center justify-center rounded-full text-[#ababab] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -124,9 +133,9 @@ $now = now();
 
 {{-- ── Movimientos agrupados ────────────────────────────────────── --}}
 @if($grouped->isEmpty())
-<x-card class="text-center py-12">
+<x-card class="text-center py-12" x-data>
     <p class="text-[#878787] font-medium text-sm">Sin movimientos en esta cuenta</p>
-    <x-btn href="{{ route('transactions.create') }}?account_id={{ $account->id }}" class="mt-3 text-sm">
+    <x-btn type="button" data-no-spinner="true" x-on:click="$dispatch('new-tx')" class="mt-3 text-sm">
         Registrar primero
     </x-btn>
 </x-card>
