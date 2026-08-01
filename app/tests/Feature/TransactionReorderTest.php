@@ -116,6 +116,9 @@ class TransactionReorderTest extends TestCase
         // Un día con un solo movimiento no lleva agarradera: 2 botones, no 3
         // (se cuenta el atributo del botón, no el selector que usa el script)
         $this->assertSame(2, substr_count($html, 'data-drag-handle data-no-spinner'));
+
+        // Pero sí lleva el ícono apagado, para que todas las filas alineen
+        $this->assertSame(1, substr_count($html, 'Único movimiento de ese día'));
         $this->assertStringContainsString('data-id="' . $solo->id . '"', $html);
     }
 

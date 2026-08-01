@@ -169,6 +169,13 @@ $now = now();
      del mismo día, que es como se concilia contra el estado de cuenta --}}
 <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl overflow-hidden border border-[#ababab]/15 shadow-sm mb-1 [&>*:last-child>*:last-child]:border-b-0">
     @foreach($txs->groupBy(fn ($t) => $t->date->toDateString()) as $dayKey => $dayTxs)
+    @php
+        // Zebra por bloque de fecha: ayuda a leer dónde empieza y termina un día
+        $isOddDay  = $loop->index % 2 === 1;
+        $rowBg     = $isOddDay ? 'bg-[#f7f6f6] dark:bg-white/[0.03]' : 'bg-white dark:bg-[#2a2a2a]';
+        $rowHover  = $isOddDay ? 'hover:bg-[#f0efef] dark:hover:bg-white/[0.06]' : 'hover:bg-[#f9f9f9] dark:hover:bg-white/5';
+        $canDrag   = $dayTxs->count() > 1;
+    @endphp
     <div data-day-group data-date="{{ $dayKey }}">
     @foreach($dayTxs as $tx)
     @php
@@ -185,16 +192,24 @@ $now = now();
         }
     @endphp
     <div data-tx-row data-id="{{ $tx->id }}"
-         class="flex items-center gap-3 px-4 py-3 border-b border-[#ababab]/10 hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group bg-white dark:bg-[#2a2a2a]">
+         class="flex items-center gap-3 px-4 py-3 border-b border-[#ababab]/10 transition-colors group {{ $rowBg }} {{ $rowHover }}">
 
-        {{-- Agarradera: solo aparece si hay más de un movimiento ese día --}}
-        @if($dayTxs->count() > 1)
+        {{-- La agarradera va en todas las filas para que queden alineadas;
+             si el día tiene un solo movimiento se ve apagada e inerte --}}
+        @if($canDrag)
         <button type="button" data-drag-handle data-no-spinner="true" title="Arrastrar para acomodar dentro del día"
             class="w-6 -ml-1 flex-shrink-0 flex items-center justify-center text-[#ababab] hover:text-[#878787] cursor-grab active:cursor-grabbing touch-none">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
             </svg>
         </button>
+        @else
+        <span aria-hidden="true" title="Único movimiento de ese día"
+            class="w-6 -ml-1 flex-shrink-0 flex items-center justify-center text-[#ababab]/25">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+            </svg>
+        </span>
         @endif
 
 
