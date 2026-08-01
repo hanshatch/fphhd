@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Source;
 use App\Models\Transaction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,6 +17,7 @@ class TransactionController extends Controller
     {
         $query = Transaction::with(['account', 'category', 'source', 'counterpartyAccount'])
             ->orderBy('date', 'desc')
+            ->orderBy('position', 'asc')
             ->orderBy('id', 'desc');
 
         $hasFilter = $request->hasAny(['account_id', 'type', 'from', 'to', 'search']);
@@ -169,6 +171,37 @@ class TransactionController extends Controller
         }
 
         return preg_match('#^/(?!/)[\w\-/?=&%.]*$#', $target) === 1 ? $target : null;
+    }
+
+    /**
+     * Reordena manualmente los movimientos de un mismo día (conciliación
+     * visual contra el estado de cuenta). Solo acepta ids de la misma fecha.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer|exists:transactions,id',
+        ]);
+
+        $transactions = Transaction::whereIn('id', $data['ids'])->get();
+
+        if ($transactions->count() !== count($data['ids'])) {
+            return response()->json(['message' => 'Movimientos no encontrados.'], 422);
+        }
+
+        if ($transactions->pluck('date')->map(fn ($d) => $d->toDateString())->unique()->count() > 1) {
+            return response()->json(['message' => 'Solo se puede reordenar dentro del mismo día.'], 422);
+        }
+
+        $byId = $transactions->keyBy('id');
+
+        foreach ($data['ids'] as $index => $id) {
+            // 1-based: el 0 queda reservado para «sin acomodar»
+            $byId[$id]->update(['position' => $index + 1]);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     public function duplicate(Request $request, Transaction $transaction): RedirectResponse

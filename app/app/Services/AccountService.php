@@ -153,7 +153,11 @@ class AccountService
                 ->orWhere(fn ($q2) => $q2
                     ->where('counterparty_account_id', $account->id)
                     ->where('type', 'transfer')))
+            // Orden cronológico: dentro del día, el inverso del que se ve en
+            // pantalla (position asc, id desc), para que el saldo corrido
+            // acumule de abajo hacia arriba de la lista.
             ->orderBy('date', 'asc')
+            ->orderBy('position', 'desc')
             ->orderBy('id', 'asc')
             ->get();
 

@@ -162,8 +162,12 @@ $now = now();
     </div>
 </div>
 
-<div class="bg-white dark:bg-[#2a2a2a] rounded-2xl overflow-hidden border border-[#ababab]/15 shadow-sm mb-1">
-    @foreach($txs as $tx)
+{{-- Los movimientos se agrupan por día: arrastrar solo reordena dentro
+     del mismo día, que es como se concilia contra el estado de cuenta --}}
+<div class="bg-white dark:bg-[#2a2a2a] rounded-2xl overflow-hidden border border-[#ababab]/15 shadow-sm mb-1 [&>*:last-child>*:last-child]:border-b-0">
+    @foreach($txs->groupBy(fn ($t) => $t->date->toDateString()) as $dayKey => $dayTxs)
+    <div data-day-group data-date="{{ $dayKey }}">
+    @foreach($dayTxs as $tx)
     @php
         $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
         $cfg = $isIncoming
@@ -177,7 +181,19 @@ $now = now();
             $iconLabel = $tx->type === 'transfer' ? '⇄' : $cfg['sign'];
         }
     @endphp
-    <div class="flex items-center gap-3 px-4 py-3 {{ !$loop->last ? 'border-b border-[#ababab]/10' : '' }} hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group">
+    <div data-tx-row data-id="{{ $tx->id }}"
+         class="flex items-center gap-3 px-4 py-3 border-b border-[#ababab]/10 hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group bg-white dark:bg-[#2a2a2a]">
+
+        {{-- Agarradera: solo aparece si hay más de un movimiento ese día --}}
+        @if($dayTxs->count() > 1)
+        <button type="button" data-drag-handle data-no-spinner="true" title="Arrastrar para acomodar dentro del día"
+            class="w-6 -ml-1 flex-shrink-0 flex items-center justify-center text-[#ababab] hover:text-[#878787] cursor-grab active:cursor-grabbing touch-none">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+            </svg>
+        </button>
+        @endif
+
 
         <div class="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 text-white font-bold text-sm select-none"
              style="background-color: {{ $iconBg }}">
@@ -251,8 +267,53 @@ $now = now();
         </div>
     </div>
     @endforeach
+    </div>
+    @endforeach
 </div>
 @endforeach
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.Sortable) return;
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    document.querySelectorAll('[data-day-group]').forEach(function (group) {
+        if (group.querySelectorAll('[data-tx-row]').length < 2) return;
+
+        window.Sortable.create(group, {
+            handle: '[data-drag-handle]',
+            draggable: '[data-tx-row]',
+            animation: 150,
+            ghostClass: 'opacity-40',
+            // El grupo acota el arrastre al mismo día: no hay destino fuera de él
+            onEnd: function () {
+                const ids = Array.from(group.querySelectorAll('[data-tx-row]'))
+                    .map(function (row) { return Number(row.dataset.id); });
+
+                fetch('{{ route('transactions.reorder') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ ids: ids }),
+                }).then(function (res) {
+                    if (!res.ok) {
+                        console.error('[fp] no se pudo guardar el orden', res.status);
+                        return;
+                    }
+                    // El saldo corrido depende del orden: recargar para recalcularlo
+                    window.location.reload();
+                });
+            },
+        });
+    });
+});
+</script>
+@endpush
 
 @endif
 </x-app-layout>

@@ -34,6 +34,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::resource('sources', SourceController::class)->except('show');
     Route::resource('transactions', TransactionController::class)->except('show');
     Route::post('/transactions/{transaction}/duplicate', [TransactionController::class, 'duplicate'])->name('transactions.duplicate');
+    Route::post('/transactions/reorder', [TransactionController::class, 'reorder'])->name('transactions.reorder');
     Route::get('/transactions/create-modal', [TransactionController::class, 'createModal'])->name('transactions.create.modal');
     Route::get('/transactions/{transaction}/edit-modal', [TransactionController::class, 'editModal'])->name('transactions.edit.modal');
     Route::get('/accounts/{account}/adjust', [AccountController::class, 'adjustShow'])->name('accounts.adjust.show');
