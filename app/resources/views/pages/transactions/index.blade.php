@@ -166,7 +166,7 @@ $now = now();
         </div>
 
         {{-- Acciones (visibles en hover desktop) --}}
-        <div class="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity lg:opacity-0">
+        <div class="flex items-center gap-0.5 flex-shrink-0">
             {{-- Editar --}}
             <a href="{{ route('transactions.edit', $tx) }}"
                class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors"

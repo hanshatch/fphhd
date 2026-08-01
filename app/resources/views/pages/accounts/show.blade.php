@@ -208,8 +208,9 @@ $now = now();
             @endif
         </div>
 
-        {{-- En móvil siempre visibles (no hay hover); en desktop al pasar el cursor --}}
-        <div class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" x-data>
+        {{-- Siempre visibles: en táctil (incluido iPad, que es pantalla ancha)
+             no hay hover, así que ocultarlas las volvía inalcanzables --}}
+        <div class="flex items-center gap-0.5 flex-shrink-0" x-data>
             <button type="button" data-no-spinner="true"
                x-on:click="$dispatch('edit-tx', {{ $tx->id }})"
                class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors" title="Editar">
