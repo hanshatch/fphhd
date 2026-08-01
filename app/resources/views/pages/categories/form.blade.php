@@ -7,7 +7,28 @@
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $category->exists ? 'Editar categoría' : 'Nueva categoría' }}</h1>
         </div>
 
-        <form method="POST" action="{{ $category->exists ? route('categories.update', $category) : route('categories.store') }}" class="space-y-5">
+        @php
+            $parentMeta = $parents->mapWithKeys(fn ($p) => [
+                (string) $p->id => ['name' => $p->name, 'color' => $p->color, 'icon' => $p->icon, 'kind' => $p->kind],
+            ]);
+        @endphp
+
+        <form method="POST" action="{{ $category->exists ? route('categories.update', $category) : route('categories.store') }}" class="space-y-5"
+            x-data="{
+                parents: {{ Illuminate\Support\Js::from($parentMeta) }},
+                parent: '{{ old('parent_id', $category->parent_id) }}',
+                color: '{{ old('color', $category->color ?? '#6366f1') }}',
+                icon: '{{ old('icon', $category->icon ?? 'tag') }}',
+                kind: '{{ old('kind', $category->kind ?? 'expense') }}',
+                get inherited() { return this.parents[this.parent] ?? null; },
+                applyParent() {
+                    const p = this.inherited;
+                    if (!p) return;
+                    this.color = p.color;
+                    this.icon  = p.icon;
+                    this.kind  = p.kind;
+                }
+            }">
             @csrf
             @if($category->exists) @method('PATCH') @endif
 
@@ -21,17 +42,22 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo *</label>
-                    <select name="kind" required class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
-                        <option value="expense" {{ old('kind', $category->kind) === 'expense' ? 'selected' : '' }}>Egreso</option>
-                        <option value="income"  {{ old('kind', $category->kind) === 'income'  ? 'selected' : '' }}>Ingreso</option>
+                    <select name="kind" required x-model="kind" x-bind:disabled="!!inherited"
+                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] disabled:opacity-60">
+                        <option value="expense">Egreso</option>
+                        <option value="income">Ingreso</option>
                     </select>
+                    {{-- Deshabilitado no se envía: el tipo viaja aquí y el servidor lo re-fuerza --}}
+                    <template x-if="inherited">
+                        <input type="hidden" name="kind" x-bind:value="kind">
+                    </template>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría padre</label>
-                    <select name="parent_id" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
+                    <select name="parent_id" x-model="parent" x-on:change="applyParent()" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
                         <option value="">— Ninguna (raíz) —</option>
                         @foreach($parents as $p)
-                            <option value="{{ $p->id }}" {{ old('parent_id', $category->parent_id) == $p->id ? 'selected' : '' }}>
+                            <option value="{{ $p->id }}">
                                 {{ $p->name }} ({{ $p->kind === 'income' ? 'ingreso' : 'egreso' }})
                             </option>
                         @endforeach
@@ -39,15 +65,29 @@
                 </div>
             </div>
 
-            <div>
+            {{-- Heredado del padre: se muestra, no se elige --}}
+            <template x-if="inherited">
+                <div class="flex items-center gap-3 rounded-lg border border-[#76a72b]/30 bg-[#76a72b]/5 px-4 py-3">
+                    <span class="w-9 h-9 rounded-xl flex-shrink-0" x-bind:style="`background-color:${color}`"></span>
+                    <p class="text-xs text-[#878787]">
+                        Color, icono y tipo se heredan de
+                        <span class="font-semibold text-[#373737] dark:text-white" x-text="inherited?.name"></span>,
+                        para que la subcategoría se vea igual que su grupo.
+                    </p>
+                </div>
+            </template>
+
+            <div x-show="!inherited" x-cloak>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
-                <input type="color" name="color" value="{{ old('color', $category->color ?? '#6366f1') }}"
+                <input type="color" name="color" x-model="color"
                     class="h-10 w-16 rounded-lg border border-gray-300 dark:border-gray-700 cursor-pointer">
             </div>
+            {{-- x-show solo oculta: el color heredado sí se envía --}}
 
-            <div x-data="{ icon: '{{ old('icon', $category->icon ?? 'tag') }}' }">
+            <input type="hidden" name="icon" x-model="icon">
+
+            <div x-show="!inherited" x-cloak>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Icono</label>
-                <input type="hidden" name="icon" x-model="icon">
                 @php
                     $iconOptions = ['tag', 'utensils', 'car', 'home', 'heart-pulse', 'graduation-cap', 'tv', 'shirt',
                         'laptop', 'landmark', 'briefcase', 'school', 'presentation', 'receipt', 'plane', 'gift',

@@ -34,7 +34,7 @@ class CategoryController extends Controller
             'icon'      => 'nullable|string|max:50',
         ]);
 
-        Category::create($request->only('name', 'kind', 'parent_id', 'color', 'icon'));
+        Category::create($this->inheritFromParent($request->only('name', 'kind', 'parent_id', 'color', 'icon')));
 
         return redirect()->route('categories.index')->with('status', 'Categoría creada.');
     }
@@ -57,9 +57,32 @@ class CategoryController extends Controller
             'icon'      => 'nullable|string|max:50',
         ]);
 
-        $category->update($request->only('name', 'kind', 'parent_id', 'color', 'icon'));
+        $category->update($this->inheritFromParent($request->only('name', 'kind', 'parent_id', 'color', 'icon')));
 
         return redirect()->route('categories.index')->with('status', 'Categoría actualizada.');
+    }
+
+    /**
+     * Una subcategoría siempre toma color, icono y tipo de su padre: así la
+     * lista se lee como un bloque coherente y no hay hijos de otro color.
+     */
+    private function inheritFromParent(array $data): array
+    {
+        if (empty($data['parent_id'])) {
+            return $data;
+        }
+
+        $parent = Category::find($data['parent_id']);
+
+        if (! $parent) {
+            return $data;
+        }
+
+        $data['color'] = $parent->color;
+        $data['icon']  = $parent->icon;
+        $data['kind']  = $parent->kind;
+
+        return $data;
     }
 
     public function destroy(Category $category): RedirectResponse
