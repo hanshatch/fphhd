@@ -95,6 +95,25 @@ class TransactionController extends Controller
         return view('pages.transactions.form', compact('transaction', 'accounts', 'categories', 'sources'));
     }
 
+    /**
+     * Formulario de edición sin layout, para inyectarlo en el modal que se
+     * abre desde la vista de cuenta (no saca a Hans de /accounts/{id}).
+     */
+    public function editModal(Request $request, Transaction $transaction): View
+    {
+        $accounts = Account::where('is_active', true)->get()
+            ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))
+            ->values();
+
+        return view('pages.transactions.modal-form', [
+            'transaction' => $transaction,
+            'accounts'    => $accounts,
+            'categories'  => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
+            'sources'     => Source::active()->orderBy('name')->get(),
+            'redirectTo'  => $this->safeRedirectTo($request->query('redirect_to')),
+        ]);
+    }
+
     public function update(Request $request, Transaction $transaction): RedirectResponse
     {
         $this->normalizeMoney($request, ['amount']);
@@ -112,24 +131,47 @@ class TransactionController extends Controller
 
         $transaction->update($data);
 
-        return redirect()->route('transactions.index')->with('status', 'Movimiento actualizado.');
+        $back = $this->safeRedirectTo($request->input('redirect_to'));
+
+        return redirect($back ?: route('transactions.index'))->with('status', 'Movimiento actualizado.');
     }
 
-    public function duplicate(Transaction $transaction): RedirectResponse
+    /**
+     * Solo acepta rutas internas ("/accounts/2"), nunca URLs externas ni
+     * protocol-relative, para no convertir el form en un open redirect.
+     */
+    private function safeRedirectTo(?string $target): ?string
+    {
+        if (! is_string($target) || $target === '') {
+            return null;
+        }
+
+        return preg_match('#^/(?!/)[\w\-/?=&%.]*$#', $target) === 1 ? $target : null;
+    }
+
+    public function duplicate(Request $request, Transaction $transaction): RedirectResponse
     {
         // Copia el movimiento con la fecha de hoy y redirige al form de edición
         $copy = $transaction->replicate(['created_at', 'updated_at']);
         $copy->date = now()->toDateString();
         $copy->save();
 
-        return redirect()->route('transactions.edit', $copy)
-            ->with('status', 'Movimiento duplicado. Ajusta los datos y guarda.');
+        $back = $this->safeRedirectTo($request->input('redirect_to'));
+
+        // Desde una cuenta: vuelve ahí con el modal abierto sobre la copia
+        $target = $back
+            ? $back . (str_contains($back, '?') ? '&' : '?') . 'edit=' . $copy->id
+            : route('transactions.edit', $copy);
+
+        return redirect($target)->with('status', 'Movimiento duplicado. Ajusta los datos y guarda.');
     }
 
-    public function destroy(Transaction $transaction): RedirectResponse
+    public function destroy(Request $request, Transaction $transaction): RedirectResponse
     {
         $transaction->delete();
 
-        return redirect()->route('transactions.index')->with('status', 'Movimiento eliminado.');
+        $back = $this->safeRedirectTo($request->input('redirect_to'));
+
+        return redirect($back ?: route('transactions.index'))->with('status', 'Movimiento eliminado.');
     }
 }

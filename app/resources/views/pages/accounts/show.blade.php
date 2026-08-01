@@ -70,6 +70,58 @@ $now = now();
     </div>
 </div>
 
+{{-- ── Modal de edición de movimiento ───────────────────────────── --}}
+<div x-data="{
+        open: false,
+        loading: false,
+        html: '',
+        async edit(id) {
+            this.open = true;
+            this.loading = true;
+            this.html = '';
+            const url = '/transactions/' + id + '/edit-modal?redirect_to={{ urlencode(route('accounts.show', $account, false)) }}';
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            this.html = res.ok
+                ? await res.text()
+                : '<p class=\'text-sm text-red-500\'>No se pudo cargar el movimiento.</p>';
+            this.loading = false;
+        },
+        close() { this.open = false; this.html = ''; }
+     }"
+     x-on:edit-tx.window="edit($event.detail)"
+     x-on:close-tx-modal="close()"
+     x-on:keydown.escape.window="close()"
+     x-init="@if(request()->filled('edit')) edit({{ (int) request('edit') }}) @endif">
+
+    <div x-show="open" x-cloak class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" x-on:click="close()"></div>
+
+        <div class="relative w-full sm:max-w-md bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
+             x-transition:enter-end="translate-y-0 opacity-100">
+
+            <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
+                <h2 class="text-base font-bold text-[#373737] dark:text-white">Editar movimiento</h2>
+                <button type="button" data-no-spinner="true" x-on:click="close()"
+                    class="w-9 h-9 flex items-center justify-center rounded-full text-[#ababab] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto">
+                <div x-show="loading" class="py-10 flex justify-center">
+                    <svg class="w-6 h-6 animate-spin text-[#76a72b]" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                <div x-html="html"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ── Movimientos agrupados ────────────────────────────────────── --}}
 @if($grouped->isEmpty())
 <x-card class="text-center py-12">
@@ -156,15 +208,18 @@ $now = now();
             @endif
         </div>
 
-        <div class="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <a href="{{ route('transactions.edit', $tx) }}"
+        {{-- En móvil siempre visibles (no hay hover); en desktop al pasar el cursor --}}
+        <div class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" x-data>
+            <button type="button" data-no-spinner="true"
+               x-on:click="$dispatch('edit-tx', {{ $tx->id }})"
                class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors" title="Editar">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
-            </a>
+            </button>
             <form method="POST" action="{{ route('transactions.duplicate', $tx) }}">
                 @csrf
+                <input type="hidden" name="redirect_to" value="{{ route('accounts.show', $account, false) }}">
                 <button type="submit"
                     class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="Duplicar">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,6 +230,7 @@ $now = now();
             <form method="POST" action="{{ route('transactions.destroy', $tx) }}"
                   onsubmit="return confirm('¿Eliminar este movimiento?')">
                 @csrf @method('DELETE')
+                <input type="hidden" name="redirect_to" value="{{ route('accounts.show', $account, false) }}">
                 <button type="submit"
                     class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="Eliminar">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
