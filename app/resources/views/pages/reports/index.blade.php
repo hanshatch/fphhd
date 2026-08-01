@@ -265,8 +265,11 @@
             @foreach($yieldRows as $row)
             @php
                 $nominal = (float) ($row['apr_nominal'] ?? 0);
+                $cap     = $row['apr_cap'] !== null ? (float) $row['apr_cap'] : null;
+                // Con tope, el APR sobre el saldo total no puede llegar al nominal
+                $expected  = $row['apr_expected'] !== null ? (float) $row['apr_expected'] : $nominal;
                 $effective = $row['apr_effective'] !== null ? (float) $row['apr_effective'] : null;
-                $belowNominal = $nominal > 0 && $effective !== null && $effective < $nominal - 0.5;
+                $belowNominal = $expected > 0 && $effective !== null && $effective < $expected - 0.5;
             @endphp
             <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
                 <td class="px-4 py-3">
@@ -286,6 +289,14 @@
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">
                     {{ $nominal > 0 ? number_format($nominal, 2).'%' : '—' }}
+                    @if($nominal > 0 && $cap)
+                    <span class="block text-[10px] text-[#ababab]">
+                        hasta ${{ number_format($cap, 2) }}
+                        @if($expected > 0 && $expected < $nominal - 0.005)
+                            · esperado {{ number_format($expected, 2) }}%
+                        @endif
+                    </span>
+                    @endif
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums font-bold {{ $belowNominal ? 'text-amber-500' : 'text-[#373737] dark:text-white' }}">
                     {{ $effective !== null && $effective > 0 ? number_format($effective, 2).'%' : '—' }}

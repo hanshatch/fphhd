@@ -134,6 +134,24 @@
                         value="{{ old('invest_apr', $account->invest_apr) }}"
                         placeholder="Solo cajas de ahorro · ej. 13.00"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                    @error('invest_apr')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                </div>
+
+                {{-- Tope al que aplica el APR --}}
+                <div x-show="type !== 'credit'" x-cloak>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tope del APR</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
+                        <input type="text" name="invest_cap" data-money inputmode="decimal"
+                            value="{{ old('invest_cap', $account->invest_cap !== null ? number_format((float) $account->invest_cap, 2) : '') }}"
+                            placeholder="ej. 25,000.00"
+                            class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                    </div>
+                    <p class="mt-1 text-xs text-[#878787]">
+                        Saldo máximo al que se paga ese APR. Déjalo vacío si la tasa aplica a todo el saldo.
+                    </p>
+                    @error('invest_cap')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Logo + Color ──────────────────────────────────── --}}

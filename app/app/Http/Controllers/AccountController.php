@@ -75,7 +75,7 @@ class AccountController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $this->normalizeMoney($request, ['initial_balance', 'credit_limit']);
+        $this->normalizeMoney($request, ['initial_balance', 'credit_limit', 'invest_cap']);
 
         $data = $request->validate([
             'name'            => 'required|string|max:100',
@@ -84,6 +84,7 @@ class AccountController extends Controller
             'initial_balance' => 'required|numeric|min:0',
             'color'           => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
             'invest_apr'      => 'nullable|numeric|min:0|max:100',
+            'invest_cap'      => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string|max:500',
             'statement_day'   => 'nullable|integer|min:1|max:31',
             'payment_day'     => 'nullable|integer|min:1|max:31',
@@ -123,7 +124,7 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account): RedirectResponse
     {
-        $this->normalizeMoney($request, ['initial_balance', 'credit_limit']);
+        $this->normalizeMoney($request, ['initial_balance', 'credit_limit', 'invest_cap']);
 
         $data = $request->validate([
             'name'            => 'required|string|max:100',
@@ -133,6 +134,7 @@ class AccountController extends Controller
             'color'           => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
             'is_active'       => 'boolean',
             'invest_apr'      => 'nullable|numeric|min:0|max:100',
+            'invest_cap'      => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string|max:500',
             'statement_day'   => 'nullable|integer|min:1|max:31',
             'payment_day'     => 'nullable|integer|min:1|max:31',

@@ -95,6 +95,64 @@ class YieldReportTest extends TestCase
         $this->assertSame('0.00', $report['yieldTotal']);
     }
 
+    // ── Tope del APR ────────────────────────────────────────────────────
+
+    public function test_sin_tope_el_apr_esperado_es_el_nominal(): void
+    {
+        $account = $this->savingsAccount('50000.00', '13.00');
+        $this->interest($account, '100.00', now()->subMonthNoOverflow()->toDateString());
+
+        $row = app(YieldService::class)->report(12)['yieldRows']
+            ->firstWhere(fn ($r) => $r['account']->id === $account->id);
+
+        $this->assertNull($row['apr_cap']);
+        $this->assertSame('13.00', $row['apr_expected']);
+    }
+
+    public function test_con_saldo_bajo_el_tope_el_apr_esperado_sigue_siendo_el_nominal(): void
+    {
+        $account = $this->savingsAccount('10000.00', '13.00');
+        $account->update(['invest_cap' => '25000.00']);
+        $this->interest($account, '100.00', now()->subMonthNoOverflow()->toDateString());
+
+        $row = app(YieldService::class)->report(12)['yieldRows']
+            ->firstWhere(fn ($r) => $r['account']->id === $account->id);
+
+        $this->assertSame('13.00', $row['apr_expected']);
+    }
+
+    public function test_con_saldo_arriba_del_tope_el_apr_esperado_baja_a_prorrata(): void
+    {
+        // Saldo constante 50,000 con tope de 25,000: solo la mitad rinde,
+        // así que sobre el saldo total el APR esperado es la mitad del nominal
+        $account = $this->savingsAccount('50000.00', '13.00');
+        $account->update(['invest_cap' => '25000.00']);
+
+        $row = app(YieldService::class)->report(12)['yieldRows']
+            ->firstWhere(fn ($r) => $r['account']->id === $account->id);
+
+        $this->assertSame('25000.00', $row['apr_cap']);
+        $this->assertSame('6.50', $row['apr_expected']);
+    }
+
+    public function test_el_tope_se_guarda_desde_el_formulario(): void
+    {
+        $user    = User::factory()->create();
+        $account = $this->savingsAccount('10000.00', '13.00');
+
+        $this->actingAsVerified($user)->patch(route('accounts.update', $account), [
+            'name'            => $account->name,
+            'type'            => 'investment',
+            'institution'     => 'nu',
+            'initial_balance' => '10,000.00',
+            'color'           => '#76a72b',
+            'invest_apr'      => '13.00',
+            'invest_cap'      => '25,000.00',
+        ])->assertRedirect();
+
+        $this->assertSame('25000.00', $account->fresh()->invest_cap);
+    }
+
     public function test_yields_report_page_renders(): void
     {
         $user    = User::factory()->create();

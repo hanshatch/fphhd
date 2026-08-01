@@ -11,12 +11,13 @@ class Account extends Model
     protected $fillable = [
         'name', 'type', 'institution', 'currency',
         'initial_balance', 'is_active', 'color', 'icon', 'logo_path',
-        'invest_apr', 'notes',
+        'invest_apr', 'invest_cap', 'notes',
     ];
 
     protected $casts = [
         'initial_balance' => 'decimal:2',
         'invest_apr'      => 'decimal:2',
+        'invest_cap'      => 'decimal:2',
         'is_active'       => 'boolean',
     ];
 

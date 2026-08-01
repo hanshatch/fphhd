@@ -67,9 +67,10 @@ class YieldService
                 $boundaries[] = $this->accountService->balance($account, $monthEnd);
             }
 
-            $monthly       = [];
-            $sumInterest   = '0.00';
-            $sumAvgBalance = '0.00';
+            $monthly            = [];
+            $sumInterest        = '0.00';
+            $sumAvgBalance      = '0.00';
+            $monthsWithBalance  = 0;
 
             foreach ($monthKeys as $i => $key) {
                 $interest = bcadd((string) ($byMonth[$key] ?? '0'), '0', 2);
@@ -84,6 +85,7 @@ class YieldService
                 $sumInterest = bcadd($sumInterest, $interest, 2);
                 if (bccomp($avg, '0', 2) > 0) {
                     $sumAvgBalance = bcadd($sumAvgBalance, $avg, 2);
+                    $monthsWithBalance++;
                 }
             }
 
@@ -103,6 +105,8 @@ class YieldService
                 'interest_prev' => bcadd((string) ($byMonth[$prevMonthKey] ?? '0'), '0', 2),
                 'interest_sum'  => $sumInterest,
                 'apr_nominal'   => $account->invest_apr,
+                'apr_cap'       => $account->invest_cap,
+                'apr_expected'  => $this->expectedApr($account, $sumAvgBalance, $monthsWithBalance),
                 'apr_effective' => $aprEffective,
                 'last_capture'  => $lastCapture,
                 'pending'       => $lastCapture === null || $lastCapture->lt($pendingCutoff),
@@ -130,6 +134,36 @@ class YieldService
             'yieldMonths'    => $months,
             'prevMonthName'  => now()->subMonthNoOverflow()->translatedFormat('F Y'),
         ];
+    }
+
+    /**
+     * APR que cabe esperar dado el tope de la cuenta: si el saldo promedio
+     * del periodo rebasa el tope, el excedente no rinde, así que el APR
+     * observado sobre el saldo TOTAL baja proporcionalmente. Sin tope (o con
+     * saldo por debajo de él) el esperado es el nominal tal cual.
+     */
+    private function expectedApr(Account $account, string $sumAvgBalance, int $monthsWithBalance): ?string
+    {
+        $nominal = $account->invest_apr;
+
+        if ($nominal === null || bccomp((string) $nominal, '0', 2) <= 0) {
+            return null;
+        }
+
+        $cap = $account->invest_cap;
+
+        if ($cap === null || $monthsWithBalance === 0 || bccomp((string) $cap, '0', 2) <= 0) {
+            return bcadd((string) $nominal, '0', 2);
+        }
+
+        $avgPeriod = bcdiv($sumAvgBalance, (string) $monthsWithBalance, 2);
+
+        if (bccomp($avgPeriod, (string) $cap, 2) <= 0) {
+            return bcadd((string) $nominal, '0', 2);
+        }
+
+        // nominal × (tope / saldo promedio)
+        return bcmul((string) $nominal, bcdiv((string) $cap, $avgPeriod, 6), 2);
     }
 
     /**
