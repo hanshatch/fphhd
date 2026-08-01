@@ -157,6 +157,9 @@ $now = now();
 <div class="flex items-center justify-between mb-2 mt-5 first:mt-0">
     <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider">{{ $monthLabel }}</h2>
     <div class="flex items-center gap-3 text-xs font-semibold">
+        <span class="text-[#ababab] font-medium tabular-nums">
+            {{ $txs->count() }} {{ $txs->count() === 1 ? 'movimiento' : 'movimientos' }}
+        </span>
         @if($inSum > 0)<span class="text-[#76a72b]">+${{ number_format($inSum, 2) }}</span>@endif
         @if($outSum > 0)<span class="text-red-500">-${{ number_format($outSum, 2) }}</span>@endif
     </div>
