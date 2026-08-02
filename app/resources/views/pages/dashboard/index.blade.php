@@ -332,7 +332,7 @@
                     <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Falta capturar</p>
                     @foreach($yieldPending as $p)
                     <a href="{{ route('transactions.create') }}" class="block text-xs text-amber-700 dark:text-amber-300 hover:underline">
-                        {{ $p['account']->name }}
+                        {{ $p['account']->displayLabel() }}
                         <span class="text-amber-500">· {{ $p['last'] ? 'último '.$p['last']->translatedFormat('j M') : 'sin capturas' }}</span>
                     </a>
                     @endforeach

@@ -105,7 +105,9 @@ class DashboardService
             ->with('account')
             ->get()
             ->map(fn ($r) => [
-                'name'  => $r->account->name,
+                // "Nu · Cajita Turbo": la institución primero, para distinguir
+                // cuentas que se llaman parecido entre bancos
+                'name'  => $r->account->displayLabel(),
                 'color' => $r->account->color,
                 'total' => bcadd((string) $r->total, '0', 2),
             ]);
