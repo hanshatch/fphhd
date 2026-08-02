@@ -64,7 +64,7 @@ $action = $transaction->exists
 input.tx-row-value::placeholder { color: #ababab; }
 </style>
 
-<div x-data="txForm('{{ $initType }}', '{{ $initAmount }}', {{ json_encode($typeColor) }})">
+<div x-data="txForm('{{ $initType }}', '{{ $initAmount }}', {{ json_encode($typeColor) }}, {{ Illuminate\Support\Js::from(old('description', $transaction->description)) }})">
 
 {{-- ==============================================================
      MOBILE
@@ -219,8 +219,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                     </svg>
                 </div>
                 <span class="tx-row-label">Nota</span>
-                <input type="text" name="description" form="mobile-form" maxlength="500"
-                    value="{{ old('description', $transaction->description) }}"
+                <input type="text" name="description" form="mobile-form" maxlength="500" x-model="description"
                     placeholder="Opcional"
                     class="tx-row-value"
                     style="text-align:right;caret-color:#76a72b">
@@ -391,8 +390,7 @@ input.tx-row-value::placeholder { color: #ababab; }
             {{-- Descripción --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Descripción</label>
-                <input type="text" name="description" maxlength="500"
-                    value="{{ old('description', $transaction->description) }}"
+                <input type="text" name="description" maxlength="500" x-model="description"
                     placeholder="Opcional"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
             </div>
@@ -429,10 +427,24 @@ input.tx-row-value::placeholder { color: #ababab; }
 </div>
 
 <script>
-function txForm(initialType, initialAmount, typeColors) {
+const TRANSFER_LABEL = 'Transferencia entre cuentas';
+
+function txForm(initialType, initialAmount, typeColors, initialDescription) {
     return {
         type: initialType,
         amount: initialAmount ? String(initialAmount) : '',
+        description: initialDescription ?? '',
+        init() {
+            // Al pasar a transferencia se propone la descripción; al salir se
+            // retira solo si sigue siendo la propuesta, nunca lo que escribiste
+            this.$watch('type', (value) => {
+                if (value === 'transfer' && this.description.trim() === '') {
+                    this.description = TRANSFER_LABEL;
+                } else if (value !== 'transfer' && this.description === TRANSFER_LABEL) {
+                    this.description = '';
+                }
+            });
+        },
         get accentColor() { return typeColors[this.type] || typeColors['expense']; },
         get displayAmount() {
             if (!this.amount) return '0';

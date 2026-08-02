@@ -14,8 +14,21 @@
 
 <div x-data="{
         type: '{{ $initType }}',
+        description: @js($transaction->description),
         colors: {{ json_encode($typeColor) }},
-        get accent() { return this.colors[this.type] || this.colors.expense; }
+        transferLabel: 'Transferencia entre cuentas',
+        get accent() { return this.colors[this.type] || this.colors.expense; },
+        init() {
+            // Al pasar a transferencia se propone la descripción; al salir se
+            // retira solo si sigue siendo la propuesta, nunca lo que escribiste
+            this.$watch('type', (value) => {
+                if (value === 'transfer' && (this.description ?? '').trim() === '') {
+                    this.description = this.transferLabel;
+                } else if (value !== 'transfer' && this.description === this.transferLabel) {
+                    this.description = '';
+                }
+            });
+        }
      }">
 
     <form method="POST" action="{{ $action }}" class="space-y-4">
@@ -118,8 +131,7 @@
         {{-- Descripción --}}
         <div>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Descripción</label>
-            <input type="text" name="description" maxlength="500"
-                value="{{ $transaction->description }}"
+            <input type="text" name="description" maxlength="500" x-model="description"
                 placeholder="Opcional"
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
         </div>
