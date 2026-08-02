@@ -25,6 +25,19 @@ class Transaction extends Model
     const TYPE_INTEREST = 'interest';
     const TYPE_FEE      = 'fee';
 
+    /**
+     * Una transferencia sin descripción se etiqueta sola, para que la lista
+     * no muestre filas en blanco. Vale desde cualquier vía de alta.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $transaction) {
+            if ($transaction->type === self::TYPE_TRANSFER && blank($transaction->description)) {
+                $transaction->description = 'Transferencia entre cuentas';
+            }
+        });
+    }
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
