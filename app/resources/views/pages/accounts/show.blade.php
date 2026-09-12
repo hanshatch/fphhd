@@ -183,6 +183,8 @@ $now = now();
         $cfg = $isIncoming
             ? ['sign' => '+', 'color' => '#878787', 'label' => 'Transferencia recibida']
             : ($typeConfig[$tx->type] ?? $typeConfig['expense']);
+        // El ícono se queda gris (es transferencia), pero el monto que entra va en verde
+        $amountColor = $isIncoming ? '#76a72b' : $cfg['color'];
         if ($tx->category) {
             $iconBg    = $tx->category->color;
             $iconLabel = mb_strtoupper(mb_substr($tx->category->name, 0, 1));
@@ -240,7 +242,7 @@ $now = now();
 
         {{-- Monto + saldo corrido --}}
         <div class="text-right flex-shrink-0 min-w-[80px]">
-            <p class="text-sm font-bold tabular-nums" style="color: {{ $cfg['color'] }}">
+            <p class="text-sm font-bold tabular-nums" style="color: {{ $amountColor }}">
                 {{ $cfg['sign'] }}${{ number_format((float)$tx->amount, 2) }}
             </p>
             @if(isset($runningBalances[$tx->id]))
