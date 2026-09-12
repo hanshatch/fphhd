@@ -202,6 +202,16 @@ Para botones de acción que NO son submit de form (ej. delete via JS):
 <button data-action-btn="true">Eliminar</button>
 ```
 
+### Confirmaciones destructivas con modal (OBLIGATORIO)
+**Nunca usar `window.confirm()` ni `onsubmit="return confirm(...)"`.** El layout incluye `<x-confirm-modal />` y un script global que intercepta cualquier `<form data-confirm="...">`:
+
+```blade
+<form method="POST" action="{{ route('x.destroy', $x) }}"
+      data-confirm="¿Eliminar «{{ $x->name }}»?" data-confirm-label="Eliminar">
+```
+
+Atributos opcionales: `data-confirm-label` (texto del botón rojo, por defecto «Aceptar») y `data-confirm-title` (por defecto «Confirmar»). Al aceptar se reenvía el form con el mismo botón, así el spinner global sigue funcionando.
+
 ### Convenciones de formularios
 - `enctype="multipart/form-data"` en forms con upload de archivos
 - Inputs con `focus:ring-2 focus:ring-[#76a72b]`

@@ -65,6 +65,18 @@ class RecurringChargeSkipTest extends TestCase
         $this->assertSame('2026-10-01', $charge->next_application_date->toDateString());
     }
 
+    public function test_index_uses_confirm_modal_instead_of_native_confirm(): void
+    {
+        $this->charge();
+
+        $this->actingAsVerified(User::factory()->create())
+            ->get(route('recurring.index'))
+            ->assertOk()
+            ->assertSee('data-confirm-label="Omitir"', false)
+            ->assertSee('confirm-modal.window', false)
+            ->assertDontSee('return confirm(', false);
+    }
+
     public function test_skip_on_inactive_charge_does_nothing(): void
     {
         $charge = $this->charge(['is_active' => false]);

@@ -274,7 +274,7 @@ $now = now();
                 </button>
             </form>
             <form method="POST" action="{{ route('transactions.destroy', $tx) }}"
-                  onsubmit="return confirm('¿Eliminar este movimiento?')">
+                  data-confirm="¿Eliminar este movimiento?" data-confirm-label="Eliminar">
                 @csrf @method('DELETE')
                 <input type="hidden" name="redirect_to" value="{{ route('accounts.show', $account, false) }}">
                 <button type="submit"

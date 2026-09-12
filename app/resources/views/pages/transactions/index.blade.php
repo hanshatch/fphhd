@@ -188,7 +188,7 @@ $now = now();
             </form>
             {{-- Eliminar --}}
             <form method="POST" action="{{ route('transactions.destroy', $tx) }}"
-                  onsubmit="return confirm('¿Eliminar este movimiento?')">
+                  data-confirm="¿Eliminar este movimiento?" data-confirm-label="Eliminar">
                 @csrf @method('DELETE')
                 <button type="submit"
                     class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"

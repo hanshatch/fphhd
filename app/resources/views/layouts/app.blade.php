@@ -146,9 +146,38 @@
     </div>
 </nav>
 
+<x-confirm-modal />
+
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <script>
+/**
+ * DESIGN SYSTEM — Confirmación destructiva con modal (no window.confirm)
+ * Cualquier <form data-confirm="mensaje"> pasa por el modal antes de enviarse.
+ * Opcionales: data-confirm-label (texto del botón), data-confirm-title.
+ * Se registra en fase de captura para adelantarse al spinner global.
+ */
+document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.dataset.confirm) return;
+    if (form.dataset.confirmed === '1') { delete form.dataset.confirmed; return; }
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const submitter = e.submitter;
+
+    window.dispatchEvent(new CustomEvent('confirm-modal', { detail: {
+        title:    form.dataset.confirmTitle,
+        message:  form.dataset.confirm,
+        label:    form.dataset.confirmLabel,
+        onAccept: () => {
+            form.dataset.confirmed = '1';
+            form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
+        },
+    }}));
+}, true);
+
 /**
  * DESIGN SYSTEM — Spinner global en botones de acción
  * Se activa automáticamente en cualquier submit de form.
