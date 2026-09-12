@@ -165,6 +165,17 @@
         const btn = e.submitter || e.target.querySelector('[type="submit"]');
         if (!btn || btn.dataset.noSpinner === 'true') return;
 
+        // Un botón deshabilitado deja de enviar su name/value (ej. save_and_new):
+        // conservarlo en un input oculto antes de deshabilitarlo.
+        if (btn.name && !btn.disabled && btn.form) {
+            const hidden = document.createElement('input');
+            hidden.type  = 'hidden';
+            hidden.name  = btn.name;
+            hidden.value = btn.value;
+            hidden.dataset.spinnerSubmitter = '1';
+            btn.form.appendChild(hidden);
+        }
+
         btn.disabled = true;
         btn.dataset.originalHtml = btn.innerHTML;
         btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
@@ -175,6 +186,7 @@
                 btn.disabled = false;
                 btn.innerHTML = btn.dataset.originalHtml;
                 delete btn.dataset.originalHtml;
+                btn.form?.querySelectorAll('[data-spinner-submitter]').forEach(el => el.remove());
             }
         }, 15000);
     });
