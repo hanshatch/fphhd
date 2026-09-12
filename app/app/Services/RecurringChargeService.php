@@ -93,6 +93,24 @@ class RecurringChargeService
     }
 
     /**
+     * Omite la ocurrencia pendiente: avanza la próxima fecha un mes sin crear
+     * movimiento ni contar cuota. Si la nueva fecha supera end_date, desactiva.
+     * Devuelve la nueva fecha (o null si el cargo quedó desactivado).
+     */
+    public function skipCurrent(RecurringCharge $charge): ?Carbon
+    {
+        $nextDate = $charge->calculateNextDate($charge->next_application_date);
+        $pastEnd  = $charge->end_date && $nextDate->greaterThan($charge->end_date);
+
+        $charge->update([
+            'next_application_date' => $nextDate->toDateString(),
+            'is_active'             => ! $pastEnd,
+        ]);
+
+        return $pastEnd ? null : $nextDate;
+    }
+
+    /**
      * Manda una notificación de Telegram POR CADA cargo vencido, con botones
      * para aplicarlo (monto configurado), ajustar el monto en la web u omitir.
      * Devuelve cuántas notificaciones se enviaron.

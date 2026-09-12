@@ -108,6 +108,18 @@
                         Aplicar / ajustar monto
                     </a>
 
+                    @unless($charge->is_msi)
+                    <form method="POST" action="{{ route('recurring.skip', $charge) }}"
+                          onsubmit="return confirm('¿Omitir «{{ addslashes($charge->name) }}» de {{ $charge->next_application_date->translatedFormat('F Y') }}? No se creará movimiento y el siguiente será el {{ $charge->calculateNextDate($charge->next_application_date)->translatedFormat('d M Y') }}.')">
+                        @csrf
+                        <button type="submit" title="Omitir este mes"
+                            class="flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg text-xs font-semibold text-[#878787] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                            Omitir este mes
+                        </button>
+                    </form>
+                    @endunless
+
                     <div class="flex-1"></div>
 
                     <a href="{{ route('recurring.edit', $charge) }}"

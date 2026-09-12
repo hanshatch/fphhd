@@ -48,6 +48,7 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::get('/recurring/{recurring}/apply',  [RecurringChargeController::class, 'applyShow'])->name('recurring.apply.show');
     Route::post('/recurring/{recurring}/apply', [RecurringChargeController::class, 'applyStore'])->name('recurring.apply.store');
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
+    Route::post('/recurring/{recurring}/skip',      [RecurringChargeController::class, 'skip'])->name('recurring.skip');
     Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::view('/more', 'pages.more.index')->name('more');

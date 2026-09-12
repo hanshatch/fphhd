@@ -107,6 +107,23 @@ class RecurringChargeController extends Controller
         return redirect()->route('recurring.index')->with('status', "Cargo «{$recurring->name}» aplicado.");
     }
 
+    /** Omitir la ocurrencia de este mes sin crear movimiento */
+    public function skip(RecurringCharge $recurring): RedirectResponse
+    {
+        if (! $recurring->is_active) {
+            return redirect()->route('recurring.index')->with('status', 'El cargo no está activo.');
+        }
+
+        $skipped = $recurring->next_application_date->translatedFormat('M Y');
+        $next    = $this->service->skipCurrent($recurring);
+
+        $msg = $next
+            ? "Se omitió «{$recurring->name}» de {$skipped}. Próximo: " . $next->translatedFormat('d M Y') . '.'
+            : "Se omitió «{$recurring->name}» de {$skipped}. El cargo llegó a su fin y quedó desactivado.";
+
+        return redirect()->route('recurring.index')->with('status', $msg);
+    }
+
     /** Pausar / reactivar */
     public function toggleActive(RecurringCharge $recurring): RedirectResponse
     {
