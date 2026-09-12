@@ -180,7 +180,7 @@ input.tx-row-value::placeholder { color: #ababab; }
             </div>
 
             {{-- Categoría --}}
-            <div class="tx-row" x-show="type !== 'transfer' && type !== 'interest'" x-cloak>
+            <div class="tx-row" x-show="type === 'expense'" x-cloak>
                 <div class="tx-row-icon" :style="`background:${accentColor}18`">
                     <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" :style="`color:${accentColor}`">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3H5a2 2 0 00-2 2v2a2 2 0 00.586 1.414l9 9A2 2 0 0014 19l5-5a2 2 0 000-2.828l-9-9A2 2 0 007 3z"/>
@@ -189,7 +189,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                 <span class="tx-row-label">Categoría</span>
                 <x-category-picker :categories="$categories" :selected="$transaction->category_id"
                     form="mobile-form" variant="row"
-                    disabled-expr="type === 'transfer' || type === 'interest'" />
+                    disabled-expr="type !== 'expense'" />
             </div>
 
             {{-- Fuente --}}
@@ -366,10 +366,10 @@ input.tx-row-value::placeholder { color: #ababab; }
             </div>
 
             {{-- Categoría --}}
-            <div x-show="type !== 'transfer' && type !== 'interest'" x-cloak>
+            <div x-show="type === 'expense'" x-cloak>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
                 <x-category-picker :categories="$categories" :selected="$transaction->category_id"
-                    disabled-expr="type === 'transfer' || type === 'interest'" />
+                    disabled-expr="type !== 'expense'" />
             </div>
 
             {{-- Fuente --}}

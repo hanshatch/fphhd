@@ -108,10 +108,10 @@
         </div>
 
         {{-- Categoría --}}
-        <div x-show="type !== 'transfer' && type !== 'interest'" x-cloak>
+        <div x-show="type === 'expense'" x-cloak>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Categoría</label>
             <x-category-picker :categories="$categories" :selected="$transaction->category_id"
-                disabled-expr="type === 'transfer' || type === 'interest'" />
+                disabled-expr="type !== 'expense'" />
         </div>
 
         {{-- Fuente --}}
