@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecurringChargeController;
 use App\Http\Controllers\ScheduledController;
 use App\Http\Controllers\SourceController;
+use App\Http\Controllers\StatementImportController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,9 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::get('/transactions/{transaction}/edit-modal', [TransactionController::class, 'editModal'])->name('transactions.edit.modal');
     Route::get('/accounts/{account}/adjust', [AccountController::class, 'adjustShow'])->name('accounts.adjust.show');
     Route::post('/accounts/{account}/adjust', [AccountController::class, 'adjustStore'])->name('accounts.adjust.store');
+    Route::post('/accounts/{account}/import',          [StatementImportController::class, 'upload'])->name('accounts.import.upload');
+    Route::get('/accounts/{account}/import/{token}',   [StatementImportController::class, 'review'])->name('accounts.import.review');
+    Route::post('/accounts/{account}/import/{token}',  [StatementImportController::class, 'store'])->name('accounts.import.store');
     Route::resource('recurring', RecurringChargeController::class)->except('show');
     Route::resource('income-plans', IncomePlanController::class)->except('show');
     Route::get('/income-plans/{incomePlan}/register',  [IncomePlanController::class, 'registerShow'])->name('income-plans.register.show');

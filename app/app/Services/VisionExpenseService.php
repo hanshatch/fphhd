@@ -30,6 +30,7 @@ class VisionExpenseService
         array $expenseCategories,
         array $incomeCategories,
         ?string $caption = null,
+        int $maxItems = self::MAX_ITEMS,
     ): ?array {
         if (! $this->isConfigured()) {
             return null;
@@ -69,7 +70,7 @@ class VisionExpenseService
                     ],
                     'response_format' => ['type' => 'json_object'],
                     'temperature'     => 0,
-                    'max_tokens'      => 1500,
+                    'max_tokens'      => max(1500, $maxItems * 80),
                 ]);
         } catch (\Throwable $e) {
             Log::warning('OpenAI Vision: error de conexión', ['error' => $e->getMessage()]);
@@ -92,7 +93,7 @@ class VisionExpenseService
 
         $items = [];
 
-        foreach (array_slice($data['charges'], 0, self::MAX_ITEMS) as $charge) {
+        foreach (array_slice($data['charges'], 0, $maxItems) as $charge) {
             $amount = parse_money($charge['amount'] ?? null);
 
             if ($amount === null || bccomp($amount, '0.00', 2) <= 0) {
