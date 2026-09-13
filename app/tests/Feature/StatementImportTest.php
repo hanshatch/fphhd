@@ -67,7 +67,8 @@ class StatementImportTest extends TestCase
         $review->assertOk()
             ->assertSee('Vallarta Satélite')
             ->assertSee('Apple.com/bill')
-            ->assertSee('value="' . $super->id . '" selected', false);
+            ->assertSee("value: '" . $super->id . "'", false)
+            ->assertSee('Buscar categoría');
 
         $this->assertSame(0, Transaction::count());
     }

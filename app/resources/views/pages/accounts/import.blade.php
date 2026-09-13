@@ -2,11 +2,6 @@
     <x-page-header title="Importar a {{ $account->name }}" :back="route('accounts.show', $account)" />
 
     @php
-        $parents = $categories->whereNull('parent_id');
-        $byKind  = [
-            'expense' => $parents->where('kind', 'expense'),
-            'income'  => $parents->where('kind', 'income'),
-        ];
         $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'])->count();
     @endphp
 
@@ -72,20 +67,9 @@
                                 <option value="income">Abono</option>
                             </select>
 
-                            <select name="rows[{{ $i }}][category_id]"
-                                class="w-full rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
-                                <option value="">Sin categoría</option>
-                                @foreach($byKind as $kind => $kindParents)
-                                    @foreach($kindParents as $cat)
-                                        <optgroup label="{{ $cat->name }}" x-show="type === '{{ $kind }}'">
-                                            <option value="{{ $cat->id }}" @selected($row['category_id'] == $cat->id)>{{ $cat->name }}</option>
-                                            @foreach($cat->children as $child)
-                                            <option value="{{ $child->id }}" @selected($row['category_id'] == $child->id)>— {{ $child->name }}</option>
-                                            @endforeach
-                                        </optgroup>
-                                    @endforeach
-                                @endforeach
-                            </select>
+                            <x-category-picker :categories="$categories" :selected="$row['category_id']"
+                                name="rows[{{ $i }}][category_id]" kind-expr="type"
+                                class="!py-2 !px-3 !rounded-lg text-xs min-h-[38px]" />
                         </div>
                     </div>
                 </div>

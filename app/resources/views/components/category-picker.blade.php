@@ -1,4 +1,8 @@
-@props(['categories', 'selected' => null, 'name' => 'category_id', 'placeholder' => 'Sin categoría', 'variant' => 'default', 'disabledExpr' => null])
+{{--
+    kindExpr: expresión Alpine (del scope padre) que devuelve 'expense' o
+    'income' para mostrar solo las categorías de ese tipo, ej. kind-expr="type".
+--}}
+@props(['categories', 'selected' => null, 'name' => 'category_id', 'placeholder' => 'Sin categoría', 'variant' => 'default', 'disabledExpr' => null, 'kindExpr' => null])
 
 @php
     $flat = $categories->flatMap(fn ($c) => collect([$c])->merge($c->children ?? collect()));
@@ -72,14 +76,17 @@
                 </button>
 
                 @foreach($kindLabels as $kind => $kindLabel)
-                    @php $kindParents = $parents->where('kind', $kind); @endphp
+                    @php
+                        $kindParents = $parents->where('kind', $kind);
+                        $kindGuard   = $kindExpr ? "({$kindExpr}) === '{$kind}' && " : '';
+                    @endphp
                     @if($kindParents->isNotEmpty())
                     <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-[#ababab] uppercase tracking-widest"
-                       x-show="[@foreach($kindParents as $cat)'{{ addslashes($cat->name) }}',@foreach($cat->children as $child)'{{ addslashes($child->name) }}',@endforeach @endforeach].some(n => matches(n))">
+                       x-show="{{ $kindGuard }}[@foreach($kindParents as $cat)'{{ addslashes($cat->name) }}',@foreach($cat->children as $child)'{{ addslashes($child->name) }}',@endforeach @endforeach].some(n => matches(n))">
                         {{ $kindLabel }}
                     </p>
                     @foreach($kindParents as $cat)
-                    <div x-show="[@foreach(collect([$cat])->merge($cat->children) as $c)'{{ addslashes($c->name) }}',@endforeach].some(n => matches(n))">
+                    <div x-show="{{ $kindGuard }}[@foreach(collect([$cat])->merge($cat->children) as $c)'{{ addslashes($c->name) }}',@endforeach].some(n => matches(n))">
                         <button type="button" data-no-spinner="true"
                             x-on:click="pick('{{ $cat->id }}', @js($cat->name), '{{ $cat->color }}')"
                             x-show="matches(@js($cat->name))"
