@@ -18,71 +18,117 @@ $now = now();
 @endphp
 
 {{-- ── Header de cuenta ─────────────────────────────────────────── --}}
+@php
+$typeLabels = [
+    'debit'      => 'Cuenta bancaria',
+    'credit'     => 'Tarjeta de crédito',
+    'savings'    => 'Caja de ahorro',
+    'investment' => 'Inversión',
+    'cash'       => 'Efectivo',
+];
+$card        = $isCredit ? $account->creditCard : null;
+$accentColor = $account->color ?? '#76a72b';
+$usedPct     = ($card && (float) $card->credit_limit > 0)
+    ? min(100, (int) round(((float) abs($balance) / (float) $card->credit_limit) * 100))
+    : null;
+@endphp
 <div class="mb-5">
     <x-page-header :title="$account->name" :back="route('accounts.index')" />
 
     {{-- Card de saldo --}}
-    <div class="rounded-2xl p-5 text-white mb-1"
-         style="background-color: {{ $account->color ?? '#76a72b' }}">
-        <div class="flex items-center gap-3 mb-3">
+    <div class="relative overflow-hidden rounded-2xl p-5 text-white shadow-lg mb-3"
+         style="background: linear-gradient(135deg, {{ $accentColor }} 0%, color-mix(in srgb, {{ $accentColor }} 70%, #000) 100%)">
+        {{-- Decoración --}}
+        <div class="pointer-events-none absolute -right-10 -top-14 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="pointer-events-none absolute -right-2 top-16 w-24 h-24 rounded-full bg-white/5"></div>
+
+        <div class="relative flex items-center gap-3">
             @if($account->logo_path)
             <img src="{{ $account->logoUrl() }}" alt="{{ $account->name }}"
-                 class="w-10 h-10 rounded-xl object-contain bg-white/20 p-1">
+                 class="w-12 h-12 rounded-xl object-contain bg-white p-1.5 shadow-sm flex-shrink-0">
             @else
-            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">
+            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center font-bold text-xl flex-shrink-0">
                 {{ mb_strtoupper(mb_substr($account->name, 0, 1)) }}
             </div>
             @endif
-            <div>
-                <p class="font-bold text-lg leading-tight">{{ $account->name }}</p>
-                <p class="text-white/70 text-xs capitalize">{{ $account->type }}</p>
+            <div class="min-w-0 flex-1">
+                <p class="font-bold text-lg leading-tight truncate">{{ $account->name }}</p>
+                <p class="text-white/70 text-xs mt-0.5 truncate">
+                    {{ $typeLabels[$account->type] ?? ucfirst($account->type) }}
+                    @if($account->institution && $account->institution !== 'other')
+                        · {{ $account->institutionLabel() }}
+                    @endif
+                </p>
             </div>
-            <a href="{{ route('accounts.edit', $account) }}"
-               class="ml-auto w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ route('accounts.edit', $account) }}" title="Editar cuenta"
+               class="w-11 h-11 -mr-2 -mt-1 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors flex-shrink-0">
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
             </a>
         </div>
-        <p class="text-white/70 text-xs mb-1">{{ $isCredit ? 'Saldo deudor' : 'Saldo disponible' }}</p>
-        <p class="text-3xl font-bold tabular-nums">
-            ${{ number_format(abs((float)$balance), 2) }}
-            <span class="text-base font-normal text-white/60">MXN</span>
-        </p>
+
+        <div class="relative mt-5">
+            <p class="text-white/70 text-[11px] font-semibold uppercase tracking-wider">{{ $isCredit ? 'Saldo deudor' : 'Saldo disponible' }}</p>
+            <p class="text-[34px] leading-none font-bold tabular-nums mt-1.5">
+                ${{ number_format(abs((float)$balance), 2) }}
+                <span class="text-sm font-normal text-white/60 ml-1">MXN</span>
+            </p>
+        </div>
+
+        @if($card && ($card->statement_day || $card->payment_day || $usedPct !== null))
+        <div class="relative mt-4 pt-3 border-t border-white/15 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/80">
+            @if($card->statement_day)
+                <span><span class="text-white/50">Corte</span> día {{ $card->statement_day }}</span>
+            @endif
+            @if($card->payment_day)
+                <span><span class="text-white/50">Pago</span> día {{ $card->payment_day }}</span>
+            @endif
+            @if($usedPct !== null)
+                <span class="ml-auto tabular-nums"><span class="text-white/50">Límite</span> ${{ number_format((float) $card->credit_limit, 0) }} · {{ $usedPct }}%</span>
+            @endif
+        </div>
+        @if($usedPct !== null)
+        <div class="relative mt-2 h-1.5 rounded-full bg-white/15 overflow-hidden">
+            <div class="h-full rounded-full bg-white/80" style="width: {{ $usedPct }}%"></div>
+        </div>
+        @endif
+        @endif
     </div>
 
     {{-- Acciones rápidas --}}
-    <div class="grid grid-cols-2 gap-2" x-data>
+    <div class="grid grid-cols-3 gap-2" x-data>
         <button type="button" data-no-spinner="true" x-on:click="$dispatch('new-tx')"
-           class="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#ababab]/40 text-[#878787] hover:border-[#76a72b] hover:text-[#76a72b] transition-colors text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-            </svg>
-            Nuevo movimiento
+            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-[#76a72b]/60 hover:shadow transition-all active:scale-[0.98]">
+            <span class="w-9 h-9 rounded-full bg-[#76a72b]/10 text-[#76a72b] flex items-center justify-center group-hover:bg-[#76a72b] group-hover:text-white transition-colors">
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            </span>
+            <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Nuevo movimiento</span>
         </button>
+
         <a href="{{ route('accounts.adjust.show', $account) }}"
-           class="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#ababab]/40 text-[#878787] hover:border-amber-500 hover:text-amber-500 transition-colors text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-            </svg>
-            Ajustar saldo
+           class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-amber-400/60 hover:shadow transition-all active:scale-[0.98]">
+            <span class="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            </span>
+            <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Ajustar saldo</span>
         </a>
 
         {{-- Importar capturas del estado de cuenta: al elegir las imágenes se envía solo --}}
         <form method="POST" action="{{ route('accounts.import.upload', $account) }}" enctype="multipart/form-data"
-              class="col-span-2" x-data="{ busy: false }">
+              class="contents" x-data="{ busy: false }">
             @csrf
             <input type="file" name="images[]" accept="image/*" multiple class="sr-only" x-ref="file"
                    x-on:change="if ($refs.file.files.length) { busy = true; $refs.go.click(); }">
             <button type="button" data-no-spinner="true" x-on:click="$refs.file.click()" x-show="!busy"
-                class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#ababab]/40 text-[#878787] hover:border-[#76a72b] hover:text-[#76a72b] transition-colors text-sm font-semibold">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                Importar captura del estado de cuenta
+                class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow transition-all active:scale-[0.98]">
+                <span class="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </span>
+                <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Importar captura</span>
             </button>
             <button type="submit" x-ref="go" x-show="busy" x-cloak
-                class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#76a72b] text-white text-sm font-semibold">
+                class="flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-blue-500 text-white text-[11px] sm:text-xs font-semibold shadow-sm">
                 Analizar capturas
             </button>
         </form>
