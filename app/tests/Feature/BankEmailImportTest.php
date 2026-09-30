@@ -158,8 +158,35 @@ class BankEmailImportTest extends TestCase
         app(BankEmailImportService::class)->sync();
 
         $this->assertStringContainsString('Ya tienes un movimiento parecido registrado', $this->lastText());
-        $this->assertStringContainsString('Transferencia Cheques → Revolut', $this->lastText());
+        $this->assertStringContainsString('Transferencia Banamex · Cheques → Revolut', $this->lastText());
         $this->assertSame(1, Transaction::count());
+    }
+
+    public function test_direct_debit_email_proposes_recurring_charge_and_applies_real_amount(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        $cat     = Category::create(['name' => 'Seguros', 'kind' => 'expense']);
+        $charge  = \App\Models\RecurringCharge::create([
+            'name' => 'Seguros Monterrey Retiro - 3', 'account_id' => $cheques->id, 'category_id' => $cat->id,
+            'type' => 'expense', 'amount' => '11019.03', 'day_of_month' => 29,
+            'start_date' => '2026-01-01', 'next_application_date' => '2026-09-29', 'is_active' => true,
+        ]);
+
+        $this->inbox = [$this->mail('u12', 'notificaciones@banamex.com', 'Cargo a cuenta para pago a Establecimiento', BankEmailParserTest::BANAMEX_DOMICILIADO, '2026-09-29 19:27')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertStringContainsString('Parece el cargo recurrente «Seguros Monterrey Retiro - 3»', $this->lastText());
+        $this->assertSame(0, Transaction::count());
+
+        $email = BankEmail::sole();
+        $this->tgCallback("mail:rec:{$email->id}:{$charge->id}")->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('11040.20', $tx->amount);
+        $this->assertSame($cat->id, $tx->category_id);
+        $this->assertSame('2026-09-29', $tx->date->toDateString());
+        $this->assertSame('2026-10-29', $charge->fresh()->next_application_date->toDateString());
+        $this->assertSame(BankEmail::STATUS_REGISTERED, $email->fresh()->status);
     }
 
     public function test_existing_same_movement_is_flagged_as_duplicate(): void

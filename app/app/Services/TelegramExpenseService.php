@@ -306,6 +306,9 @@ class TelegramExpenseService
      * Botones de las notificaciones de correo bancario:
      *  mail:xfer:<email>:<tx>  → el movimiento ya registrado se vuelve transferencia
      *  mail:noxfer:<email>     → no es transferencia, preguntar categoría
+     *  mail:rec:<email>:<cargo> → aplicar el recurrente con el monto real
+     *  mail:adj:<email>:<tx>   → ajustar al monto real un recurrente ya aplicado
+     *  mail:ask:<email>        → no es ese recurrente, preguntar categoría
      *  mail:undo:<email>       → borrar lo que se registró solo
      *  mail:skip:<email>       → no registrar
      */
@@ -333,7 +336,30 @@ class TelegramExpenseService
             return;
         }
 
-        if ($action === 'noxfer') {
+        if ($action === 'rec') {
+            $charge = ctype_digit((string) $twinId) ? \App\Models\RecurringCharge::find((int) $twinId) : null;
+            $tx     = $charge ? $service->applyRecurring($email, $charge) : null;
+
+            $this->telegram->editMessageText($chatId, $messageId, $tx
+                ? "✅ Cargo recurrente aplicado\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
+                    . "\nPróximo: " . $charge->fresh()->next_application_date->translatedFormat('j M Y')
+                : 'ℹ️ Ese cargo recurrente ya no está pendiente.');
+
+            return;
+        }
+
+        if ($action === 'adj') {
+            $target = ctype_digit((string) $twinId) ? Transaction::find((int) $twinId) : null;
+            $tx     = $target ? $service->adjustTransaction($email, $target) : null;
+
+            $this->telegram->editMessageText($chatId, $messageId, $tx
+                ? "✏️ Ajustado al monto real\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
+                : 'ℹ️ No pude ajustar ese movimiento.');
+
+            return;
+        }
+
+        if ($action === 'noxfer' || $action === 'ask') {
             $this->telegram->editMessageText($chatId, $messageId, '✋ Ok, lo registramos aparte.');
             $service->askCategory($email);
 

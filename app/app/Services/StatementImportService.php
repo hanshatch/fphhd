@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\AuditLog;
 use App\Models\Category;
+use App\Models\RecurringCharge;
 use App\Models\Transaction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -47,6 +48,8 @@ class StatementImportService
         private VisionExpenseService $vision,
         private MerchantMemoryService $memory,
         private TransactionMatchService $matcher,
+        private RecurringMatchService $recurring,
+        private RecurringChargeService $charges,
     ) {}
 
     public function isConfigured(): bool
@@ -101,6 +104,8 @@ class StatementImportService
             ->values()
             ->all();
 
+        $rows = $this->attachRecurring($account, $rows);
+
         $token = Str::random(32);
 
         Cache::put($this->key($account, $token), $rows, now()->addMinutes(self::TTL_MINUTES));
@@ -123,12 +128,17 @@ class StatementImportService
      * si viene twin_id y ese movimiento es el otro lado, se CONVIERTE en la
      * transferencia en vez de crear uno nuevo (no se duplica).
      *
-     * Devuelve ['created' => n, 'linked' => n].
+     * Con recurring_id aplica el cargo recurrente; con adjust_tx_id corrige el
+     * movimiento que ya se había aplicado con el monto estimado.
+     *
+     * Devuelve ['created', 'linked', 'applied', 'adjusted'].
      */
     public function store(Account $account, string $token, array $input): array
     {
-        $created = 0;
-        $linked  = 0;
+        $created  = 0;
+        $linked   = 0;
+        $applied  = 0;
+        $adjusted = 0;
 
         foreach ($input as $row) {
             if (empty($row['include'])) {
@@ -181,12 +191,48 @@ class StatementImportService
                 continue;
             }
 
+            $categoryId = ($row['category_id'] ?? null) ?: null;
+
+            // Cargo recurrente pendiente: aplicarlo con el monto y fecha reales
+            if (! empty($row['recurring_id'])) {
+                $charge = RecurringCharge::find((int) $row['recurring_id']);
+
+                if ($charge && $charge->account_id === $account->id && $charge->is_active && $charge->type === $type) {
+                    $tx = $this->charges->applyCharge($charge, $amount, $date);
+
+                    if ($categoryId && (int) $tx->category_id !== (int) $categoryId) {
+                        $tx->update(['category_id' => $categoryId]);
+                    }
+
+                    $applied++;
+
+                    continue;
+                }
+            }
+
+            // Recurrente ya aplicado con el estimado: corregir ese movimiento
+            if (! empty($row['adjust_tx_id'])) {
+                $tx = Transaction::where('account_id', $account->id)->find((int) $row['adjust_tx_id']);
+
+                if ($tx && $tx->type === $type) {
+                    $tx->update(array_filter([
+                        'amount'      => $amount,
+                        'date'        => $date,
+                        'category_id' => $categoryId,
+                    ]));
+
+                    $adjusted++;
+
+                    continue;
+                }
+            }
+
             Transaction::create([
                 'date'        => $date,
                 'type'        => $type === 'income' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE,
                 'amount'      => $amount,
                 'account_id'  => $account->id,
-                'category_id' => ($row['category_id'] ?? null) ?: null,
+                'category_id' => $categoryId,
                 'description' => $description ?: 'Cargo',
             ]);
 
@@ -195,11 +241,14 @@ class StatementImportService
 
         Cache::forget($this->key($account, $token));
 
-        if ($created + $linked > 0) {
-            AuditLog::record('statement_import', ['account_id' => $account->id, 'created' => $created, 'linked' => $linked]);
+        if ($created + $linked + $applied + $adjusted > 0) {
+            AuditLog::record('statement_import', [
+                'account_id' => $account->id, 'created' => $created, 'linked' => $linked,
+                'applied' => $applied, 'adjusted' => $adjusted,
+            ]);
         }
 
-        return ['created' => $created, 'linked' => $linked];
+        return ['created' => $created, 'linked' => $linked, 'applied' => $applied, 'adjusted' => $adjusted];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
@@ -246,6 +295,36 @@ class StatementImportService
             'counterparty_account_id' => $twin?->account_id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
+    }
+
+    /** Marca los renglones que corresponden a un cargo recurrente (pendiente o ya aplicado) */
+    private function attachRecurring(Account $account, array $rows): array
+    {
+        $candidates = collect($rows)
+            ->filter(fn ($r) => ! $r['duplicate'] && in_array($r['type'], ['expense', 'income'], true))
+            ->map(fn ($r) => ['type' => $r['type'], 'amount' => $r['amount'], 'date' => $r['date'], 'description' => $r['description']])
+            ->all();
+
+        foreach ($this->recurring->assign($account, $candidates) as $i => $match) {
+            $charge = $match['charge'];
+            $tx     = $match['transaction'];
+
+            $rows[$i]['recurring'] = [
+                'mode'           => $match['mode'],
+                'id'             => $charge->id,
+                'name'           => $charge->name,
+                'expected'       => (string) ($tx ? $tx->amount : $charge->amount),
+                'due'            => ($tx ? $tx->date : $charge->next_application_date)->translatedFormat('j M Y'),
+                'transaction_id' => $tx?->id,
+            ];
+
+            if ($charge->category_id) {
+                $rows[$i]['category_id']     = $charge->category_id;
+                $rows[$i]['category_source'] = 'recurring';
+            }
+        }
+
+        return $rows;
     }
 
     private function sanitizeDate(?string $date): string

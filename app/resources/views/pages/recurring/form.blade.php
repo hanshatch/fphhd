@@ -154,6 +154,31 @@
                 <p class="mt-1 text-[10px] text-[#ababab]">Opcional — vacío = indefinido</p>
             </div>
 
+            {{-- Empate con estado de cuenta y correos --}}
+            <div class="rounded-xl border border-[#ababab]/25 p-4 space-y-4">
+                <p class="text-xs text-[#878787]">
+                    Para reconocer este cargo cuando llegue en una captura del estado de cuenta o en un correo del banco,
+                    y aplicarlo con el monto real.
+                </p>
+                <div>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Texto en el estado de cuenta</label>
+                    <input type="text" name="statement_text" maxlength="150"
+                        value="{{ old('statement_text', $charge->statement_text) }}"
+                        placeholder="ej. Seguros Monterrey"
+                        class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                    <p class="mt-1 text-[10px] text-[#ababab]">Opcional. Si lo dejas vacío se empata por palabras del nombre, cuenta, fecha y monto.</p>
+                    @error('statement_text')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Variación de monto aceptada (%)</label>
+                    <input type="number" name="amount_tolerance_pct" step="0.1" min="0" max="50" inputmode="decimal"
+                        value="{{ old('amount_tolerance_pct', $charge->amount_tolerance_pct ?? '3.00') }}"
+                        class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
+                    <p class="mt-1 text-[10px] text-[#ababab]">Para cargos en dólares o UDIs que cambian cada mes. 0 = monto exacto.</p>
+                    @error('amount_tolerance_pct')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                </div>
+            </div>
+
             {{-- Notas --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Notas</label>

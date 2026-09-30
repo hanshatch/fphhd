@@ -10,6 +10,9 @@ use App\Services\MerchantMemoryService;
 use App\Services\TelegramExpenseService;
 use App\Services\TelegramService;
 use App\Services\TransactionMatchService;
+use App\Services\RecurringMatchService;
+use App\Services\RecurringChargeService;
+use App\Models\RecurringCharge;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -30,6 +33,8 @@ class BankEmailImportService
         private BankEmailParser $parser,
         private MerchantMemoryService $memory,
         private TransactionMatchService $matcher,
+        private RecurringMatchService $recurring,
+        private RecurringChargeService $charges,
         private TelegramExpenseService $telegramFlow,
         private TelegramService $telegram,
     ) {}
@@ -166,7 +171,36 @@ class BankEmailImportService
             return;
         }
 
-        // 5) Comercio conocido: registrar solo y avisar con «Deshacer»
+        // 5) ¿Es un cargo recurrente? Nunca se aplica solo: se propone con botón
+        if ($account && ($match = $this->recurring->assign($account, [0 => [
+            'type' => $type, 'amount' => $p['amount'], 'date' => $p['date'], 'description' => $p['description'],
+        ]])[0] ?? null)) {
+            $charge   = $match['charge'];
+            $tx       = $match['transaction'];
+            $expected = (string) ($tx ? $tx->amount : $charge->amount);
+            $diff     = bcsub($p['amount'], $expected, 2);
+            $diffText = (bccomp($diff, '0', 2) >= 0 ? '+' : '−') . format_currency(ltrim($diff, '-'));
+
+            $this->notify(
+                '↻ ' . format_currency($p['amount']) . ' · ' . $p['description'] . ' · ' . Carbon::parse($p['date'])->translatedFormat('j M Y')
+                    . "\n\nParece el cargo recurrente «" . $charge->name . '»'
+                    . ($tx
+                        ? "\nYa lo aplicaste con " . format_currency($expected) . ' (' . $diffText . ').'
+                        : "\nEstimado " . format_currency($expected) . ' (' . $diffText . ').'),
+                [[
+                    $tx
+                        ? ['text' => '✏️ Ajustar a ' . format_currency($p['amount']), 'callback_data' => 'mail:adj:' . $email->id . ':' . $tx->id]
+                        : ['text' => '✅ Aplicar con ' . format_currency($p['amount']), 'callback_data' => 'mail:rec:' . $email->id . ':' . $charge->id],
+                ], [
+                    ['text' => '✋ No es ese', 'callback_data' => 'mail:ask:' . $email->id],
+                    ['text' => '⏭ No registrar', 'callback_data' => 'mail:skip:' . $email->id],
+                ]]
+            );
+
+            return;
+        }
+
+        // 6) Comercio conocido: registrar solo y avisar con «Deshacer»
         if ($account && empty($p['generic']) && ($categoryId = $this->memory->suggest($p['description'], $type))) {
             $transaction = Transaction::create([
                 'date'        => $p['date'],
@@ -192,7 +226,7 @@ class BankEmailImportService
             return;
         }
 
-        // 6) Preguntar categoría (y cuenta si no se pudo identificar)
+        // 7) Preguntar categoría (y cuenta si no se pudo identificar)
         $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $account, $type));
     }
 
@@ -223,6 +257,40 @@ class BankEmailImportService
     {
         $type = ($email->parsed['kind'] ?? 'expense') === 'income' ? 'income' : 'expense';
         $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $email->account, $type));
+    }
+
+    /** Aplica el recurrente con el monto y fecha del correo */
+    public function applyRecurring(BankEmail $email, RecurringCharge $charge): ?Transaction
+    {
+        $p = $email->parsed;
+
+        if ($email->status !== BankEmail::STATUS_PENDING || ! $charge->is_active || $charge->account_id !== $email->account_id) {
+            return null;
+        }
+
+        $tx = $this->charges->applyCharge($charge, $p['amount'], $p['date']);
+
+        $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $tx->id]);
+        AuditLog::record('bank_email_recurring_apply', ['transaction_id' => $tx->id, 'bank_email_id' => $email->id, 'recurring_charge_id' => $charge->id]);
+
+        return $tx;
+    }
+
+    /** Corrige al monto real un recurrente que ya se había aplicado con el estimado */
+    public function adjustTransaction(BankEmail $email, Transaction $tx): ?Transaction
+    {
+        $p = $email->parsed;
+
+        if ($email->status !== BankEmail::STATUS_PENDING || $tx->account_id !== $email->account_id) {
+            return null;
+        }
+
+        $tx->update(['amount' => $p['amount'], 'date' => $p['date']]);
+
+        $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $tx->id]);
+        AuditLog::record('bank_email_recurring_adjust', ['transaction_id' => $tx->id, 'bank_email_id' => $email->id]);
+
+        return $tx->fresh();
     }
 
     public function undo(BankEmail $email): bool

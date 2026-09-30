@@ -65,8 +65,8 @@ class TransactionMatchService
     public function describe(Transaction $tx, Account $from): array
     {
         $where = $tx->type === Transaction::TYPE_TRANSFER
-            ? 'Transferencia ' . ($tx->account?->name ?? '?') . ' → ' . ($tx->counterpartyAccount?->name ?? '?')
-            : ($tx->account?->name ?? '');
+            ? 'Transferencia ' . ($tx->account?->displayLabel() ?? '?') . ' → ' . ($tx->counterpartyAccount?->displayLabel() ?? '?')
+            : ($tx->account?->displayLabel() ?? '');
 
         return [
             'id'          => $tx->id,

@@ -75,6 +75,8 @@ class StatementImportController extends Controller
             'rows.*.category_id' => 'nullable|exists:categories,id',
             'rows.*.counterparty_account_id' => 'nullable|integer|exists:accounts,id',
             'rows.*.twin_id'     => 'nullable|integer',
+            'rows.*.recurring_id' => 'nullable|integer',
+            'rows.*.adjust_tx_id' => 'nullable|integer',
         ]);
 
         // Una transferencia marcada necesita la otra cuenta (y que no sea esta misma)
@@ -88,20 +90,16 @@ class StatementImportController extends Controller
             }
         }
 
-        ['created' => $created, 'linked' => $linked] = $this->service->store($account, $token, $data['rows']);
+        $r = $this->service->store($account, $token, $data['rows']);
 
-        $msg = match (true) {
-            $created + $linked === 0 => 'No se registró ningún movimiento.',
-            $created === 1           => 'Se registró 1 movimiento.',
-            $created > 1             => "Se registraron {$created} movimientos.",
-            default                  => '',
-        };
+        $parts = array_filter([
+            $r['created'] === 1 ? 'Se registró 1 movimiento.' : ($r['created'] > 1 ? "Se registraron {$r['created']} movimientos." : null),
+            $r['applied'] === 1 ? '1 cargo recurrente aplicado con el monto real.' : ($r['applied'] > 1 ? "{$r['applied']} cargos recurrentes aplicados con el monto real." : null),
+            $r['adjusted'] === 1 ? '1 cargo recurrente ajustado al monto real.' : ($r['adjusted'] > 1 ? "{$r['adjusted']} cargos recurrentes ajustados al monto real." : null),
+            $r['linked'] === 1 ? '1 movimiento que ya existía en otra cuenta quedó como transferencia.' : ($r['linked'] > 1 ? "{$r['linked']} movimientos que ya existían en otra cuenta quedaron como transferencias." : null),
+        ]);
 
-        if ($linked > 0) {
-            $msg = trim($msg . ' ' . ($linked === 1
-                ? '1 movimiento que ya existía en otra cuenta quedó como transferencia.'
-                : "{$linked} movimientos que ya existían en otra cuenta quedaron como transferencias."));
-        }
+        $msg = $parts === [] ? 'No se registró ningún movimiento.' : implode(' ', $parts);
 
         return redirect()->route('accounts.show', $account)->with('status', $msg);
     }

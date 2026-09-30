@@ -4,6 +4,7 @@
     @php
         $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'])->count();
         $twins = collect($rows)->filter(fn ($r) => $r['twin'] ?? null)->count();
+        $recs  = collect($rows)->filter(fn ($r) => $r['recurring'] ?? null)->count();
     @endphp
 
     @if($errors->any())
@@ -30,6 +31,10 @@
             <span class="text-blue-600 font-semibold">{{ $twins }} {{ $twins === 1 ? 'parece transferencia' : 'parecen transferencias' }} entre tus cuentas</span>:
             el otro lado ya está registrado y se convertirá en transferencia, sin duplicar.
         @endif
+        @if($recs)
+            <span class="text-[#76a72b] font-semibold">{{ $recs }} {{ $recs === 1 ? 'corresponde' : 'corresponden' }} a cargos recurrentes</span>
+            y se aplicarán con el monto real.
+        @endif
     </p>
 
     <form method="POST" action="{{ route('accounts.import.store', [$account, $token]) }}">
@@ -40,12 +45,14 @@
             @php
                 $dup  = $row['duplicate'];
                 $twin = $row['twin'] ?? null;
+                $rec  = $row['recurring'] ?? null;
             @endphp
             <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : ($twin ? 'border-blue-300 dark:border-blue-500/40' : '') }}"
                     x-data="{
                         on: {{ $dup ? 'false' : 'true' }},
                         type: '{{ $row['type'] }}',
                         counterparty: '{{ $row['counterparty_account_id'] ?? '' }}',
+                        linked: {{ $rec ? 'true' : 'false' }},
                         get isTransfer() { return this.type === 'transfer_out' || this.type === 'transfer_in'; },
                         get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
                         get amountClass() { return this.isIn ? 'text-[#76a72b]' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-red-500'); },
@@ -53,6 +60,10 @@
                     x-bind:class="on ? '' : 'opacity-50'">
                 @if($twin)
                 <input type="hidden" name="rows[{{ $i }}][twin_id]" value="{{ $twin['id'] }}" x-bind:disabled="!isTransfer">
+                @endif
+                @if($rec)
+                <input type="hidden" name="rows[{{ $i }}][{{ $rec['mode'] === 'apply' ? 'recurring_id' : 'adjust_tx_id' }}]"
+                       value="{{ $rec['mode'] === 'apply' ? $rec['id'] : $rec['transaction_id'] }}" x-bind:disabled="!linked || isTransfer">
                 @endif
 
                 <div class="flex items-start gap-3">
@@ -72,6 +83,8 @@
                                         class="rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                                     @if($twin)
                                         <span class="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full">🔁 Transferencia</span>
+                                    @elseif($rec)
+                                        <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" x-show="linked">↻ Recurrente</span>
                                     @elseif(($row['category_source'] ?? null) === 'memory')
                                         <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" title="Categoría aprendida de tus movimientos anteriores">✓ Aprendida</span>
                                     @elseif(($row['category_source'] ?? null) === 'model')
@@ -98,6 +111,31 @@
                             🔁 El otro lado ya está en {{ $twin['account'] }}: {{ $twin['description'] }} · {{ $twin['date'] }}.
                             Se convertirá en transferencia, no se duplica.
                         </p>
+                        @endif
+
+                        @if($rec)
+                        @php
+                            $diff = bcsub($row['amount'], $rec['expected'], 2);
+                            $sign = bccomp($diff, '0', 2) >= 0 ? '+' : '−';
+                            $abs  = ltrim($diff, '-');
+                        @endphp
+                        <div class="mt-1.5 rounded-lg bg-[#76a72b]/5 border border-[#76a72b]/20 px-2.5 py-1.5 text-[11px] text-[#373737] dark:text-white/80 flex items-start gap-2" x-show="!isTransfer">
+                            <div class="flex-1 min-w-0" x-bind:class="linked ? '' : 'line-through opacity-50'">
+                                ↻ <strong>{{ $rec['name'] }}</strong>
+                                @if($rec['mode'] === 'apply')
+                                    · vence {{ $rec['due'] }} · estimado {{ format_currency($rec['expected']) }}
+                                    ({{ $sign }}{{ format_currency($abs) }}).
+                                    Se aplicará con el monto real y pasará al siguiente mes.
+                                @else
+                                    · ya aplicado el {{ $rec['due'] }} con {{ format_currency($rec['expected']) }}
+                                    ({{ $sign }}{{ format_currency($abs) }}).
+                                    Se ajustará al monto real, no se duplica.
+                                @endif
+                            </div>
+                            <button type="button" data-no-spinner="true" x-on:click="linked = !linked"
+                                class="flex-shrink-0 font-semibold text-[#878787] hover:text-[#373737] dark:hover:text-white underline"
+                                x-text="linked ? 'No es este' : 'Ligar'"></button>
+                        </div>
                         @endif
 
                         <div class="grid grid-cols-[auto_1fr] gap-2 mt-2">

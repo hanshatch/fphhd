@@ -232,7 +232,7 @@ class StatementImportTest extends TestCase
         // Desde Cheques (sale dinero): ya existe como transferencia
         $this->get($this->upload($cheques)->headers->get('Location'))->assertOk()
             ->assertSee('parecen ya registrados')
-            ->assertSee('Transferencia Amex → Cheques');
+            ->assertSee('Transferencia Otra · Amex → Revolut · Cheques');
     }
 
     public function test_transfer_already_registered_is_duplicate_from_receiving_side_too(): void
@@ -292,6 +292,107 @@ class StatementImportTest extends TestCase
         ]]])->assertSessionHasErrors('rows.0.counterparty_account_id');
 
         $this->assertSame(0, Transaction::count());
+    }
+
+    /** Los tres seguros de Hans: recurrentes estimados vs. cargos reales en el estado de cuenta */
+    private function seguros(Account $account): array
+    {
+        $cat = Category::create(['name' => 'Seguros', 'kind' => 'expense']);
+
+        $make = fn (string $n, string $amount, string $due) => \App\Models\RecurringCharge::create([
+            'name' => 'Seguros Monterrey Retiro - ' . $n, 'account_id' => $account->id, 'category_id' => $cat->id,
+            'type' => 'expense', 'amount' => $amount, 'day_of_month' => (int) substr($due, -2),
+            'start_date' => '2026-01-01', 'next_application_date' => $due, 'is_active' => true,
+        ]);
+
+        return [$make('1', '4717.63', '2026-09-28'), $make('2', '10499.37', '2026-09-28'), $make('3', '11019.03', '2026-09-29'), $cat];
+    }
+
+    private function segurosVision(): void
+    {
+        $this->fakeVision([
+            ['amount' => '10519.54', 'description' => 'Domi 0004419763 Seguros Monterrey Ne', 'date' => '2026-09-29', 'type' => 'expense', 'category' => 'Otros gastos'],
+            ['amount' => '11040.20', 'description' => 'Domi 0004419739 Seguros Monterrey Ne', 'date' => '2026-09-29', 'type' => 'expense', 'category' => 'Otros gastos'],
+            ['amount' => '4726.35',  'description' => 'Domi 0004419374 Seguros Monterrey Ne', 'date' => '2026-09-29', 'type' => 'expense', 'category' => 'Otros gastos'],
+        ]);
+    }
+
+    public function test_statement_rows_are_matched_to_pending_recurring_charges_by_closest_amount(): void
+    {
+        $account = $this->account();
+        [$r1, $r2, $r3, $cat] = $this->seguros($account);
+        $this->segurosVision();
+
+        $location = $this->upload($account)->headers->get('Location');
+        $token    = basename($location);
+
+        $rows = \Illuminate\Support\Facades\Cache::get("statement_import:{$account->id}:{$token}");
+
+        $this->assertSame($r2->id, $rows[0]['recurring']['id']);
+        $this->assertSame($r3->id, $rows[1]['recurring']['id']);
+        $this->assertSame($r1->id, $rows[2]['recurring']['id']);
+        $this->assertSame('apply', $rows[0]['recurring']['mode']);
+        $this->assertSame($cat->id, $rows[0]['category_id']);
+
+        $this->get($location)->assertOk()
+            ->assertSee('corresponden a cargos recurrentes')
+            ->assertSee('Seguros Monterrey Retiro - 2');
+
+        $this->post(route('accounts.import.store', [$account, $token]), ['rows' => [
+            ['include' => 1, 'date' => '2026-09-29', 'description' => 'Domi 0004419763', 'amount' => '10,519.54', 'type' => 'expense', 'category_id' => $cat->id, 'recurring_id' => $r2->id],
+            ['include' => 1, 'date' => '2026-09-29', 'description' => 'Domi 0004419739', 'amount' => '11,040.20', 'type' => 'expense', 'category_id' => $cat->id, 'recurring_id' => $r3->id],
+            ['include' => 1, 'date' => '2026-09-29', 'description' => 'Domi 0004419374', 'amount' => '4,726.35',  'type' => 'expense', 'category_id' => $cat->id, 'recurring_id' => $r1->id],
+        ]])->assertRedirect(route('accounts.show', $account))
+            ->assertSessionHas('status', '3 cargos recurrentes aplicados con el monto real.');
+
+        $this->assertSame(3, Transaction::count());
+        $this->assertSame('10519.54', Transaction::where('description', 'Seguros Monterrey Retiro - 2')->sole()->amount);
+        $this->assertSame('2026-10-28', $r2->fresh()->next_application_date->toDateString());
+        $this->assertSame('2026-10-29', $r3->fresh()->next_application_date->toDateString());
+        $this->assertSame(1, $r1->fresh()->applied_installments);
+    }
+
+    public function test_recurring_already_applied_with_estimate_is_adjusted_not_duplicated(): void
+    {
+        $account = $this->account();
+        [, $r2, , $cat] = $this->seguros($account);
+
+        // Hans ya lo aplicó con el monto estimado
+        $estimated = app(\App\Services\RecurringChargeService::class)->applyCharge($r2, null, '2026-09-28');
+
+        $this->fakeVision([
+            ['amount' => '10519.54', 'description' => 'Domi 0004419763 Seguros Monterrey Ne', 'date' => '2026-09-29', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $token = basename($this->upload($account)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$account->id}:{$token}");
+
+        $this->assertSame('adjust', $rows[0]['recurring']['mode']);
+        $this->assertSame($estimated->id, $rows[0]['recurring']['transaction_id']);
+
+        $this->post(route('accounts.import.store', [$account, $token]), ['rows' => [[
+            'include' => 1, 'date' => '2026-09-29', 'description' => 'Domi 0004419763', 'amount' => '10,519.54',
+            'type' => 'expense', 'category_id' => $cat->id, 'adjust_tx_id' => $estimated->id,
+        ]]])->assertSessionHas('status', '1 cargo recurrente ajustado al monto real.');
+
+        $this->assertSame(1, Transaction::count());
+        $this->assertSame('10519.54', $estimated->fresh()->amount);
+        $this->assertSame('2026-09-29', $estimated->fresh()->date->toDateString());
+    }
+
+    public function test_amount_outside_tolerance_is_not_matched(): void
+    {
+        $account = $this->account();
+        $this->seguros($account);
+
+        $this->fakeVision([
+            ['amount' => '15000.00', 'description' => 'Domi Seguros Monterrey Ne', 'date' => '2026-09-29', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $token = basename($this->upload($account)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$account->id}:{$token}");
+
+        $this->assertArrayNotHasKey('recurring', $rows[0]);
     }
 
     public function test_upload_without_vision_key_redirects_with_message(): void

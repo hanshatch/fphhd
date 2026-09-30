@@ -152,9 +152,12 @@ class RecurringChargeController extends Controller
             'total_installments' => 'nullable|integer|min:2|max:360',
             'original_amount'    => 'nullable|numeric|min:0',
             'notes'              => 'nullable|string|max:500',
+            'statement_text'     => 'nullable|string|max:150',
+            'amount_tolerance_pct' => 'nullable|numeric|min:0|max:50',
         ]);
 
-        $data['original_amount'] = ($data['original_amount'] ?? null) ?: null;
+        $data['original_amount']      = ($data['original_amount'] ?? null) ?: null;
+        $data['amount_tolerance_pct'] = $data['amount_tolerance_pct'] ?? '3.00';
         $data['is_msi']          = $request->boolean('is_msi');
 
         // Si es MSI, calcular end_date automáticamente

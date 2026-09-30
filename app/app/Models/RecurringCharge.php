@@ -10,8 +10,8 @@ use Illuminate\Support\Carbon;
 class RecurringCharge extends Model
 {
     protected $fillable = [
-        'name', 'description', 'account_id', 'category_id',
-        'type', 'amount', 'day_of_month', 'start_date', 'end_date',
+        'name', 'description', 'statement_text', 'account_id', 'category_id',
+        'type', 'amount', 'amount_tolerance_pct', 'day_of_month', 'start_date', 'end_date',
         'is_msi', 'total_installments', 'applied_installments', 'original_amount',
         'next_application_date', 'is_active', 'notes',
     ];
@@ -19,6 +19,7 @@ class RecurringCharge extends Model
     protected $casts = [
         'amount'                 => 'decimal:2',
         'original_amount'        => 'decimal:2',
+        'amount_tolerance_pct'   => 'decimal:2',
         'start_date'             => 'date',
         'end_date'               => 'date',
         'next_application_date'  => 'date',
