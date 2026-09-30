@@ -3,7 +3,14 @@
 
     @php
         $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'])->count();
+        $twins = collect($rows)->filter(fn ($r) => $r['twin'] ?? null)->count();
     @endphp
+
+    @if($errors->any())
+    <div class="mb-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm text-red-600">
+        @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+    </div>
+    @endif
 
     @if(empty($rows))
     <x-card class="text-center py-12">
@@ -19,6 +26,10 @@
         @if($dupes)
             <span class="text-amber-600 font-semibold">{{ $dupes }} parecen ya registrados</span> y vienen desmarcados.
         @endif
+        @if($twins)
+            <span class="text-blue-600 font-semibold">{{ $twins }} {{ $twins === 1 ? 'parece transferencia' : 'parecen transferencias' }} entre tus cuentas</span>:
+            el otro lado ya está registrado y se convertirá en transferencia, sin duplicar.
+        @endif
     </p>
 
     <form method="POST" action="{{ route('accounts.import.store', [$account, $token]) }}">
@@ -27,11 +38,22 @@
         <div class="space-y-2 mb-24">
             @foreach($rows as $i => $row)
             @php
-                $isIncome = $row['type'] === 'income';
-                $dup      = $row['duplicate'];
+                $dup  = $row['duplicate'];
+                $twin = $row['twin'] ?? null;
             @endphp
-            <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : '' }}" x-data="{ on: {{ $dup ? 'false' : 'true' }}, type: '{{ $row['type'] }}' }"
+            <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : ($twin ? 'border-blue-300 dark:border-blue-500/40' : '') }}"
+                    x-data="{
+                        on: {{ $dup ? 'false' : 'true' }},
+                        type: '{{ $row['type'] }}',
+                        counterparty: '{{ $row['counterparty_account_id'] ?? '' }}',
+                        get isTransfer() { return this.type === 'transfer_out' || this.type === 'transfer_in'; },
+                        get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
+                        get amountClass() { return this.isIn ? 'text-[#76a72b]' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-red-500'); },
+                    }"
                     x-bind:class="on ? '' : 'opacity-50'">
+                @if($twin)
+                <input type="hidden" name="rows[{{ $i }}][twin_id]" value="{{ $twin['id'] }}" x-bind:disabled="!isTransfer">
+                @endif
 
                 <div class="flex items-start gap-3">
                     <label class="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 -mt-2 cursor-pointer">
@@ -48,7 +70,9 @@
                                 <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
                                     <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" required
                                         class="rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                                    @if(($row['category_source'] ?? null) === 'memory')
+                                    @if($twin)
+                                        <span class="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full">🔁 Transferencia</span>
+                                    @elseif(($row['category_source'] ?? null) === 'memory')
                                         <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" title="Categoría aprendida de tus movimientos anteriores">✓ Aprendida</span>
                                     @elseif(($row['category_source'] ?? null) === 'model')
                                         <span class="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-full" title="Sugerida por el lector de imágenes">Sugerida</span>
@@ -56,16 +80,23 @@
                                 </div>
                             </div>
                             <div class="relative flex-shrink-0 w-32">
-                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-bold" x-bind:class="type === 'income' ? 'text-[#76a72b]' : 'text-red-500'" x-text="type === 'income' ? '+$' : '−$'"></span>
+                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-bold" x-bind:class="amountClass" x-text="isIn ? '+$' : '−$'"></span>
                                 <input type="text" name="rows[{{ $i }}][amount]" value="{{ number_format((float) $row['amount'], 2) }}" inputmode="decimal" data-money required
                                     class="w-full rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent focus:bg-[#efeded]/50 dark:focus:bg-white/5 pl-7 pr-2 py-1 text-sm font-bold tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition"
-                                    x-bind:class="type === 'income' ? 'text-[#76a72b]' : 'text-red-500'">
+                                    x-bind:class="amountClass">
                             </div>
                         </div>
 
                         @if($dup)
                         <p class="mt-1 text-[11px] text-amber-600">
-                            ⚠️ Ya existe: {{ $dup['description'] }} · {{ $dup['date'] }}
+                            ⚠️ Ya existe: {{ $dup['description'] }} · {{ $dup['account'] }} · {{ $dup['date'] }}
+                        </p>
+                        @endif
+
+                        @if($twin)
+                        <p class="mt-1 text-[11px] text-blue-600" x-show="isTransfer">
+                            🔁 El otro lado ya está en {{ $twin['account'] }}: {{ $twin['description'] }} · {{ $twin['date'] }}.
+                            Se convertirá en transferencia, no se duplica.
                         </p>
                         @endif
 
@@ -74,11 +105,28 @@
                                 class="rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
                                 <option value="expense">Cargo</option>
                                 <option value="income">Abono</option>
+                                <option value="transfer_out">Transferencia enviada</option>
+                                <option value="transfer_in">Transferencia recibida</option>
                             </select>
 
-                            <x-category-picker :categories="$categories" :selected="$row['category_id']"
-                                name="rows[{{ $i }}][category_id]" kind-expr="type"
-                                class="!py-2 !px-3 !rounded-lg text-xs min-h-[38px]" />
+                            <div class="min-w-0" x-show="!isTransfer">
+                                <x-category-picker :categories="$categories" :selected="$row['category_id']"
+                                    name="rows[{{ $i }}][category_id]" kind-expr="type"
+                                    disabled-expr="isTransfer"
+                                    class="!py-2 !px-3 !rounded-lg text-xs min-h-[38px]" />
+                            </div>
+
+                            <div class="min-w-0 flex items-center gap-2" x-show="isTransfer" x-cloak>
+                                <span class="text-xs text-[#878787] flex-shrink-0" x-text="type === 'transfer_out' ? 'Hacia' : 'Desde'"></span>
+                                <select name="rows[{{ $i }}][counterparty_account_id]" x-model="counterparty"
+                                    x-bind:disabled="!isTransfer" x-bind:required="on && isTransfer"
+                                    class="w-full min-w-0 rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
+                                    <option value="">Elige la otra cuenta…</option>
+                                    @foreach($others as $other)
+                                    <option value="{{ $other->id }}">{{ $other->displayLabel() }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Services\MerchantMemoryService;
 use App\Services\TelegramExpenseService;
 use App\Services\TelegramService;
+use App\Services\TransactionMatchService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,7 @@ class BankEmailImportService
         private MailboxReader $mailbox,
         private BankEmailParser $parser,
         private MerchantMemoryService $memory,
+        private TransactionMatchService $matcher,
         private TelegramExpenseService $telegramFlow,
         private TelegramService $telegram,
     ) {}
@@ -134,8 +136,19 @@ class BankEmailImportService
             return;
         }
 
-        // 3) ¿Es la otra mitad de una transferencia interna?
-        if ($account && ($twin = $this->findTransferTwin($account, $type, $p['amount'], $p['date']))) {
+        $direction = $type === 'income' ? 'in' : 'out';
+
+        // 3) Ya registrado en esta cuenta (también si fue como transferencia desde la otra cuenta)
+        if ($account && ($dup = $this->matcher->existing($account, $direction, $p['amount'], $p['date'], 1))) {
+            $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $account, $type, [
+                'duplicate' => $this->matcher->describe($dup, $account),
+            ]));
+
+            return;
+        }
+
+        // 4) ¿Es la otra mitad de una transferencia interna?
+        if ($account && ($twin = $this->matcher->transferTwin($account, $direction, $p['amount'], $p['date'], 1))) {
             [$from, $to] = $type === 'expense' ? [$account, $twin->account] : [$twin->account, $account];
 
             $this->notify(
@@ -149,20 +162,6 @@ class BankEmailImportService
                     ['text' => '⏭ No registrar', 'callback_data' => 'mail:skip:' . $email->id],
                 ]]
             );
-
-            return;
-        }
-
-        // 4) Ya existe un movimiento igual (mismo monto, misma cuenta, ±1 día)
-        if ($account && ($dup = $this->findDuplicate($account, $type, $p['amount'], $p['date']))) {
-            $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $account, $type, [
-                'duplicate' => [
-                    'amount'      => (string) $dup->amount,
-                    'description' => $dup->description ?: 'Sin descripción',
-                    'account'     => $dup->account->name,
-                    'date'        => $dup->date->translatedFormat('j M Y'),
-                ],
-            ]));
 
             return;
         }
@@ -211,14 +210,7 @@ class BankEmailImportService
 
         [$from, $to] = $p['kind'] === 'income' ? [$twin->account, $account] : [$account, $twin->account];
 
-        $twin->update([
-            'type'                    => Transaction::TYPE_TRANSFER,
-            'account_id'              => $from->id,
-            'counterparty_account_id' => $to->id,
-            'category_id'             => null,
-            'source_id'               => null,
-            'description'             => 'Transferencia ' . $from->name . ' → ' . $to->name,
-        ]);
+        $twin = $this->matcher->convertToTransfer($twin, $from, $to);
 
         $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $twin->id]);
         AuditLog::record('bank_email_transfer', ['transaction_id' => $twin->id, 'bank_email_id' => $email->id]);
@@ -314,35 +306,6 @@ class BankEmailImportService
         }
 
         return null;
-    }
-
-    /** Movimiento del tipo contrario, mismo monto, otra cuenta, ±1 día, que no sea ya transferencia */
-    private function findTransferTwin(Account $account, string $type, string $amount, string $date): ?Transaction
-    {
-        $d = Carbon::parse($date);
-
-        return Transaction::with('account')
-            ->where('account_id', '<>', $account->id)
-            ->where('type', $type === 'expense' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE)
-            ->where('amount', $amount)
-            ->whereDate('date', '>=', $d->copy()->subDay()->toDateString())
-            ->whereDate('date', '<=', $d->copy()->addDay()->toDateString())
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    private function findDuplicate(Account $account, string $type, string $amount, string $date): ?Transaction
-    {
-        $d = Carbon::parse($date);
-
-        return Transaction::with('account')
-            ->where('account_id', $account->id)
-            ->where('type', $type)
-            ->where('amount', $amount)
-            ->whereDate('date', '>=', $d->copy()->subDay()->toDateString())
-            ->whereDate('date', '<=', $d->copy()->addDay()->toDateString())
-            ->orderByDesc('id')
-            ->first();
     }
 
     private function webUrl(?Account $account, array $p): string

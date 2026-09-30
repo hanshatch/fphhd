@@ -143,6 +143,25 @@ class BankEmailImportTest extends TestCase
         $this->assertSame(BankEmail::STATUS_REGISTERED, $email->fresh()->status);
     }
 
+    public function test_transfer_registered_from_other_account_is_reported_as_duplicate(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379');
+        $revolut = $this->account('Revolut', 'revolut');
+
+        Transaction::create([
+            'date' => '2026-09-30', 'type' => 'transfer', 'amount' => '20000.00',
+            'account_id' => $cheques->id, 'counterparty_account_id' => $revolut->id,
+            'description' => 'Transferencia a Revolut',
+        ]);
+
+        $this->inbox = [$this->mail('u11', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertStringContainsString('Ya tienes un movimiento parecido registrado', $this->lastText());
+        $this->assertStringContainsString('Transferencia Cheques → Revolut', $this->lastText());
+        $this->assertSame(1, Transaction::count());
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

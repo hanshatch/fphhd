@@ -41,9 +41,12 @@ class StatementImportService
         'mercadopago' => 'App Mercado Pago: "Pagaste" o nombre de comercio con "-" es cargo; "Recibiste", "Rendimientos" o "+" es abono.',
     ];
 
+    public const TYPES_TRANSFER = ['transfer_out', 'transfer_in'];
+
     public function __construct(
         private VisionExpenseService $vision,
         private MerchantMemoryService $memory,
+        private TransactionMatchService $matcher,
     ) {}
 
     public function isConfigured(): bool
@@ -112,13 +115,20 @@ class StatementImportService
     }
 
     /**
-     * Crea las transacciones seleccionadas. $input viene del formulario de
-     * revisión: [['include' => 1, 'date', 'description', 'amount', 'type', 'category_id'], ...]
-     * Devuelve cuántas se crearon.
+     * Registra los renglones seleccionados. Cada renglón del formulario:
+     * ['include', 'date', 'description', 'amount', 'type', 'category_id',
+     *  'counterparty_account_id', 'twin_id']
+     *
+     * type: expense | income | transfer_out | transfer_in. En transferencias,
+     * si viene twin_id y ese movimiento es el otro lado, se CONVIERTE en la
+     * transferencia en vez de crear uno nuevo (no se duplica).
+     *
+     * Devuelve ['created' => n, 'linked' => n].
      */
-    public function store(Account $account, string $token, array $input): int
+    public function store(Account $account, string $token, array $input): array
     {
         $created = 0;
+        $linked  = 0;
 
         foreach ($input as $row) {
             if (empty($row['include'])) {
@@ -131,13 +141,53 @@ class StatementImportService
                 continue;
             }
 
+            $type        = $row['type'] ?? 'expense';
+            $date        = $this->sanitizeDate($row['date'] ?? null);
+            $description = Str::limit(trim((string) ($row['description'] ?? '')), 500, '');
+
+            if (in_array($type, self::TYPES_TRANSFER, true)) {
+                $other = Account::find((int) ($row['counterparty_account_id'] ?? 0));
+
+                if ($other === null || $other->id === $account->id) {
+                    continue;
+                }
+
+                [$from, $to] = $type === 'transfer_out' ? [$account, $other] : [$other, $account];
+
+                $twin = ! empty($row['twin_id']) ? Transaction::find((int) $row['twin_id']) : null;
+
+                // Solo se convierte si de verdad es el otro lado: otra cuenta, cargo/abono suelto y mismo monto
+                if ($twin
+                    && $twin->account_id === $other->id
+                    && $twin->type === ($type === 'transfer_out' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE)
+                    && bccomp((string) $twin->amount, $amount, 2) === 0) {
+                    $this->matcher->convertToTransfer($twin, $from, $to);
+                    $linked++;
+
+                    continue;
+                }
+
+                Transaction::create([
+                    'date'                    => $date,
+                    'type'                    => Transaction::TYPE_TRANSFER,
+                    'amount'                  => $amount,
+                    'account_id'              => $from->id,
+                    'counterparty_account_id' => $to->id,
+                    'description'             => $description ?: 'Transferencia ' . $from->displayLabel() . ' → ' . $to->displayLabel(),
+                ]);
+
+                $created++;
+
+                continue;
+            }
+
             Transaction::create([
-                'date'        => $this->sanitizeDate($row['date'] ?? null),
-                'type'        => ($row['type'] ?? 'expense') === 'income' ? 'income' : 'expense',
+                'date'        => $date,
+                'type'        => $type === 'income' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE,
                 'amount'      => $amount,
                 'account_id'  => $account->id,
                 'category_id' => ($row['category_id'] ?? null) ?: null,
-                'description' => Str::limit(trim((string) ($row['description'] ?? '')), 500, '') ?: 'Cargo',
+                'description' => $description ?: 'Cargo',
             ]);
 
             $created++;
@@ -145,11 +195,11 @@ class StatementImportService
 
         Cache::forget($this->key($account, $token));
 
-        if ($created > 0) {
-            AuditLog::record('statement_import', ['account_id' => $account->id, 'count' => $created]);
+        if ($created + $linked > 0) {
+            AuditLog::record('statement_import', ['account_id' => $account->id, 'created' => $created, 'linked' => $linked]);
         }
 
-        return $created;
+        return ['created' => $created, 'linked' => $linked];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
@@ -173,37 +223,28 @@ class StatementImportService
             $source = $categoryId ? 'model' : null;
         }
 
-        return [
-            'date'            => $date,
-            'description'     => $description,
-            'amount'          => $item['amount'],
-            'type'            => $type,
-            'category_id'     => $categoryId,
-            'category_source' => $source,
-            'duplicate'       => $this->findDuplicate($account, $item['amount'], $date),
-        ];
-    }
+        $direction = $type === 'income' ? 'in' : 'out';
+        $existing  = $this->matcher->existing($account, $direction, $item['amount'], $date);
 
-    /** Movimiento existente en la misma cuenta con el mismo monto ±3 días */
-    private function findDuplicate(Account $account, string $amount, string $date): ?array
-    {
-        $d = Carbon::parse($date);
+        // ¿La otra mitad ya está en otra cuenta tuya? Entonces es transferencia interna
+        $twin = $existing ? null : $this->matcher->transferTwin($account, $direction, $item['amount'], $date);
 
-        $existing = Transaction::where('account_id', $account->id)
-            ->where('amount', $amount)
-            ->whereDate('date', '>=', $d->copy()->subDays(3)->toDateString())
-            ->whereDate('date', '<=', $d->copy()->addDays(3)->toDateString())
-            ->orderByDesc('id')
-            ->first();
-
-        if ($existing === null) {
-            return null;
+        if ($twin) {
+            $type       = $direction === 'out' ? 'transfer_out' : 'transfer_in';
+            $categoryId = null;
+            $source     = null;
         }
 
         return [
-            'id'          => $existing->id,
-            'description' => $existing->description ?: 'Sin descripción',
-            'date'        => $existing->date->translatedFormat('j M Y'),
+            'date'                    => $date,
+            'description'             => $description,
+            'amount'                  => $item['amount'],
+            'type'                    => $type,
+            'category_id'             => $categoryId,
+            'category_source'         => $source,
+            'duplicate'               => $existing ? $this->matcher->describe($existing, $account) : null,
+            'counterparty_account_id' => $twin?->account_id,
+            'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
     }
 

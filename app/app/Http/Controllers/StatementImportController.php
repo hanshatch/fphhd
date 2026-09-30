@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Services\StatementImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class StatementImportController extends Controller
@@ -51,6 +52,8 @@ class StatementImportController extends Controller
             'token'      => $token,
             'rows'       => $rows,
             'categories' => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
+            'others'     => Account::where('is_active', true)->where('id', '<>', $account->id)->get()
+                ->sortBy(fn (Account $a) => mb_strtolower($a->displayLabel()))->values(),
         ]);
     }
 
@@ -68,17 +71,37 @@ class StatementImportController extends Controller
             'rows.*.date'        => 'required|date',
             'rows.*.description' => 'required|string|max:500',
             'rows.*.amount'      => 'required|string',
-            'rows.*.type'        => 'required|in:expense,income',
+            'rows.*.type'        => 'required|in:expense,income,transfer_out,transfer_in',
             'rows.*.category_id' => 'nullable|exists:categories,id',
+            'rows.*.counterparty_account_id' => 'nullable|integer|exists:accounts,id',
+            'rows.*.twin_id'     => 'nullable|integer',
         ]);
 
-        $created = $this->service->store($account, $token, $data['rows']);
+        // Una transferencia marcada necesita la otra cuenta (y que no sea esta misma)
+        foreach ($data['rows'] as $i => $row) {
+            if (! empty($row['include'])
+                && in_array($row['type'], StatementImportService::TYPES_TRANSFER, true)
+                && (empty($row['counterparty_account_id']) || (int) $row['counterparty_account_id'] === $account->id)) {
+                throw ValidationException::withMessages([
+                    "rows.{$i}.counterparty_account_id" => '«' . $row['description'] . '»: elige la otra cuenta de la transferencia.',
+                ]);
+            }
+        }
+
+        ['created' => $created, 'linked' => $linked] = $this->service->store($account, $token, $data['rows']);
 
         $msg = match (true) {
-            $created === 0 => 'No se registró ningún movimiento.',
-            $created === 1 => 'Se registró 1 movimiento.',
-            default        => "Se registraron {$created} movimientos.",
+            $created + $linked === 0 => 'No se registró ningún movimiento.',
+            $created === 1           => 'Se registró 1 movimiento.',
+            $created > 1             => "Se registraron {$created} movimientos.",
+            default                  => '',
         };
+
+        if ($linked > 0) {
+            $msg = trim($msg . ' ' . ($linked === 1
+                ? '1 movimiento que ya existía en otra cuenta quedó como transferencia.'
+                : "{$linked} movimientos que ya existían en otra cuenta quedaron como transferencias."));
+        }
 
         return redirect()->route('accounts.show', $account)->with('status', $msg);
     }
