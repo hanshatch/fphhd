@@ -36,6 +36,7 @@ class GmailImapReader implements MailboxReader
 
         if ($stream === false) {
             Log::warning('Gmail IMAP: no se pudo abrir la etiqueta', ['label' => $label, 'error' => imap_last_error()]);
+            imap_errors(); // vaciar la pila para que PHP no la vuelque al cerrar
 
             return [];
         }
@@ -69,6 +70,7 @@ class GmailImapReader implements MailboxReader
 
             return $messages;
         } finally {
+            imap_errors();
             imap_close($stream);
         }
     }
