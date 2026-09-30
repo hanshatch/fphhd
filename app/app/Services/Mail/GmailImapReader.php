@@ -11,7 +11,11 @@ use Illuminate\Support\Facades\Log;
  */
 class GmailImapReader implements MailboxReader
 {
-    private const HOST = '{imap.gmail.com:993/imap/ssl}';
+    /**
+     * novalidate-cert: la librería c-client de PHP no manda SNI y Gmail le
+     * responde con un certificado de relleno; la conexión sigue cifrada.
+     */
+    private const HOST = '{imap.gmail.com:993/imap/ssl/novalidate-cert}';
 
     public function isConfigured(): bool
     {
