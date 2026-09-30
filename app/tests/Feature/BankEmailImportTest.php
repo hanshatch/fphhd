@@ -244,6 +244,27 @@ class BankEmailImportTest extends TestCase
         $this->assertCount(0, $this->sent);
     }
 
+    public function test_info_mail_is_ignored_silently_and_multiple_last4_match(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        Category::create(['name' => 'Seguros', 'kind' => 'expense']);
+
+        $this->inbox = [
+            $this->mail('u9', 'notificaciones@banamex.com', 'Autorización de cargo a cuenta para pago a establecimiento', "Se registró una nueva domiciliación\nCuenta de cargo: 894", '2026-09-29 19:16'),
+            $this->mail('u10', 'notificaciones@banamex.com', 'Cargo a cuenta para pago a Establecimiento', BankEmailParserTest::BANAMEX_DOMICILIADO, '2026-09-29 19:27'),
+        ];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertSame(BankEmail::STATUS_IGNORED, BankEmail::where('message_uid', 'u9')->sole()->status);
+
+        $charge = BankEmail::where('message_uid', 'u10')->sole();
+        $this->assertSame(BankEmail::STATUS_PENDING, $charge->status);
+        $this->assertSame($cheques->id, $charge->account_id);
+        $this->assertCount(1, $this->sent);
+        $this->assertStringContainsString('Seguros Monterrey Ne', $this->lastText());
+        $this->assertStringContainsString('¿Qué categoría?', $this->lastText());
+    }
+
     public function test_account_form_saves_bank_last4(): void
     {
         $account = $this->account('Cheques', 'banamex');

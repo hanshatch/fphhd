@@ -77,6 +77,27 @@ Mínimo a pagar*
 $12,080.00
 TXT;
 
+    public const BANAMEX_DOMICILIADO = <<<TXT
+Operación
+Cargo a cuenta para pago a Establecimiento
+Establecimiento
+SEGUROS MONTERREY NE
+Cuenta de cargo
+894
+Referencia establecimiento
+CAD202692920208
+Referencia 4
+PAGO DE SERVICIO SEGUROSMON
+Monto
+$11,040.20
+Fecha y hora
+29/09/26 19:26:18 PM
+No. Autorización
+S702 0004419739
+Protege tus cuentas
+Nunca compartas con nadie
+TXT;
+
     private function parser(): BankEmailParser
     {
         return app(BankEmailParser::class);
@@ -129,6 +150,26 @@ TXT;
         $this->assertSame('300227', $r['auth']);
         $this->assertSame('Ecommerce San Pablo Mex', $r['description']);
         $this->assertFalse($r['generic']);
+    }
+
+    public function test_banamex_direct_debit(): void
+    {
+        $r = $this->parser()->parse('notificaciones@banamex.com', 'Cargo a cuenta para pago a Establecimiento', self::BANAMEX_DOMICILIADO, Carbon::parse('2026-09-29 19:27'));
+
+        $this->assertSame('expense', $r['kind']);
+        $this->assertSame('11040.20', $r['amount']);
+        $this->assertSame('2026-09-29', $r['date']);
+        $this->assertSame('894', $r['last4']);
+        $this->assertSame('S702 0004419739', $r['auth']);
+        $this->assertSame('Seguros Monterrey Ne', $r['description']);
+        $this->assertFalse($r['generic']);
+    }
+
+    public function test_banamex_direct_debit_registration_notice_is_info(): void
+    {
+        $r = $this->parser()->parse('notificaciones@banamex.com', 'Autorización de cargo a cuenta para pago a establecimiento', "Se registró una nueva domiciliación\nCuenta de cargo: 894", now());
+
+        $this->assertSame('info', $r['kind']);
     }
 
     public function test_revolut_transfer_abroad(): void

@@ -89,9 +89,15 @@ class BankEmailParser
     {
         $s = Str::ascii(mb_strtolower($subject));
 
+        // Aviso de alta de domiciliación: no es un cargo, se ignora sin avisar
+        if (str_contains($s, 'autorizacion de cargo')) {
+            return ['kind' => 'info', 'description' => $subject];
+        }
+
         $kind = match (true) {
             str_contains($s, 'deposito')                            => 'income',
             str_contains($s, 'retiro') || str_contains($s, 'compra') => 'expense',
+            str_contains($s, 'cargo a cuenta')                      => 'expense',
             str_contains($s, 'transferencia') && str_contains($s, 'enviada') => 'expense',
             default => null,
         };
@@ -110,18 +116,23 @@ class BankEmailParser
             return null;
         }
 
-        // "30 Septiembre 2026 / 14:56:00" (cuenta) o "2026/09/26 11:44:43 AM" (tarjeta)
+        // "30 Septiembre 2026 / 14:56:00" (cuenta), "2026/09/26 11:44:43 AM" (tarjeta), "29/09/26 19:26:18" (domiciliado)
         $date = match (true) {
             (bool) preg_match('/Fecha y hora\s*(\d{1,2})\s+([[:alpha:]]+)\s+(\d{4})/iu', $text, $d) => $this->spanishDate((int) $d[1], $d[2], (int) $d[3]),
             (bool) preg_match('/Fecha y hora\s*(\d{4})\/(\d{2})\/(\d{2})/iu', $text, $d)             => checkdate((int) $d[2], (int) $d[3], (int) $d[1]) ? "{$d[1]}-{$d[2]}-{$d[3]}" : null,
+            (bool) preg_match('/Fecha y hora\s*(\d{2})\/(\d{2})\/(\d{2})\b/iu', $text, $d)          => checkdate((int) $d[2], (int) $d[1], 2000 + (int) $d[3]) ? sprintf('20%s-%s-%s', $d[3], $d[2], $d[1]) : null,
             default => null,
         };
 
-        preg_match('/\*{2,}\s*(\d{3,4})/u', $text, $l);
-        preg_match('/No\.?\s*Autorizaci[oó]n\s*:?\s*(\d+)/iu', $text, $a);
+        // "***379", "**117" o "Cuenta de cargo 894"
+        if (! preg_match('/\*{2,}\s*(\d{3,4})/u', $text, $l)) {
+            preg_match('/Cuenta de cargo:?\s*\n?\s*(\d{3,4})\b/iu', $text, $l);
+        }
+        preg_match('/No\.?\s*Autorizaci[oó]n\s*:?\s*([A-Z0-9][A-Z0-9 ]{2,40})/iu', $text, $a);
+        $auth = isset($a[1]) ? trim(preg_replace('/\s+(Protege|Informaci|Estatus).*$/is', '', $a[1])) : null;
 
         // Compras con tarjeta traen el comercio: "Establecimiento\nECOMMERCE SAN PABLO MEX"
-        $merchant = preg_match('/Establecimiento\s*\n?\s*([^\n]+)/iu', $text, $e) ? trim($e[1]) : null;
+        $merchant = preg_match('/(?:^|\n)Establecimiento:?\s*\n?\s*([^\n]+)/iu', $text, $e) ? trim($e[1]) : null;
         if ($merchant !== null && preg_match('/^(monto|fecha|estatus)/iu', $merchant)) {
             $merchant = null;
         }
@@ -134,7 +145,7 @@ class BankEmailParser
             'currency'    => 'MXN',
             'date'        => $date ?? $receivedAt->toDateString(),
             'last4'       => $l[1] ?? null,
-            'auth'        => $a[1] ?? null,
+            'auth'        => $auth ?: null,
             'description' => $merchant
                 ? Str::title(mb_strtolower($merchant))
                 : ($operation ?: ($kind === 'income' ? 'Depósito' : 'Retiro/Compra')) . ' Banamex',

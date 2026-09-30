@@ -67,6 +67,8 @@ class BankEmailImportService
         $bank   = $this->parser->bankFor($message['from']);
         $parsed = $bank ? $this->parser->parse($message['from'], $message['subject'], $message['text'], $message['date']) : null;
 
+        $isInfo = ($parsed['kind'] ?? null) === 'info';
+
         $email = BankEmail::create([
             'message_uid' => $message['uid'],
             'bank'        => $bank,
@@ -77,14 +79,14 @@ class BankEmailImportService
             'parsed'      => $parsed,
             'auth_number' => $parsed['auth'] ?? null,
             'status'      => match (true) {
-                $bank === null   => BankEmail::STATUS_IGNORED,
+                $bank === null || $isInfo => BankEmail::STATUS_IGNORED,
                 $silent          => BankEmail::STATUS_SKIPPED,
                 $parsed === null => BankEmail::STATUS_UNPARSED,
                 default          => BankEmail::STATUS_PENDING,
             },
         ]);
 
-        if ($silent) {
+        if ($silent || $isInfo) {
             return $email;
         }
 
@@ -284,10 +286,19 @@ class BankEmailImportService
     private function matchAccount(?string $bank, ?string $last4): ?Account
     {
         if ($last4) {
+            // bank_last4 admite varias terminaciones: "379, 894" (cuenta y tarjeta de débito)
             $byDigits = Account::where('is_active', true)
                 ->whereNotNull('bank_last4')
                 ->get()
-                ->first(fn (Account $a) => str_ends_with((string) $a->bank_last4, $last4) || str_ends_with($last4, (string) $a->bank_last4));
+                ->first(function (Account $a) use ($last4) {
+                    foreach (preg_split('/[\s,;]+/', (string) $a->bank_last4, -1, PREG_SPLIT_NO_EMPTY) as $digits) {
+                        if (str_ends_with($digits, $last4) || str_ends_with($last4, $digits)) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                });
 
             if ($byDigits) {
                 return $byDigits;
