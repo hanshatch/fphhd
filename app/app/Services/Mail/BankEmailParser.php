@@ -110,14 +110,23 @@ class BankEmailParser
             return null;
         }
 
-        $date = preg_match('/Fecha y hora\s*(\d{1,2})\s+([[:alpha:]]+)\s+(\d{4})/iu', $text, $d)
-            ? $this->spanishDate((int) $d[1], $d[2], (int) $d[3])
-            : null;
+        // "30 Septiembre 2026 / 14:56:00" (cuenta) o "2026/09/26 11:44:43 AM" (tarjeta)
+        $date = match (true) {
+            (bool) preg_match('/Fecha y hora\s*(\d{1,2})\s+([[:alpha:]]+)\s+(\d{4})/iu', $text, $d) => $this->spanishDate((int) $d[1], $d[2], (int) $d[3]),
+            (bool) preg_match('/Fecha y hora\s*(\d{4})\/(\d{2})\/(\d{2})/iu', $text, $d)             => checkdate((int) $d[2], (int) $d[3], (int) $d[1]) ? "{$d[1]}-{$d[2]}-{$d[3]}" : null,
+            default => null,
+        };
 
         preg_match('/\*{2,}\s*(\d{3,4})/u', $text, $l);
         preg_match('/No\.?\s*Autorizaci[oó]n\s*:?\s*(\d+)/iu', $text, $a);
 
-        $operation = preg_match('/siguiente operaci[oó]n:\s*([^\n]+)/iu', $text, $o) ? trim($o[1]) : null;
+        // Compras con tarjeta traen el comercio: "Establecimiento\nECOMMERCE SAN PABLO MEX"
+        $merchant = preg_match('/Establecimiento\s*\n?\s*([^\n]+)/iu', $text, $e) ? trim($e[1]) : null;
+        if ($merchant !== null && preg_match('/^(monto|fecha|estatus)/iu', $merchant)) {
+            $merchant = null;
+        }
+
+        $operation = preg_match('/siguiente operaci[oó]n:\s*([^\n]+)/iu', $text, $o) ? trim(preg_replace('/\s*\/\s*/', '/', $o[1])) : null;
 
         return [
             'kind'        => $kind,
@@ -126,8 +135,10 @@ class BankEmailParser
             'date'        => $date ?? $receivedAt->toDateString(),
             'last4'       => $l[1] ?? null,
             'auth'        => $a[1] ?? null,
-            'description' => ($operation ?: ($kind === 'income' ? 'Depósito' : 'Retiro/Compra')) . ' Banamex',
-            'generic'     => true,
+            'description' => $merchant
+                ? Str::title(mb_strtolower($merchant))
+                : ($operation ?: ($kind === 'income' ? 'Depósito' : 'Retiro/Compra')) . ' Banamex',
+            'generic'     => $merchant === null,
         ];
     }
 

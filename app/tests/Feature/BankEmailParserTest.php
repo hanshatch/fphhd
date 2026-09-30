@@ -52,6 +52,31 @@ Llegada esperada
 Mañana
 TXT;
 
+    public const BANAMEX_TARJETA = <<<TXT
+26 sep 2026, 11:44 h.
+Se realizó la siguiente operación: Retiro / Compra
+HANS HATCH
+CONQUISTA BANAMEX**117
+Detalle de la operación
+Monto
+$377.00
+Establecimiento
+ECOMMERCE SAN PABLO MEX
+Fecha y hora
+2026/09/26 11:44:43 AM
+Estatus
+Exitoso
+No. Autorización
+300227
+Información importante de tu tarjeta
+Fecha de corte
+18 septiembre 2026
+Fecha límite de pago
+9 octubre 2026
+Mínimo a pagar*
+$12,080.00
+TXT;
+
     private function parser(): BankEmailParser
     {
         return app(BankEmailParser::class);
@@ -91,6 +116,19 @@ TXT;
         $this->assertSame('2026-09-29', $r['date']);
         $this->assertSame('379', $r['last4']);
         $this->assertSame('45650', $r['auth']);
+    }
+
+    public function test_banamex_card_purchase_has_merchant_and_card_digits(): void
+    {
+        $r = $this->parser()->parse('notificaciones@banamex.com', 'Retiro/Compra con tarjeta Banamex', self::BANAMEX_TARJETA, Carbon::parse('2026-09-26 11:45'));
+
+        $this->assertSame('expense', $r['kind']);
+        $this->assertSame('377.00', $r['amount']);
+        $this->assertSame('2026-09-26', $r['date']);
+        $this->assertSame('117', $r['last4']);
+        $this->assertSame('300227', $r['auth']);
+        $this->assertSame('Ecommerce San Pablo Mex', $r['description']);
+        $this->assertFalse($r['generic']);
     }
 
     public function test_revolut_transfer_abroad(): void

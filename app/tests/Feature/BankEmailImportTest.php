@@ -228,6 +228,22 @@ class BankEmailImportTest extends TestCase
         $this->assertStringContainsString('no supe leer', $this->lastText());
     }
 
+    public function test_silent_sync_stores_old_mail_without_notifying(): void
+    {
+        $this->account('Cheques', 'banamex', '379');
+
+        $this->inbox = [$this->mail('u8', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
+
+        $this->assertSame(1, app(BankEmailImportService::class)->sync(7, true));
+        $this->assertSame(BankEmail::STATUS_SKIPPED, BankEmail::sole()->status);
+        $this->assertSame('383450', BankEmail::sole()->auth_number);
+        $this->assertCount(0, $this->sent);
+
+        // La corrida normal posterior ya no lo vuelve a tocar
+        $this->assertSame(0, app(BankEmailImportService::class)->sync());
+        $this->assertCount(0, $this->sent);
+    }
+
     public function test_account_form_saves_bank_last4(): void
     {
         $account = $this->account('Cheques', 'banamex');

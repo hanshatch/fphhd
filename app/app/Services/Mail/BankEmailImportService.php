@@ -32,8 +32,12 @@ class BankEmailImportService
         private TelegramService $telegram,
     ) {}
 
-    /** Procesa los correos nuevos. Devuelve cuántos correos nuevos se guardaron. */
-    public function sync(int $days = 7): int
+    /**
+     * Procesa los correos nuevos. Devuelve cuántos correos nuevos se guardaron.
+     * Con $silent = true solo los registra como omitidos (arranque inicial:
+     * evita avalancha de Telegram con correos viejos).
+     */
+    public function sync(int $days = 7, bool $silent = false): int
     {
         $messages = $this->mailbox->fetchRecent($days);
 
@@ -50,7 +54,7 @@ class BankEmailImportService
                 continue;
             }
 
-            $this->handle($message);
+            $this->handle($message, $silent);
             $new++;
         }
 
@@ -58,7 +62,7 @@ class BankEmailImportService
     }
 
     /** Guarda y enruta un correo. Público para poder inyectar correos en pruebas y depuración. */
-    public function handle(array $message): BankEmail
+    public function handle(array $message, bool $silent = false): BankEmail
     {
         $bank   = $this->parser->bankFor($message['from']);
         $parsed = $bank ? $this->parser->parse($message['from'], $message['subject'], $message['text'], $message['date']) : null;
@@ -72,8 +76,17 @@ class BankEmailImportService
             'raw_text'    => Str::limit($message['text'], 20000, ''),
             'parsed'      => $parsed,
             'auth_number' => $parsed['auth'] ?? null,
-            'status'      => $bank === null ? BankEmail::STATUS_IGNORED : ($parsed === null ? BankEmail::STATUS_UNPARSED : BankEmail::STATUS_PENDING),
+            'status'      => match (true) {
+                $bank === null   => BankEmail::STATUS_IGNORED,
+                $silent          => BankEmail::STATUS_SKIPPED,
+                $parsed === null => BankEmail::STATUS_UNPARSED,
+                default          => BankEmail::STATUS_PENDING,
+            },
         ]);
+
+        if ($silent) {
+            return $email;
+        }
 
         if ($parsed === null) {
             if ($bank !== null) {
