@@ -73,6 +73,31 @@ class StatementImportTest extends TestCase
         $this->assertSame(0, Transaction::count());
     }
 
+    public function test_learned_merchant_category_beats_model_hint(): void
+    {
+        $account = $this->account();
+        $super   = Category::create(['name' => 'Súper', 'kind' => 'expense']);
+        $otros   = Category::create(['name' => 'Otros gastos', 'kind' => 'expense']);
+
+        // Hans ya registró OXXO como Súper antes
+        Transaction::create([
+            'date' => '2026-08-01', 'type' => 'expense', 'amount' => '50.00',
+            'account_id' => $account->id, 'category_id' => $super->id, 'description' => 'OXXO',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '64.50', 'description' => 'Oxxo', 'date' => '2026-09-08', 'type' => 'expense', 'category' => 'Otros gastos'],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+
+        $this->get($location)
+            ->assertOk()
+            ->assertSee('Aprendida')
+            ->assertSee("value: '" . $super->id . "'", false)
+            ->assertDontSee("value: '" . $otros->id . "'", false);
+    }
+
     public function test_store_creates_only_selected_rows_with_chosen_category(): void
     {
         $account = $this->account();

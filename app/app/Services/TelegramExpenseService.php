@@ -126,6 +126,32 @@ class TelegramExpenseService
      * screenshot pregunta primero el tipo (cargo/abono/interés); si no,
      * directo la cuenta.
      */
+    /**
+     * Entrada desde el lector de correos bancarios: si Hans está a media
+     * captura se encola detrás; si no, arranca el flujo de inmediato.
+     * El pendiente trae cuenta resuelta (si se pudo) y bank_email_id.
+     */
+    public function enqueueFromEmail(array $pending): void
+    {
+        $chatId = config('services.telegram.chat_id');
+
+        if (! $chatId || ! config('services.telegram.bot_token')) {
+            return;
+        }
+
+        $current = Cache::get($this->pendingKey($chatId));
+
+        if ($current !== null) {
+            $current['queue'][] = $pending;
+            $current['total']   = ($current['total'] ?? 1) + 1;
+            Cache::put($this->pendingKey($chatId), $current, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+            return;
+        }
+
+        $this->startPending($chatId, [$pending], 1);
+    }
+
     private function startPending(int|string $chatId, array $queue, int $total): void
     {
         $pending          = array_shift($queue);
@@ -164,11 +190,34 @@ class TelegramExpenseService
             return;
         }
 
+        // Cuenta ya resuelta (correo bancario): directo a la categoría
+        if (! empty($pending['account_id'])) {
+            $account = Account::find($pending['account_id']);
+            $type    = $pending['type'] ?? 'expense';
+
+            $pending['category_suggested'] = $this->memory()->suggest($pending['description'], $type)
+                ?? $this->guessCategoryId($pending['description'], $type);
+            Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+            $this->telegram->sendMessage(
+                $chatId,
+                $position . $this->pendingSummary($pending) . "\n" . ($account?->name ?? 'Cuenta') . "\n¿Qué categoría?",
+                $this->categoryRootKeyboard($type, $pending['category_suggested'])
+            );
+
+            return;
+        }
+
         $this->telegram->sendMessage(
             $chatId,
             $position . $this->pendingSummary($pending) . "\n" . $this->accountQuestion($pending['type']),
             $this->accountKeyboard()
         );
+    }
+
+    private function memory(): \App\Services\MerchantMemoryService
+    {
+        return app(\App\Services\MerchantMemoryService::class);
     }
 
     /**
@@ -253,6 +302,58 @@ class TelegramExpenseService
         }
     }
 
+    /**
+     * Botones de las notificaciones de correo bancario:
+     *  mail:xfer:<email>:<tx>  → el movimiento ya registrado se vuelve transferencia
+     *  mail:noxfer:<email>     → no es transferencia, preguntar categoría
+     *  mail:undo:<email>       → borrar lo que se registró solo
+     *  mail:skip:<email>       → no registrar
+     */
+    private function handleMailCallback(int|string $chatId, int $messageId, string $data): void
+    {
+        [, $action, $emailId, $twinId] = array_pad(explode(':', $data, 4), 4, null);
+
+        $email   = ctype_digit((string) $emailId) ? \App\Models\BankEmail::with('account')->find((int) $emailId) : null;
+        $service = app(\App\Services\Mail\BankEmailImportService::class);
+
+        if ($email === null) {
+            $this->telegram->editMessageText($chatId, $messageId, 'ℹ️ Ese correo ya no está pendiente.');
+
+            return;
+        }
+
+        if ($action === 'xfer') {
+            $twin = ctype_digit((string) $twinId) ? Transaction::with('account')->find((int) $twinId) : null;
+            $tx   = $twin ? $service->confirmTransfer($email, $twin) : null;
+
+            $this->telegram->editMessageText($chatId, $messageId, $tx
+                ? "🔁 Transferencia registrada\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
+                : 'ℹ️ No pude convertirlo en transferencia; regístralo a mano.');
+
+            return;
+        }
+
+        if ($action === 'noxfer') {
+            $this->telegram->editMessageText($chatId, $messageId, '✋ Ok, lo registramos aparte.');
+            $service->askCategory($email);
+
+            return;
+        }
+
+        if ($action === 'undo') {
+            $this->telegram->editMessageText($chatId, $messageId, $service->undo($email)
+                ? '↩️ Deshecho: el movimiento se eliminó.'
+                : 'ℹ️ Ya no había nada que deshacer.');
+
+            return;
+        }
+
+        if ($action === 'skip') {
+            $service->skip($email);
+            $this->telegram->editMessageText($chatId, $messageId, '⏭ No registrado.');
+        }
+    }
+
     /** Descarta el pendiente actual y continúa con la cola si hay más */
     private function skipPending(int|string $chatId, int $messageId, array $pending, string $reason): void
     {
@@ -260,6 +361,10 @@ class TelegramExpenseService
         $total = $pending['total'] ?? 1;
 
         Cache::forget($this->pendingKey($chatId));
+
+        if (! empty($pending['bank_email_id'])) {
+            app(\App\Services\Mail\BankEmailImportService::class)->markSkipped((int) $pending['bank_email_id']);
+        }
 
         $this->telegram->editMessageText($chatId, $messageId, '⏭ ' . $this->pendingSummary($pending) . " — {$reason}.");
 
@@ -335,6 +440,13 @@ class TelegramExpenseService
         // Confirmación de cargos recurrentes (independiente del flujo pendiente)
         if (str_starts_with($callback['data'] ?? '', 'rec:')) {
             $this->handleRecurringCallback($chatId, $messageId, $callback['data']);
+
+            return;
+        }
+
+        // Botones de correos bancarios (transferencia / deshacer / omitir)
+        if (str_starts_with($callback['data'] ?? '', 'mail:')) {
+            $this->handleMailCallback($chatId, $messageId, $callback['data']);
 
             return;
         }
@@ -467,6 +579,10 @@ class TelegramExpenseService
         Cache::forget($this->pendingKey($chatId));
 
         AuditLog::record('telegram_expense', ['transaction_id' => $transaction->id]);
+
+        if (! empty($pending['bank_email_id'])) {
+            app(\App\Services\Mail\BankEmailImportService::class)->markRegistered((int) $pending['bank_email_id'], $transaction);
+        }
 
         $transaction->load(['account', 'category']);
 
@@ -648,7 +764,8 @@ class TelegramExpenseService
             default    => '💸',
         };
 
-        return $emoji . ' ' . format_currency($pending['amount'])
+        return (isset($pending['source_label']) ? $pending['source_label'] . ' · ' : '')
+            . $emoji . ' ' . format_currency($pending['amount'])
             . ' · ' . $pending['description']
             . ' · ' . $date->translatedFormat('j M Y');
     }

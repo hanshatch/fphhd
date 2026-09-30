@@ -26,6 +26,19 @@
   `YieldService` + `YieldReportTest`. Captura manual: el rendimiento real se registra como
   transacción tipo interés al recibir el abono de cada sofipo (Klar, Nu, Revolut, MercadoPago).
 
+- [x] Importación desde capturas del estado de cuenta (2026-09-12/30): botón en cada cuenta,
+  visión extrae renglones, revisión editable con selector de categoría con buscador,
+  duplicados marcados, memoria de comercios (`merchant_rules`, `MerchantMemoryService`)
+  que aprende comercio → categoría con cada movimiento guardado.
+- [x] Lector de notificaciones bancarias por Gmail (2026-09-30): `gmail:sync` cada 5 min lee
+  la etiqueta `FP` por IMAP (`GmailImapReader`), `BankEmailParser` interpreta Banamex y
+  Revolut, `BankEmailImportService` enruta: moneda extranjera → liga a la web; duplicado →
+  aviso; retiro/depósito espejo en otra cuenta → propone transferencia interna; comercio
+  conocido → registra solo con «Deshacer»; resto → pregunta categoría por Telegram.
+  Cuenta identificada por `accounts.bank_last4` («Cheques ***379»). Env: `GMAIL_USER`,
+  `GMAIL_APP_PASSWORD`, `GMAIL_LABEL`. Tabla `bank_emails` guarda cada correo y su estado.
+  Pendiente: formatos de Amex, Nu y Mercado Pago (agregar remitente en `SENDERS` + `parseXxx`).
+
 ## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
 
 - [x] Fase A — Seguridad: bypass TOTP cerrado, secret cifrado, throttle login/TOTP, .env.example endurecido

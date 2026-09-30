@@ -38,6 +38,12 @@ return [
         'model'   => env('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
     ],
 
+    'gmail' => [
+        'user'     => env('GMAIL_USER'),
+        'password' => env('GMAIL_APP_PASSWORD'),
+        'label'    => env('GMAIL_LABEL', 'FP'),
+    ],
+
     'telegram' => [
         'bot_token'      => env('TELEGRAM_BOT_TOKEN'),
         'chat_id'        => env('TELEGRAM_CHAT_ID'),

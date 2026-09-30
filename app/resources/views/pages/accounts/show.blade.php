@@ -15,6 +15,10 @@ $balanceColor = $isCredit
     : ((float)$balance >= 0 ? '#76a72b' : '#ef4444');
 
 $now = now();
+
+// Prellenado del modal desde una liga externa (ej. Telegram): ?new=1&description=…&date=…&type=…
+$prefill = collect(request()->only(['description', 'date', 'type']))->filter()
+    ->map(fn ($v, $k) => '&' . $k . '=' . rawurlencode((string) $v))->implode('');
 @endphp
 
 {{-- ── Header de cuenta ─────────────────────────────────────────── --}}
@@ -157,7 +161,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
             return this.load('/transactions/' + id + '/edit-modal?redirect_to=' + this.back, 'Editar movimiento');
         },
         create() {
-            return this.load('/transactions/create-modal?account_id={{ $account->id }}&redirect_to=' + this.back, 'Nuevo movimiento');
+            return this.load('/transactions/create-modal?account_id={{ $account->id }}&redirect_to=' + this.back + '{{ $prefill }}', 'Nuevo movimiento');
         },
         close() { this.open = false; this.html = ''; }
      }"

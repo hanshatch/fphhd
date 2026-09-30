@@ -20,3 +20,11 @@ Schedule::command('telegram:notify-due')
     ->name('notify-due-recurring-charges')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/scheduler.log'));
+
+// Notificaciones bancarias por correo: lee la etiqueta de Gmail y registra
+// o pregunta por Telegram. Cada 5 min (mínimo que permite el cron).
+Schedule::command('gmail:sync')
+    ->everyFiveMinutes()
+    ->name('gmail-sync-bank-emails')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/scheduler.log'));

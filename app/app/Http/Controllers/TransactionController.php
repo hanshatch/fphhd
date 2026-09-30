@@ -117,9 +117,10 @@ class TransactionController extends Controller
     public function createModal(Request $request): View
     {
         return $this->modalForm($request, new Transaction([
-            'date'       => now()->format('Y-m-d'),
-            'type'       => $request->query('type', 'expense'),
-            'account_id' => $request->query('account_id'),
+            'date'        => $request->query('date', now()->format('Y-m-d')),
+            'type'        => $request->query('type', 'expense'),
+            'account_id'  => $request->query('account_id'),
+            'description' => $request->query('description'),
         ]));
     }
 

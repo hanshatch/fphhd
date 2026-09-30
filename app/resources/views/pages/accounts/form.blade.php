@@ -317,6 +317,18 @@
                 @endif
 
                 <div>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Terminación en notificaciones</label>
+                    <input type="text" name="bank_last4" inputmode="numeric" maxlength="8" pattern="\d{3,8}"
+                        value="{{ old('bank_last4', $account->bank_last4) }}"
+                        placeholder="ej. 379 (de «Cheques ***379»)"
+                        class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
+                    <p class="mt-1 text-xs text-[#878787]">
+                        Últimos dígitos con los que el banco identifica esta cuenta en sus correos. Sirve para registrar solo las notificaciones.
+                    </p>
+                    @error('bank_last4')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Notas</label>
                     <textarea name="notes" rows="2" maxlength="500" placeholder="Opcional"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition resize-none">{{ old('notes', $account->notes) }}</textarea>
