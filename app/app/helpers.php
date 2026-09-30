@@ -14,6 +14,12 @@ if (! function_exists('parse_money')) {
 
         $clean = str_replace([',', ' ', '$'], '', trim((string) $value));
 
+        // "20.000" o "1.234.567" (punto como separador de miles, sin coma):
+        // un monto nunca lleva grupos de 3 decimales, así que son miles.
+        if (preg_match('/^-?\d{1,3}(\.\d{3})+$/', $clean)) {
+            $clean = str_replace('.', '', $clean);
+        }
+
         if ($clean === '' || ! is_numeric($clean)) {
             return null;
         }

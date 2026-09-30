@@ -21,7 +21,30 @@ class StatementImportService
     private const MAX_ITEMS_PER_IMAGE = 40;
     private const TTL_MINUTES         = 60;
 
-    public function __construct(private VisionExpenseService $vision) {}
+    /**
+     * Pistas por institución para el modelo de visión. Cada banco pinta
+     * distinto su lista; aquí se describe lo que hay que leer y lo que
+     * hay que ignorar en cada uno.
+     */
+    private const INSTITUTION_HINTS = [
+        'revolut' => 'App Revolut: fondo negro, agrupado por día ("hoy", "8 de septiembre"). '
+            . 'Montos en verde con "+" son abonos; en blanco con "-" son cargos. '
+            . 'Los montos grandes se muestran sin decimales y con coma de miles: "+$20,000" es 20000.00, "+$700" es 700.00. '
+            . 'Si un renglón muestra un segundo monto en otra moneda (R$, US$, €) es una transferencia enviada al extranjero: '
+            . 'usa el monto en pesos (el primero) y describe "Transferencia a <nombre>". '
+            . '"Transferencia interbancaria" con "+" es un depósito recibido. '
+            . 'Ignora el saldo actual de arriba y los totales por día a la derecha de la fecha.',
+        'amex' => 'Estado de cuenta American Express web: renglones con fecha "dd-mmm.", comercio en mayúsculas y monto a la derecha. '
+            . 'Todos son cargos salvo que digan "PAGO" o "ABONO". Ignora casillas, etiquetas "SM" y flechas.',
+        'nu' => 'App Nu: lista morada/blanca agrupada por fecha; "Compra" o nombre del comercio son cargos, "Depósito"/"Rendimientos" abonos.',
+        'banamex' => 'App o estado de cuenta Banamex: columnas fecha, concepto, retiro y depósito; retiros son cargos y depósitos abonos.',
+        'mercadopago' => 'App Mercado Pago: "Pagaste" o nombre de comercio con "-" es cargo; "Recibiste", "Rendimientos" o "+" es abono.',
+    ];
+
+    public function __construct(
+        private VisionExpenseService $vision,
+        private MerchantMemoryService $memory,
+    ) {}
 
     public function isConfigured(): bool
     {
@@ -40,6 +63,9 @@ class StatementImportService
         $rows     = [];
         $analyzed = false;
 
+        $context = 'La cuenta es «' . $account->name . '» (' . $account->institutionLabel() . ', ' . $account->type . '). '
+            . (self::INSTITUTION_HINTS[$account->institution] ?? '');
+
         /** @var UploadedFile $image */
         foreach ($images as $image) {
             $items = $this->vision->parseCharges(
@@ -47,7 +73,7 @@ class StatementImportService
                 $image->getMimeType() ?: 'image/jpeg',
                 $expenseCats,
                 $incomeCats,
-                'La cuenta es «' . $account->name . '» (' . $account->type . ').',
+                trim($context),
                 self::MAX_ITEMS_PER_IMAGE,
             );
 
@@ -133,22 +159,28 @@ class StatementImportService
         $date = $this->sanitizeDate($item['date']);
         $type = $item['type'];
 
-        $categoryId = null;
+        $description = Str::limit(Str::ucfirst($item['description']), 500, '');
 
-        if ($item['category']) {
+        // 1) Lo que Hans ya decidió para este comercio manda; 2) si no, la pista del modelo
+        $categoryId = $this->memory->suggest($description, $type);
+        $source     = $categoryId ? 'memory' : null;
+
+        if (! $categoryId && $item['category']) {
             $categoryId = Category::active()
                 ->ofKind($type === 'income' ? Category::KIND_INCOME : Category::KIND_EXPENSE)
                 ->where('name', $item['category'])
                 ->value('id');
+            $source = $categoryId ? 'model' : null;
         }
 
         return [
-            'date'        => $date,
-            'description' => Str::limit(Str::ucfirst($item['description']), 500, ''),
-            'amount'      => $item['amount'],
-            'type'        => $type,
-            'category_id' => $categoryId,
-            'duplicate'   => $this->findDuplicate($account, $item['amount'], $date),
+            'date'            => $date,
+            'description'     => $description,
+            'amount'          => $item['amount'],
+            'type'            => $type,
+            'category_id'     => $categoryId,
+            'category_source' => $source,
+            'duplicate'       => $this->findDuplicate($account, $item['amount'], $date),
         ];
     }
 

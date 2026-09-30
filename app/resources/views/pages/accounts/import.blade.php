@@ -32,9 +32,6 @@
             @endphp
             <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : '' }}" x-data="{ on: {{ $dup ? 'false' : 'true' }}, type: '{{ $row['type'] }}' }"
                     x-bind:class="on ? '' : 'opacity-50'">
-                <input type="hidden" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}">
-                <input type="hidden" name="rows[{{ $i }}][description]" value="{{ $row['description'] }}">
-                <input type="hidden" name="rows[{{ $i }}][amount]" value="{{ $row['amount'] }}">
 
                 <div class="flex items-start gap-3">
                     <label class="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 -mt-2 cursor-pointer">
@@ -43,15 +40,27 @@
                     </label>
 
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">{{ $row['description'] }}</p>
-                                <p class="text-xs text-[#ababab]">{{ \Illuminate\Support\Carbon::parse($row['date'])->translatedFormat('d M Y') }}</p>
+                        {{-- Descripción, fecha y monto editables: el lector puede equivocarse --}}
+                        <div class="flex items-start gap-2">
+                            <div class="flex-1 min-w-0">
+                                <input type="text" name="rows[{{ $i }}][description]" value="{{ $row['description'] }}" maxlength="500" required
+                                    class="w-full rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent focus:bg-[#efeded]/50 dark:focus:bg-white/5 px-2 py-1 -ml-2 text-sm font-semibold text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                                <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                    <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" required
+                                        class="rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                                    @if(($row['category_source'] ?? null) === 'memory')
+                                        <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" title="Categoría aprendida de tus movimientos anteriores">✓ Aprendida</span>
+                                    @elseif(($row['category_source'] ?? null) === 'model')
+                                        <span class="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-full" title="Sugerida por el lector de imágenes">Sugerida</span>
+                                    @endif
+                                </div>
                             </div>
-                            <p class="text-sm font-bold tabular-nums flex-shrink-0"
-                               x-bind:class="type === 'income' ? 'text-[#76a72b]' : 'text-red-500'">
-                                <span x-text="type === 'income' ? '+' : '−'"></span>${{ number_format((float) $row['amount'], 2) }}
-                            </p>
+                            <div class="relative flex-shrink-0 w-32">
+                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-bold" x-bind:class="type === 'income' ? 'text-[#76a72b]' : 'text-red-500'" x-text="type === 'income' ? '+$' : '−$'"></span>
+                                <input type="text" name="rows[{{ $i }}][amount]" value="{{ number_format((float) $row['amount'], 2) }}" inputmode="decimal" data-money required
+                                    class="w-full rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent focus:bg-[#efeded]/50 dark:focus:bg-white/5 pl-7 pr-2 py-1 text-sm font-bold tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition"
+                                    x-bind:class="type === 'income' ? 'text-[#76a72b]' : 'text-red-500'">
+                            </div>
                         </div>
 
                         @if($dup)
