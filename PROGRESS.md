@@ -51,7 +51,7 @@
   mano en botones (Tailwind v4 lo quita); botón «Nuevo movimiento» en la barra lateral con atajo N;
   los modales piden confirmación antes de descartar lo capturado; contraseña con Mostrar/Ocultar.
 
-## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
+## Corrección integral (2026-07-16) — ver docs/planes/02-plan-correccion.md
 
 - [x] Fase A — Seguridad: bypass TOTP cerrado, secret cifrado, throttle login/TOTP, .env.example endurecido
 - [x] Fase B — Finanzas: fix crítico de saldos (whereIn acumulado), interés fuera de ingreso operativo, transferencias íntegras, ajuste TDC

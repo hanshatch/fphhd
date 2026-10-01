@@ -127,6 +127,9 @@ fp/
 │   │   └── js/
 │   ├── routes/web.php
 │   └── .env.example
+├── docs/
+│   ├── brand/                  ← manual de identidad y logo
+│   └── planes/                 ← planes internos (solo locales)
 ├── CLAUDE.md
 ├── PROGRESS.md
 └── README.md

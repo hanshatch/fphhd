@@ -1,6 +1,5 @@
-# Planes de arquitectura (docs internos, no van al repo)
-00-plan-arquitectura.md
-01-plan-trabajo-claude-code.md
+# Planes internos (arquitectura, plan de trabajo, corrección): solo locales
+docs/planes/
 
 # Evitar que composer accidental en raíz se suba
 /vendor/
@@ -11,8 +10,11 @@
 .agents/
 .claude/
 skills-lock.json
+
+# Sistema y editor
 .DS_Store
-02-plan-correccion.md
+.vscode/
 
 # Duplicados de iCloud/Finder — nunca al repo
 * (1)*
+* [2-9].*

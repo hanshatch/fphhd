@@ -70,14 +70,15 @@ npm run build
 
 ## Deploy a producción
 
+Un `git push` a `main` dispara el webhook de Hostinger, que hace el pull en el servidor.
+Los assets (`app/public/build`) se compilan en local con `npm run build` y se suben al repo.
+Las migraciones y cachés siguen siendo manuales:
+
 ```bash
-# En el servidor vía SSH
-git pull
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-npm run build
+ssh -p 65002 u863784331@191.96.54.156
+cd ~/public_html/_fphhd/app
+php artisan migrate --force      # solo si hay migraciones nuevas
+php artisan view:clear && php artisan route:clear && php artisan config:cache
 ```
 
 ---
@@ -86,8 +87,11 @@ npm run build
 
 ```
 fp/
-├── app/          ← proyecto Laravel
-├── CLAUDE.md     ← instrucciones para Claude Code
-├── PROGRESS.md   ← estado del desarrollo
+├── app/              ← proyecto Laravel
+├── docs/
+│   ├── brand/        ← manual de identidad y logo
+│   └── planes/       ← planes internos (solo locales, fuera del repo)
+├── CLAUDE.md         ← instrucciones para Claude Code
+├── PROGRESS.md       ← estado del desarrollo
 └── README.md
 ```
