@@ -75,8 +75,7 @@ Los assets (`app/public/build`) se compilan en local con `npm run build` y se su
 Las migraciones y cachés siguen siendo manuales:
 
 ```bash
-ssh -p 65002 u863784331@191.96.54.156
-cd ~/public_html/_fphhd/app
+# Por SSH en el servidor (acceso en tus notas privadas), dentro de la carpeta app/
 php artisan migrate --force      # solo si hay migraciones nuevas
 php artisan view:clear && php artisan route:clear && php artisan config:cache
 ```
