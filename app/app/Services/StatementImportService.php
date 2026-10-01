@@ -90,7 +90,7 @@ class StatementImportService
             $analyzed = true;
 
             foreach ($items as $item) {
-                $pocket = $this->pocketRule($account, $item);
+                $pocket = $this->pocketRule($account, $item) ?? $this->cashRule($account, $item);
 
                 if ($pocket === false) {
                     continue; // movimiento de otra subcuenta (débito u otra cajita)
@@ -393,6 +393,19 @@ class StatementImportService
         $target = $named ?? ($pockets->count() === 1 ? $pockets->first() : null);
 
         return ['type' => $isIn ? 'transfer_out' : 'transfer_in', 'other' => $target];
+    }
+
+    /** Retiro de cajero en una cuenta de banco/tarjeta: transferencia a tu efectivo */
+    private function cashRule(Account $account, array $item): ?array
+    {
+        if (($item['type'] ?? 'expense') !== 'expense' || $account->type === Account::TYPE_CASH
+            || ! Account::isCashWithdrawal($item['description'] ?? '')) {
+            return null;
+        }
+
+        $cash = Account::cashAccount();
+
+        return $cash ? ['type' => 'transfer_out', 'other' => $cash] : null;
     }
 
     private function isPocket(Account $account): bool

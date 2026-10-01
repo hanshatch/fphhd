@@ -553,6 +553,37 @@ class StatementImportTest extends TestCase
         $this->assertNull($rows[1]['duplicate']);
     }
 
+    public function test_atm_withdrawal_in_capture_is_transfer_to_cash(): void
+    {
+        $account = $this->account();
+        $cash    = Account::create(['name' => 'Cartera', 'type' => 'cash', 'institution' => 'other', 'initial_balance' => '0.00', 'color' => '#2f855a']);
+
+        $this->fakeVision([
+            ['amount' => '1300.00', 'description' => 'DIS.EFE.BANAMEX GUSTAVO BAZ 1', 'date' => '2026-09-22', 'type' => 'expense', 'category' => null],
+            ['amount' => '67.50', 'description' => 'OXXO PLAZA MACH', 'date' => '2026-09-22', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $token = basename($this->upload($account)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$account->id}:{$token}");
+
+        $this->assertSame('transfer_out', $rows[0]['type']);
+        $this->assertSame($cash->id, $rows[0]['counterparty_account_id']);
+        $this->assertSame('expense', $rows[1]['type']);
+    }
+
+    public function test_cash_count_adjustment_is_categorized_as_unrecorded_cash(): void
+    {
+        $cash = Account::create(['name' => 'Cartera', 'type' => 'cash', 'institution' => 'other', 'initial_balance' => '2500.00', 'color' => '#2f855a']);
+        $cat  = Category::create(['name' => 'Efectivo sin registrar', 'kind' => 'expense']);
+
+        $tx = app(\App\Services\AccountService::class)->adjustBalance($cash, '2,180.00', '2026-10-05');
+
+        $this->assertSame('expense', $tx->type);
+        $this->assertSame('320.00', $tx->amount);
+        $this->assertSame($cat->id, $tx->category_id);
+        $this->assertSame('Efectivo sin registrar (cuadre)', $tx->description);
+    }
+
     public function test_upload_without_vision_key_redirects_with_message(): void
     {
         config(['services.openai.api_key' => null]);

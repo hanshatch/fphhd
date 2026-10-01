@@ -195,7 +195,8 @@ class TelegramExpenseService
             $account = Account::find($pending['account_id']);
             $type    = $pending['type'] ?? 'expense';
 
-            $pending['category_suggested'] = $this->memory()->suggest($pending['description'], $type)
+            $pending['category_suggested'] = ($pending['category_id'] ?? null)
+                ?? $this->memory()->suggest($pending['description'], $type)
                 ?? $this->guessCategoryId($pending['description'], $type);
             Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
 
@@ -447,6 +448,13 @@ class TelegramExpenseService
             return;
         }
 
+        // Atajo «e 150 tacos» / «efectivo 150 tacos»: el gasto sale de tu efectivo
+        $cashId = null;
+        if (preg_match('/^(e|ef|efe|efectivo)\s+(?=\$?\s*\d)/iu', $text, $m) && ($cash = Account::cashAccount())) {
+            $cashId = $cash->id;
+            $text   = trim(mb_substr($text, mb_strlen($m[0])));
+        }
+
         $parsed = $this->parseExpense($text);
 
         if ($parsed !== null) {
@@ -463,13 +471,14 @@ class TelegramExpenseService
             return;
         }
 
-        $this->startPending($chatId, [[
+        $this->startPending($chatId, [array_filter([
             'amount'      => $amount,
             'description' => $description,
             'date'        => $date,
             'type'        => 'expense',
             'category_id' => $categoryId,
-        ]], 1);
+            'account_id'  => $cashId,
+        ], fn ($v) => $v !== null) + ['category_id' => null]], 1);
     }
 
     private function handleCallback(array $callback): void
@@ -923,7 +932,8 @@ class TelegramExpenseService
     {
         $buttons = Account::where('is_active', true)
             ->get()
-            ->sortBy(fn (Account $a) => mb_strtolower($a->institutionLabel() . '·' . $a->name))
+            // Efectivo primero: es la cuenta que más se usa al registrar gastos a mano
+            ->sortBy(fn (Account $a) => ($a->type === Account::TYPE_CASH ? '0' : '1') . mb_strtolower($a->institutionLabel() . '·' . $a->name))
             ->values()
             ->map(fn (Account $account) => [
                 'text'          => $account->displayLabel(),
@@ -1232,6 +1242,7 @@ class TelegramExpenseService
             . "180 uber ayer\n"
             . "90 café 15/07\n\n"
             . "Sin fecha se registra hoy. Yo te pregunto de qué cuenta salió y, si no la adivino, la categoría.\n\n"
+            . "💵 Si lo pagaste en efectivo, empieza con «e»: e 150 tacos\n\n"
             . '📷 También puedes mandarme un screenshot de los cargos de tu tarjeta y los registro uno por uno.';
     }
 }

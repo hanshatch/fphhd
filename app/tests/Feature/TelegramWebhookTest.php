@@ -267,6 +267,28 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame($openbank->id, $tx->counterparty_account_id);
     }
 
+    private function cartera(): Account
+    {
+        return Account::create(['name' => 'Cartera', 'type' => 'cash', 'institution' => 'other', 'initial_balance' => '2500.00', 'color' => '#2f855a']);
+    }
+
+    public function test_cash_shortcut_skips_account_question_and_registers_in_cash(): void
+    {
+        $this->account();
+        $cash = $this->cartera();
+        $food = $this->category('Comida');
+
+        $this->postUpdate($this->textMessage('e 150 comida tacos'))->assertNoContent();
+
+        // Ya no pregunta la cuenta: va directo a la categoría, con la adivinada como sugerida
+        $this->postUpdate($this->callbackUpdate('cat:' . $food->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame($cash->id, $tx->account_id);
+        $this->assertSame('150.00', $tx->amount);
+        $this->assertSame('Comida tacos', $tx->description);
+    }
+
     public function test_expense_with_relative_date_is_registered_yesterday(): void
     {
         $account = $this->account();

@@ -352,6 +352,24 @@ class BankEmailImportTest extends TestCase
         $this->assertSame('23000.00', $tx->amount);
     }
 
+    public function test_atm_withdrawal_email_becomes_transfer_to_cash(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        $cash    = Account::create(['name' => 'Cartera', 'type' => 'cash', 'institution' => 'other', 'initial_balance' => '0.00', 'color' => '#2f855a']);
+
+        $atm = str_replace(['Retiro/Compra', 'Cheques M.N. ***379'], ['Retiro/Compra', 'Tarjeta M.N. ***894'], BankEmailParserTest::BANAMEX_RETIRO);
+        $atm = str_replace("Monto $ 20,000.00 M.N.", "Monto $ 500.00 M.N.\nEstablecimiento\nDIS.EFE.BANAMEX GUSTAVO BAZ 2", $atm);
+
+        $this->inbox = [$this->mail('c1', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', $atm, '2026-09-24 11:06')];
+        app(BankEmailImportService::class)->sync();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame('500.00', $tx->amount);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame($cash->id, $tx->counterparty_account_id);
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

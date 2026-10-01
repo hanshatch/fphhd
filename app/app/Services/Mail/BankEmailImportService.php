@@ -196,6 +196,14 @@ class BankEmailImportService
             return;
         }
 
+        // 4a') Retiro de cajero: el dinero pasa a tu efectivo, no es gasto todavía
+        if ($account && $type === 'expense' && $account->type !== Account::TYPE_CASH
+            && Account::isCashWithdrawal($p['description']) && ($cash = Account::cashAccount())) {
+            $this->registerInternalMove($email, $account, $cash);
+
+            return;
+        }
+
         // 4a) El correo trae banco + terminación de una cuenta tuya: transferencia sin preguntar
         if ($account && ($own = $this->ownAccountByClabe($p['counterparty_bank'] ?? null, $p['counterparty_last4'] ?? null, $account))) {
             $type === 'income'

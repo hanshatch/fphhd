@@ -213,12 +213,18 @@ class AccountService
             ? ($increase ? 'expense' : 'income')
             : ($increase ? 'income' : 'expense');
 
+        // En efectivo, lo que falta al contar la cartera es gasto que no se anotó
+        $categoryId = $account->type === Account::TYPE_CASH && $type === 'expense'
+            ? \App\Models\Category::where('name', 'Efectivo sin registrar')->where('kind', 'expense')->value('id')
+            : null;
+
         return Transaction::create([
             'date'        => $date,
             'type'        => $type,
             'amount'      => ltrim($diff, '-'),
             'account_id'  => $account->id,
-            'description' => $description ?: 'Ajuste de saldo',
+            'category_id' => $categoryId,
+            'description' => $description ?: ($categoryId ? 'Efectivo sin registrar (cuadre)' : 'Ajuste de saldo'),
         ]);
     }
 }

@@ -89,6 +89,22 @@ class Account extends Model
         return $this->logo_path ? asset('storage/' . $this->logo_path) : null;
     }
 
+    /** Cuenta de efectivo activa para retiros y gastos en efectivo (prefiere «Cartera») */
+    public static function cashAccount(): ?self
+    {
+        $cash = static::where('is_active', true)->where('type', self::TYPE_CASH)->orderBy('id')->get();
+
+        return $cash->first(fn (self $a) => str_contains(mb_strtolower($a->name), 'cartera')) ?? $cash->first();
+    }
+
+    /** ¿La descripción es un retiro de cajero / disposición de efectivo? ("DIS.EFE.BANAMEX …") */
+    public static function isCashWithdrawal(?string $description): bool
+    {
+        $d = \Illuminate\Support\Str::ascii(mb_strtolower((string) $description));
+
+        return (bool) preg_match('/\bdis\.?\s*efe\b|disposicion de efectivo|retiro (de |en )?efectivo|\bcajero\b|\batm\b/', $d);
+    }
+
     public function isCredit(): bool
     {
         return $this->type === self::TYPE_CREDIT;
