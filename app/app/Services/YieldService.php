@@ -53,6 +53,7 @@ class YieldService
 
         $rows          = [];
         $chartDatasets = [];
+        $usedColors    = [];
 
         foreach ($accounts as $account) {
             $byMonth = $interestByAccount[$account->id] ?? collect();
@@ -97,8 +98,13 @@ class YieldService
                 ? Carbon::parse($lastCaptures[$account->id])
                 : null;
 
+            // Cuentas con el mismo color (ej. tres en negro) reciben tonos distintos
+            $color = $this->distinctColor($account->color ?? '#76a72b', $usedColors);
+
             $rows[] = [
                 'account'       => $account,
+                'label'         => $account->displayLabel(),
+                'color'         => $color,
                 'monthly'       => $monthly,
                 'interest_prev' => bcadd((string) ($byMonth[$prevMonthKey] ?? '0'), '0', 2),
                 'interest_sum'  => $sumInterest,
@@ -110,10 +116,10 @@ class YieldService
             ];
 
             $chartDatasets[] = [
-                'label'           => $account->name,
+                'label'           => $account->displayLabel(),
                 'data'            => array_map(fn ($key) => (float) $monthly[$key]['interest'], $monthKeys),
-                'backgroundColor' => ($account->color ?? '#76a72b') . 'cc',
-                'borderColor'     => $account->color ?? '#76a72b',
+                'backgroundColor' => $color . 'cc',
+                'borderColor'     => $color,
                 'borderWidth'     => 1.5,
                 'borderRadius'    => 4,
             ];
@@ -137,6 +143,26 @@ class YieldService
      * Cuentas de ahorro/inversión sin interés capturado desde el inicio
      * del mes anterior — candidatas a "falta capturar rendimiento".
      */
+    /**
+     * Devuelve el color de la cuenta o, si ya lo usó otra, una variante más
+     * clara (25 % hacia blanco por cada repetición) para distinguirlas.
+     */
+    private function distinctColor(string $hex, array &$used): string
+    {
+        $base = strtolower(ltrim($hex, '#'));
+        $n    = $used[$base] = ($used[$base] ?? -1) + 1;
+
+        if ($n === 0 || strlen($base) !== 6) {
+            return '#' . $base;
+        }
+
+        $mix = min(0.75, 0.25 * $n);
+
+        return '#' . collect(str_split($base, 2))
+            ->map(fn ($c) => str_pad(dechex((int) round(hexdec($c) + (255 - hexdec($c)) * $mix)), 2, '0', STR_PAD_LEFT))
+            ->implode('');
+    }
+
     public function pendingCaptures(): Collection
     {
         $accounts = $this->yieldAccounts();

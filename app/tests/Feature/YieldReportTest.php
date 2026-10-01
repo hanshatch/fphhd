@@ -79,6 +79,19 @@ class YieldReportTest extends TestCase
         $this->assertFalse($ids->contains($fresh->id));
     }
 
+    public function test_chart_labels_include_bank_and_same_colors_get_distinct_shades(): void
+    {
+        $a = Account::create(['name' => 'Inversion', 'type' => 'investment', 'institution' => 'nu', 'initial_balance' => '1000.00', 'color' => '#000000']);
+        $b = Account::create(['name' => 'Apartado', 'type' => 'investment', 'institution' => 'revolut', 'initial_balance' => '1000.00', 'color' => '#000000']);
+
+        $report   = app(YieldService::class)->report(12);
+        $datasets = collect($report['yieldDatasets'])->keyBy('label');
+
+        $this->assertTrue($datasets->has('Nu · Inversion'));
+        $this->assertTrue($datasets->has('Revolut · Apartado'));
+        $this->assertNotSame($datasets['Nu · Inversion']['borderColor'], $datasets['Revolut · Apartado']['borderColor']);
+    }
+
     public function test_credit_and_debit_accounts_are_excluded_from_yields(): void
     {
         Account::create([

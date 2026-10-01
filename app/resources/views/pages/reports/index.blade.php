@@ -37,7 +37,7 @@
         class="rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-3 py-2 text-sm text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
         <option value="">Todas las cuentas</option>
         @foreach($accounts as $a)
-        <option value="{{ $a->id }}" {{ $accountId == $a->id ? 'selected' : '' }}>{{ $a->name }}</option>
+        <option value="{{ $a->id }}" {{ $accountId == $a->id ? 'selected' : '' }}>{{ $a->displayLabel() }}</option>
         @endforeach
     </select>
 </form>
@@ -231,7 +231,7 @@
     <div class="flex flex-wrap gap-x-4 gap-y-1">
         @foreach($yieldPendings as $row)
         <a href="{{ route('transactions.create') }}" class="text-sm text-amber-700 dark:text-amber-300 hover:underline">
-            {{ $row['account']->name }}
+            {{ $row['account']->displayLabel() }}
             <span class="text-xs text-amber-500">({{ $row['last_capture'] ? 'último: '.$row['last_capture']->translatedFormat('j M Y') : 'sin capturas' }})</span>
         </a>
         @endforeach
@@ -273,8 +273,8 @@
             <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $row['account']->color ?? '#76a72b' }}"></div>
-                        <span class="font-semibold text-[#373737] dark:text-white">{{ $row['account']->name }}</span>
+                        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $row['color'] }}"></div>
+                        <span class="font-semibold text-[#373737] dark:text-white">{{ $row['label'] }}</span>
                         @if($row['pending'])
                         <span class="text-[10px] bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold">Pendiente</span>
                         @endif
