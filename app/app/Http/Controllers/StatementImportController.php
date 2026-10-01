@@ -18,7 +18,7 @@ class StatementImportController extends Controller
     public function upload(Request $request, Account $account): RedirectResponse
     {
         $request->validate([
-            'images'   => 'required|array|min:1|max:4',
+            'images'   => 'required|array|min:1|max:6',
             'images.*' => 'image|max:10240',
         ]);
 

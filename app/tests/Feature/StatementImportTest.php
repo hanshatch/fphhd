@@ -453,6 +453,30 @@ class StatementImportTest extends TestCase
         $this->assertSame($gym->id, $match[0]['charge']->id ?? null);
     }
 
+    public function test_account_page_offers_multi_capture_modal(): void
+    {
+        $account = $this->account();
+
+        $this->actingAsVerified(User::factory()->create())
+            ->get(route('accounts.show', $account))
+            ->assertOk()
+            ->assertSee('Importar capturas')
+            ->assertSee("importCaptures('" . route('accounts.import.upload', $account) . "')", false)
+            ->assertSee('Agrega todas las capturas del periodo');
+    }
+
+    public function test_up_to_six_captures_are_accepted_and_a_seventh_is_rejected(): void
+    {
+        $account = $this->account();
+        $this->fakeVision([
+            ['amount' => '100.00', 'description' => 'Uno', 'date' => '2026-09-20', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $this->upload($account, 6)->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->upload($account, 7)->assertSessionHasErrors('images');
+    }
+
     public function test_upload_without_vision_key_redirects_with_message(): void
     {
         config(['services.openai.api_key' => null]);

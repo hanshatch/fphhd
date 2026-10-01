@@ -119,26 +119,159 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
             <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Ajustar saldo</span>
         </a>
 
-        {{-- Importar capturas del estado de cuenta: al elegir las imágenes se envía solo --}}
-        <form method="POST" action="{{ route('accounts.import.upload', $account) }}" enctype="multipart/form-data"
-              class="contents" x-data="{ busy: false }">
-            @csrf
-            <input type="file" name="images[]" accept="image/*" multiple class="sr-only" x-ref="file"
-                   x-on:change="if ($refs.file.files.length) { busy = true; $refs.go.click(); }">
-            <button type="button" data-no-spinner="true" x-on:click="$refs.file.click()" x-show="!busy"
-                class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow transition-all active:scale-[0.98]">
-                <span class="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                </span>
-                <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Importar captura</span>
-            </button>
-            <button type="submit" x-ref="go" x-show="busy" x-cloak
-                class="flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-blue-500 text-white text-[11px] sm:text-xs font-semibold shadow-sm">
-                Analizar capturas
-            </button>
-        </form>
+        {{-- Importar capturas: abre el modal para juntar varias imágenes --}}
+        <button type="button" data-no-spinner="true" x-on:click="$dispatch('open-import')"
+            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow transition-all active:scale-[0.98]">
+            <span class="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </span>
+            <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Importar captura</span>
+        </button>
     </div>
 </div>
+
+{{-- ── Modal: importar capturas del estado de cuenta ───────────── --}}
+<div x-data="importCaptures('{{ route('accounts.import.upload', $account) }}')"
+     x-on:open-import.window="open = true"
+     x-on:keydown.escape.window="if (open && !busy) close()"
+     x-on:paste.window="if (open && !busy) onPaste($event)"
+     x-show="open" x-cloak
+     class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/50" x-on:click="if (!busy) close()"></div>
+
+    <div class="relative w-full sm:max-w-lg bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100">
+
+        <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
+            <div>
+                <h2 class="text-base font-bold text-[#373737] dark:text-white">Importar capturas</h2>
+                <p class="text-xs text-[#878787]">{{ $account->displayLabel() }}</p>
+            </div>
+            <button type="button" data-no-spinner="true" x-on:click="close()" x-bind:disabled="busy"
+                class="w-11 h-11 -mr-2 flex items-center justify-center rounded-full text-[#ababab] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors disabled:opacity-40">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4">
+            <p class="text-sm text-[#878787]">
+                Agrega todas las capturas del periodo, en una o varias tandas. Si se traslapan no pasa nada: los renglones repetidos se quitan solos.
+            </p>
+
+            {{-- Zona para agregar: toque, arrastrar o pegar --}}
+            <label x-show="items.length < max && !busy"
+                   x-on:dragover.prevent="dragging = true" x-on:dragleave.prevent="dragging = false"
+                   x-on:drop.prevent="dragging = false; add($event.dataTransfer.files)"
+                   x-bind:class="dragging ? 'border-blue-500 bg-blue-500/5' : 'border-[#ababab]/40'"
+                   class="flex flex-col items-center justify-center gap-2 min-h-[120px] rounded-2xl border-2 border-dashed cursor-pointer hover:border-blue-400 transition-colors text-center px-4">
+                <input type="file" accept="image/*" multiple class="sr-only" x-on:change="add($event.target.files); $event.target.value = ''">
+                <span class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                </span>
+                <span class="text-sm font-semibold text-[#373737] dark:text-white" x-text="items.length ? 'Agregar más capturas' : 'Elegir capturas'"></span>
+                <span class="hidden sm:block text-xs text-[#ababab]">También puedes arrastrarlas o pegarlas con ⌘V</span>
+            </label>
+
+            {{-- Miniaturas en el orden en que se agregaron --}}
+            <div class="grid grid-cols-3 gap-2" x-show="items.length">
+                <template x-for="(item, i) in items" x-bind:key="item.url">
+                    <div class="relative aspect-[9/16] max-w-full rounded-xl overflow-hidden bg-[#efeded] dark:bg-white/5 border border-[#ababab]/20">
+                        <img x-bind:src="item.url" alt="" class="w-full h-full object-cover object-top">
+                        <span class="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/60 rounded-full px-1.5 py-0.5" x-text="i + 1"></span>
+                        <button type="button" data-no-spinner="true" x-on:click="remove(i)" x-show="!busy" title="Quitar"
+                            class="absolute top-1 right-1 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            <p x-show="error" x-text="error" class="text-xs text-red-500"></p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-[#ababab]/15 flex items-center gap-3">
+            <span class="text-xs text-[#878787] tabular-nums flex-shrink-0" x-text="`${items.length} de ${max}`"></span>
+            <button type="button" data-no-spinner="true" x-on:click="submit()" x-bind:disabled="!items.length || busy"
+                class="flex-1 min-h-[44px] rounded-xl bg-[#76a72b] hover:bg-[#659220] text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <svg x-show="busy" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <span x-text="busy ? 'Analizando… puede tardar un minuto' : (items.length === 1 ? 'Analizar 1 captura' : `Analizar ${items.length} capturas`)"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+/**
+ * Modal de importación: junta varias capturas (toque, arrastrar o pegar),
+ * las reduce en el navegador (JPEG, máx. 1200 px de ancho) y las envía juntas.
+ */
+function importCaptures(url) {
+    return {
+        open: false, busy: false, dragging: false, error: '', max: 6, items: [],
+
+        add(files) {
+            this.error = '';
+            for (const file of Array.from(files || [])) {
+                if (!file.type.startsWith('image/')) continue;
+                if (this.items.length >= this.max) { this.error = `Máximo ${this.max} capturas por análisis.`; break; }
+                this.items.push({ file, url: URL.createObjectURL(file) });
+            }
+        },
+        remove(i) {
+            URL.revokeObjectURL(this.items[i].url);
+            this.items.splice(i, 1);
+            this.error = '';
+        },
+        onPaste(e) {
+            const files = Array.from(e.clipboardData?.files || []);
+            if (files.length) { e.preventDefault(); this.add(files); }
+        },
+        close() {
+            this.items.forEach(it => URL.revokeObjectURL(it.url));
+            this.items = []; this.error = ''; this.open = false;
+        },
+        compress(file) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const scale  = Math.min(1, 1200 / img.width);
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.85);
+                };
+                img.onerror = () => resolve(file);
+                img.src = URL.createObjectURL(file);
+            });
+        },
+        async submit() {
+            if (!this.items.length || this.busy) return;
+            this.busy = true; this.error = '';
+            try {
+                const data = new FormData();
+                data.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+                for (const [i, item] of this.items.entries()) {
+                    data.append('images[]', await this.compress(item.file), `captura-${i + 1}.jpg`);
+                }
+                const res = await fetch(url, { method: 'POST', body: data, credentials: 'same-origin', headers: { 'Accept': 'text/html' } });
+                if (!res.ok) throw new Error(res.status);
+                window.location.href = res.url;
+            } catch (e) {
+                this.busy = false;
+                this.error = 'No se pudieron enviar las capturas. Revisa tu conexión e inténtalo de nuevo.';
+            }
+        },
+    };
+}
+</script>
+@endpush
 
 {{-- ── Modal de edición de movimiento ───────────────────────────── --}}
 <div x-data="{
