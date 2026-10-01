@@ -29,15 +29,15 @@
             @if($category->exists) @method('PATCH') @endif
 
             <div>
-                <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Nombre <span class="text-[#76a72b]">*</span></label>
+                <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Nombre <span class="text-positive">*</span></label>
                 <input type="text" name="name" value="{{ old('name', $category->name) }}" required @unless($category->exists) autofocus @endunless
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('name')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tipo <span class="text-[#76a72b]">*</span></label>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tipo <span class="text-positive">*</span></label>
                     <select name="kind" required x-model="kind" x-bind:disabled="!!inherited"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition disabled:opacity-60">
                         <option value="expense">Egreso</option>
@@ -91,11 +91,11 @@
                 @endphp
                 <div class="grid grid-cols-5 sm:grid-cols-10 gap-2">
                     @foreach($iconOptions as $opt)
-                    <button type="button" data-no-spinner="true" x-on:click="icon = '{{ $opt }}'"
+                    <button type="button" data-no-spinner="true" x-on:click="icon = '{{ $opt }}'" aria-label="Icono {{ $opt }}" x-bind:aria-pressed="icon === '{{ $opt }}'"
                         class="h-11 rounded-xl border flex items-center justify-center transition-colors"
                         x-bind:class="icon === '{{ $opt }}'
-                            ? 'border-[#76a72b] bg-[#76a72b]/10 text-[#76a72b]'
-                            : 'border-[#ababab]/40 text-[#878787] hover:border-[#76a72b] hover:text-[#76a72b]'">
+                            ? 'border-[#76a72b] bg-[#76a72b]/10 text-positive'
+                            : 'border-[#ababab]/40 text-[#878787] hover:border-[#76a72b] hover:text-positive'">
                         <x-category-icon :name="$opt" class="w-5 h-5" />
                     </button>
                     @endforeach

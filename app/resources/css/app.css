@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
 /* ── Brand tokens (Hans Hatch Identity) ─────────────────────────── */
 @theme {
@@ -23,13 +22,31 @@
   --color-hh-mid:   #ababab;  /* Pantone Cool Gray 8C */
   --color-hh-light: #efeded;  /* Pantone 663 C */
 
+  /* Colores semánticos de texto: mismo tono de marca, pero con contraste
+     AA (≥4.5:1) sobre blanco; en modo oscuro vuelven a los tonos claros */
+  --color-positive: var(--fp-positive);
+  --color-negative: var(--fp-negative);
+  --color-warn:     var(--fp-warn);
+
   /* Curvas de movimiento: las de CSS por defecto son demasiado blandas */
   --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);   /* entradas / salidas */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);  /* hojas que suben en móvil */
 }
 
 /* ── Base ────────────────────────────────────────────────────────── */
-:root { color-scheme: light dark; }
+:root {
+  color-scheme: light dark;
+  --fp-positive: #4f7f1a;  /* verde marca oscurecido: 4.8:1 sobre blanco */
+  --fp-negative: #dc2626;  /* 4.8:1 */
+  --fp-warn:     #b45309;  /* 5.0:1 */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fp-positive: #76a72b;  /* sobre #2a2a2a el verde de marca ya da 5:1 */
+    --fp-negative: #f87171;
+    --fp-warn:     #fbbf24;
+  }
+}
 
 * { box-sizing: border-box; }
 
@@ -39,6 +56,30 @@ body {
   font-family: 'Roboto', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Interacción ─────────────────────────────────────────────────
+   Tailwind v4 deja los botones con cursor de flecha: en escritorio todo lo
+   que se puede presionar debe verse presionable. */
+button:not(:disabled), [role="button"], summary, select, label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]), input[type="date"], input[type="month"], input[type="color"] {
+  cursor: pointer;
+}
+
+/* Foco visible solo con teclado: anillo de marca en ligas y botones
+   (los inputs ya traen su propio focus:ring) */
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid #76a72b;
+  outline-offset: 2px;
+}
+
+/* Liga «Saltar al contenido»: invisible hasta que se enfoca con Tab */
+.skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 100;
+  padding: 8px 14px; border-radius: 10px;
+  background: #76a72b; color: #fff; font-size: 14px; font-weight: 600;
+  transition: top 150ms var(--ease-snappy);
+}
+.skip-link:focus { top: 12px; }
 
 /* ── Scrollbar delgado ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -52,6 +93,10 @@ body {
   .row-actions { opacity: 0; transition: opacity 150ms var(--ease-snappy); }
   .group:hover .row-actions,
   .group:focus-within .row-actions { opacity: 1; }
+}
+/* En táctil las acciones siempre están y necesitan área de toque suficiente */
+@media (pointer: coarse) {
+  .row-actions > a, .row-actions > button, .row-actions form > button { min-width: 40px; min-height: 40px; }
 }
 
 /* ── Movimiento reducido: sin desplazamientos ni escalas ─────────── */

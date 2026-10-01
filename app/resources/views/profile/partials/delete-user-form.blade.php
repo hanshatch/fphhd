@@ -17,7 +17,7 @@
             <label for="delete_password" class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Escribe tu contraseña para confirmar</label>
             <input id="delete_password" name="password" type="password" required autocomplete="current-password"
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-            @error('password', 'userDeletion')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+            @error('password', 'userDeletion')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
         </div>
 
         <x-btn type="submit" variant="danger">Eliminar cuenta</x-btn>

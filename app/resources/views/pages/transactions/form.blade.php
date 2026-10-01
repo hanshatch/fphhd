@@ -76,7 +76,7 @@ input.tx-row-value::placeholder { color: #ababab; }
     <div style="flex:0 0 auto;background:#fff;border-bottom:1px solid rgba(0,0,0,0.1);padding:48px 12px 10px;display:flex;align-items:center;gap:4px">
 
         {{-- Cancelar --}}
-        <a href="{{ route('transactions.index') }}"
+        <a href="{{ route('transactions.index') }}" aria-label="Regresar"
            style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f2f2f7;color:#878787;text-decoration:none;flex-shrink:0">
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
@@ -99,7 +99,7 @@ input.tx-row-value::placeholder { color: #ababab; }
         </div>
 
         {{-- Guardar --}}
-        <button type="submit" form="mobile-form"
+        <button type="submit" form="mobile-form" aria-label="Guardar"
                 style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;border:none;cursor:pointer;flex-shrink:0"
                 :style="`background:${accentColor}`">
             <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +309,7 @@ input.tx-row-value::placeholder { color: #ababab; }
             {{-- Monto --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Monto <span class="text-[#76a72b]">*</span>
+                    Monto <span class="text-positive">*</span>
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
@@ -318,15 +318,15 @@ input.tx-row-value::placeholder { color: #ababab; }
                         value="{{ old('amount', $transaction->amount) }}"
                         placeholder="0.00"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                 </div>
-                @error('amount')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('amount')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Cuenta --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Cuenta <span class="text-[#76a72b]">*</span>
+                    Cuenta <span class="text-positive">*</span>
                 </label>
                 <select name="account_id" required
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -342,13 +342,13 @@ input.tx-row-value::placeholder { color: #ababab; }
                     </optgroup>
                     @endforeach
                 </select>
-                @error('account_id')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('account_id')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Cuenta destino --}}
             <div x-show="type === 'transfer'" x-cloak>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Cuenta destino <span class="text-[#76a72b]">*</span>
+                    Cuenta destino <span class="text-positive">*</span>
                 </label>
                 <select name="counterparty_account_id" :required="type === 'transfer'"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -399,12 +399,12 @@ input.tx-row-value::placeholder { color: #ababab; }
             {{-- Fecha --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Fecha <span class="text-[#76a72b]">*</span>
+                    Fecha <span class="text-positive">*</span>
                 </label>
                 <input type="date" name="date" required
                     value="{{ old('date', $transaction->date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                @error('date')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('date')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             <div class="flex gap-3 pt-2">

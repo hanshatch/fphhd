@@ -3,7 +3,7 @@
     {{-- Saludo --}}
     <div class="mb-5">
         <h1 class="text-2xl font-bold text-[#373737] dark:text-white">
-            Hola, <span class="text-[#76a72b]">Hans</span> 👋
+            Hola, <span class="text-positive">Hans</span>
         </h1>
         <p class="text-[#878787] text-sm mt-0.5">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</p>
     </div>
@@ -15,7 +15,7 @@
         <div class="lg:col-span-1">
             <div class="p-5 bg-[#373737] rounded-2xl shadow-sm h-full flex flex-col justify-between">
                 <div>
-                    <p class="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Patrimonio neto</p>
+                    <p class="text-white/40 text-[11px] font-bold uppercase tracking-widest mb-2">Patrimonio neto</p>
                     <p class="text-3xl font-bold text-white leading-none tabular-nums">
                         {{ bccomp((string) $netWorth, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$netWorth), 2) }}
                     </p>
@@ -23,11 +23,11 @@
                 </div>
                 <div class="flex gap-5 mt-4">
                     <div>
-                        <p class="text-white/50 text-[10px] uppercase tracking-wider">Activos</p>
-                        <p class="text-[#76a72b] font-bold text-sm tabular-nums">${{ number_format($assets, 2) }}</p>
+                        <p class="text-white/50 text-[11px] uppercase tracking-wider">Activos</p>
+                        <p class="text-[#8cc63f] font-bold text-sm tabular-nums">${{ number_format($assets, 2) }}</p>
                     </div>
                     <div>
-                        <p class="text-white/50 text-[10px] uppercase tracking-wider">Tarjetas</p>
+                        <p class="text-white/50 text-[11px] uppercase tracking-wider">Tarjetas</p>
                         <p class="text-red-400 font-bold text-sm tabular-nums">${{ number_format($debts, 2) }}</p>
                     </div>
                 </div>
@@ -38,22 +38,22 @@
         <div class="lg:col-span-2">
             <x-card class="p-5 h-full">
                 <div class="flex items-center justify-between mb-4">
-                    <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Flujo de {{ now()->translatedFormat('F Y') }}</p>
+                    <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest">Flujo de {{ now()->translatedFormat('F Y') }}</h2>
                     <a href="{{ route('transactions.index', ['from' => $flow['from'], 'to' => $flow['to']]) }}"
-                       class="text-xs text-[#76a72b] hover:underline font-semibold">Ver detalle →</a>
+                       class="text-xs text-positive hover:underline font-semibold">Ver detalle →</a>
                 </div>
                 <div class="grid grid-cols-3 gap-4">
                     <div class="text-center">
-                        <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Ingresos</div>
-                        <div class="text-xl font-bold text-[#76a72b] tabular-nums">${{ number_format((float)$flow['income'], 2) }}</div>
+                        <div class="text-xs text-[#878787] mb-1 uppercase tracking-wider">Ingresos</div>
+                        <div class="text-xl font-bold text-positive tabular-nums">${{ number_format((float)$flow['income'], 2) }}</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Egresos</div>
-                        <div class="text-xl font-bold text-red-500 tabular-nums">${{ number_format((float)$flow['expenses'], 2) }}</div>
+                        <div class="text-xs text-[#878787] mb-1 uppercase tracking-wider">Egresos</div>
+                        <div class="text-xl font-bold text-negative tabular-nums">${{ number_format((float)$flow['expenses'], 2) }}</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Neto</div>
-                        <div class="text-xl font-bold tabular-nums {{ (float)$flow['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                        <div class="text-xs text-[#878787] mb-1 uppercase tracking-wider">Neto</div>
+                        <div class="text-xl font-bold tabular-nums {{ (float)$flow['net'] >= 0 ? 'text-positive' : 'text-negative' }}">
                             {{ (float)$flow['net'] >= 0 ? '+' : '−' }}${{ number_format(abs((float)$flow['net']), 2) }}
                         </div>
                     </div>
@@ -67,14 +67,14 @@
                 @endphp
                 <div class="mt-4 space-y-2">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-[#ababab] w-16 text-right">Ingreso</span>
+                        <span class="text-xs text-[#878787] w-16 text-right">Ingreso</span>
                         <div class="flex-1 h-2 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
                             <div class="h-full bg-[#76a72b] rounded-full" style="width: {{ $incPct }}%"></div>
                         </div>
                         <span class="text-xs text-[#878787] w-8 tabular-nums">{{ $incPct }}%</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-[#ababab] w-16 text-right">Egreso</span>
+                        <span class="text-xs text-[#878787] w-16 text-right">Egreso</span>
                         <div class="flex-1 h-2 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
                             <div class="h-full bg-red-400 rounded-full" style="width: {{ $expPct }}%"></div>
                         </div>
@@ -88,7 +88,7 @@
     {{-- ── FASE 7: Alertas TDC (corte/pago próximos) ──────────────── --}}
     @if($tdcAlerts->isNotEmpty())
     <div class="mb-4">
-        <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Tarjetas de crédito</p>
+        <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Tarjetas de crédito</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach($tdcAlerts as $tdc)
             @php
@@ -114,7 +114,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-sm text-[#373737] dark:text-white truncate">{{ $tdc['account']->name }}</p>
-                        <p class="text-xs text-[#ababab] tabular-nums">
+                        <p class="text-xs text-[#878787] tabular-nums">
                             ${{ number_format(abs((float)$tdc['balance']), 2) }}
                             @if($tdc['credit_limit'] > 0)
                             / ${{ number_format((float)$tdc['credit_limit'], 2) }}
@@ -123,10 +123,10 @@
                     </div>
                     @if($tdc['utilization'] > 0)
                     <div class="text-right flex-shrink-0">
-                        <span class="text-xs font-bold {{ $tdc['utilization'] >= 80 ? 'text-red-500' : ($tdc['utilization'] >= 50 ? 'text-amber-500' : 'text-[#76a72b]') }}">
+                        <span class="text-xs font-bold {{ $tdc['utilization'] >= 80 ? 'text-negative' : ($tdc['utilization'] >= 50 ? 'text-warn' : 'text-positive') }}">
                             {{ $tdc['utilization'] }}%
                         </span>
-                        <p class="text-[10px] text-[#ababab]">uso</p>
+                        <p class="text-[11px] text-[#878787]">uso</p>
                     </div>
                     @endif
                 </div>
@@ -145,27 +145,27 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div class="rounded-xl p-2 text-center
                         {{ $urgentStatement ? 'bg-red-50 dark:bg-red-500/10' : ($warnStatement ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-[#efeded] dark:bg-white/5') }}">
-                        <p class="text-[10px] font-semibold uppercase tracking-wider
-                            {{ $urgentStatement ? 'text-red-500' : ($warnStatement ? 'text-amber-500' : 'text-[#ababab]') }}">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider
+                            {{ $urgentStatement ? 'text-negative' : ($warnStatement ? 'text-warn' : 'text-[#878787]') }}">
                             Corte
                         </p>
                         <p class="text-sm font-bold
                             {{ $urgentStatement ? 'text-red-600' : ($warnStatement ? 'text-amber-600' : 'text-[#373737] dark:text-white') }}">
                             {{ $tdc['days_statement'] === 0 ? 'Hoy' : 'En '.$tdc['days_statement'].'d' }}
                         </p>
-                        <p class="text-[10px] text-[#ababab]">{{ $tdc['next_statement']->translatedFormat('d M') }}</p>
+                        <p class="text-[11px] text-[#878787]">{{ $tdc['next_statement']->translatedFormat('d M') }}</p>
                     </div>
                     <div class="rounded-xl p-2 text-center
                         {{ $urgentPayment ? 'bg-red-50 dark:bg-red-500/10' : ($warnPayment ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-[#efeded] dark:bg-white/5') }}">
-                        <p class="text-[10px] font-semibold uppercase tracking-wider
-                            {{ $urgentPayment ? 'text-red-500' : ($warnPayment ? 'text-amber-500' : 'text-[#ababab]') }}">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider
+                            {{ $urgentPayment ? 'text-negative' : ($warnPayment ? 'text-warn' : 'text-[#878787]') }}">
                             Pago
                         </p>
                         <p class="text-sm font-bold
                             {{ $urgentPayment ? 'text-red-600' : ($warnPayment ? 'text-amber-600' : 'text-[#373737] dark:text-white') }}">
                             {{ $tdc['days_payment'] === 0 ? 'Hoy' : 'En '.$tdc['days_payment'].'d' }}
                         </p>
-                        <p class="text-[10px] text-[#ababab]">{{ $tdc['next_payment']->translatedFormat('d M') }}</p>
+                        <p class="text-[11px] text-[#878787]">{{ $tdc['next_payment']->translatedFormat('d M') }}</p>
                     </div>
                 </div>
             </div>
@@ -179,22 +179,22 @@
 
         {{-- Gráfica barras 6 meses --}}
         <x-card class="p-5">
-            <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-4">Últimos 6 meses</p>
+            <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-4">Últimos 6 meses</h2>
             <div class="relative h-44">
-                <canvas id="flowChart"></canvas>
+                <canvas id="flowChart" role="img" aria-label="Ingresos y egresos de los últimos 6 meses"></canvas>
             </div>
         </x-card>
 
         {{-- Top categorías de gasto --}}
         <x-card class="p-5">
             <div class="flex items-center justify-between mb-4">
-                <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Top gastos del mes</p>
+                <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest">Top gastos del mes</h2>
                 <a href="{{ route('transactions.index', ['type' => 'expense', 'from' => $flow['from'], 'to' => $flow['to']]) }}"
-                   class="text-xs text-[#76a72b] hover:underline font-semibold">Ver todos →</a>
+                   class="text-xs text-positive hover:underline font-semibold">Ver todos →</a>
             </div>
             @if($topCategories->isEmpty())
                 <div class="text-center py-6">
-                    <p class="text-[#ababab] text-sm">Sin egresos este mes</p>
+                    <p class="text-[#878787] text-sm">Sin egresos este mes</p>
                 </div>
             @else
                 <div class="space-y-3">
@@ -223,32 +223,32 @@
     {{-- ── FASE 9: Indicadores financieros ────────────────────────── --}}
     @php $ind = $indicators; @endphp
     <div class="mb-4">
-        <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Salud financiera</p>
+        <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Salud financiera</h2>
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
 
             {{-- Tasa de ahorro --}}
             <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
-                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Tasa de ahorro</p>
+                <p class="text-[11px] font-semibold text-[#878787] uppercase tracking-wider mb-2">Tasa de ahorro</p>
                 @if($ind['savings_rate'] !== null)
                 @php $sr = $ind['savings_rate']; @endphp
-                <p class="text-2xl font-bold tabular-nums {{ $sr >= 20 ? 'text-[#76a72b]' : ($sr >= 0 ? 'text-amber-500' : 'text-red-500') }}">
+                <p class="text-2xl font-bold tabular-nums {{ $sr >= 20 ? 'text-positive' : ($sr >= 0 ? 'text-warn' : 'text-negative') }}">
                     {{ $sr >= 0 ? '' : '-' }}{{ number_format(abs($sr), 1) }}<span class="text-sm">%</span>
                 </p>
-                <p class="text-[10px] text-[#ababab] mt-1">
+                <p class="text-[11px] text-[#878787] mt-1">
                     {{ $sr >= 20 ? '¡Buen ritmo!' : ($sr >= 0 ? 'Puedes mejorar' : 'Gastando más de lo que ingresa') }}
                 </p>
                 @else
-                <p class="text-sm text-[#ababab]">Sin ingresos aún</p>
+                <p class="text-sm text-[#878787]">Sin ingresos aún</p>
                 @endif
             </div>
 
             {{-- Proyección de gasto --}}
             <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
-                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Proyección del mes</p>
+                <p class="text-[11px] font-semibold text-[#878787] uppercase tracking-wider mb-2">Proyección del mes</p>
                 <p class="text-2xl font-bold tabular-nums text-[#373737] dark:text-white">
                     ${{ number_format($ind['projected_expense'], 0) }}
                 </p>
-                <p class="text-[10px] text-[#ababab] mt-1">
+                <p class="text-[11px] text-[#878787] mt-1">
                     Día {{ $ind['days_elapsed'] }}/{{ $ind['days_in_month'] }} ·
                     ${{ number_format($ind['daily_pace'], 0) }}/día
                 </p>
@@ -256,11 +256,11 @@
 
             {{-- Quincena disponible --}}
             <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
-                <p class="text-[10px] font-semibold text-[#ababab] uppercase tracking-wider mb-2">Próximos 15 días</p>
-                <p class="text-2xl font-bold tabular-nums {{ $ind['quincena_available'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                <p class="text-[11px] font-semibold text-[#878787] uppercase tracking-wider mb-2">Próximos 15 días</p>
+                <p class="text-2xl font-bold tabular-nums {{ $ind['quincena_available'] >= 0 ? 'text-positive' : 'text-negative' }}">
                     ${{ number_format(abs($ind['quincena_available']), 0) }}
                 </p>
-                <p class="text-[10px] text-[#ababab] mt-1">
+                <p class="text-[11px] text-[#878787] mt-1">
                     @if($ind['quincena_income'] > 0 || $ind['quincena_charges'] > 0)
                         +${{ number_format($ind['quincena_income'], 0) }} ingresos ·
                         -${{ number_format($ind['quincena_charges'], 0) }} cargos
@@ -280,12 +280,12 @@
         <div class="lg:col-span-2">
             <x-card class="p-5">
                 <div class="flex items-center justify-between mb-4">
-                    <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Saldos por cuenta</p>
-                    <a href="{{ route('accounts.index') }}" class="text-xs text-[#76a72b] hover:underline font-semibold">Gestionar →</a>
+                    <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest">Saldos por cuenta</h2>
+                    <a href="{{ route('accounts.index') }}" class="text-xs text-positive hover:underline font-semibold">Gestionar →</a>
                 </div>
                 @if($accounts->isEmpty())
                     <div class="text-center py-6">
-                        <p class="text-[#ababab] text-sm">No hay cuentas activas</p>
+                        <p class="text-[#878787] text-sm">No hay cuentas activas</p>
                         <x-btn href="{{ route('accounts.create') }}" class="mt-3 text-xs">Crear cuenta</x-btn>
                     </div>
                 @else
@@ -302,14 +302,14 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">{{ $acc->name }}</p>
-                                <p class="text-[10px] text-[#ababab] capitalize">{{ $typeLabels[$acc->type] ?? $acc->type }} · {{ $acc->institution }}</p>
+                                <p class="text-[11px] text-[#878787] capitalize">{{ $typeLabels[$acc->type] ?? $acc->type }} · {{ $acc->institution }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-sm tabular-nums {{ $acc->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
+                                <p class="font-bold text-sm tabular-nums {{ $acc->isCredit() ? 'text-negative' : 'text-[#373737] dark:text-white' }}">
                                     {{ bccomp((string) $bal, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$bal), 2) }}
                                 </p>
                                 @if($acc->isInvestment() && $acc->invest_apr)
-                                    <p class="text-[10px] text-[#76a72b]">{{ $acc->invest_apr }}% APR</p>
+                                    <p class="text-[11px] text-positive">{{ $acc->invest_apr }}% APR</p>
                                 @endif
                             </div>
                         </div>
@@ -323,17 +323,17 @@
         <div class="lg:col-span-1">
             <x-card class="p-5 h-full">
                 <div class="flex items-center justify-between mb-4">
-                    <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Rendimientos del mes</p>
-                    <a href="{{ route('reports.index', ['type' => 'yields']) }}" class="text-[10px] text-[#76a72b] font-semibold hover:underline">Ver reporte →</a>
+                    <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest">Rendimientos del mes</h2>
+                    <a href="{{ route('reports.index', ['type' => 'yields']) }}" class="text-[11px] text-positive font-semibold hover:underline">Ver reporte →</a>
                 </div>
 
                 @if($yieldPending->isNotEmpty())
                 <div class="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-                    <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Falta capturar</p>
+                    <p class="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Falta capturar</p>
                     @foreach($yieldPending as $p)
                     <a href="{{ route('transactions.create') }}" class="block text-xs text-amber-700 dark:text-amber-300 hover:underline">
                         {{ $p['account']->displayLabel() }}
-                        <span class="text-amber-500">· {{ $p['last'] ? 'último '.$p['last']->translatedFormat('j M') : 'sin capturas' }}</span>
+                        <span class="text-warn">· {{ $p['last'] ? 'último '.$p['last']->translatedFormat('j M') : 'sin capturas' }}</span>
                     </a>
                     @endforeach
                 </div>
@@ -341,21 +341,21 @@
 
                 @if($monthlyInterest->isEmpty())
                     <div class="text-center py-6">
-                        <svg class="mx-auto w-8 h-8 text-[#ababab] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                        <p class="text-[#ababab] text-xs">Sin intereses registrados este mes</p>
-                        <p class="text-[10px] text-[#ababab] mt-1">Registra movimientos tipo "Interés"</p>
+                        <svg class="mx-auto w-8 h-8 text-[#878787] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        <p class="text-[#878787] text-xs">Sin intereses registrados este mes</p>
+                        <p class="text-[11px] text-[#878787] mt-1">Registra movimientos tipo "Interés"</p>
                     </div>
                 @else
                     <div class="mb-4 p-3 bg-[#76a72b]/10 rounded-xl text-center">
-                        <p class="text-xs text-[#76a72b] font-semibold">Total del mes</p>
-                        <p class="text-xl font-bold text-[#76a72b] tabular-nums">{{ format_currency($interestTotal) }}</p>
+                        <p class="text-xs text-positive font-semibold">Total del mes</p>
+                        <p class="text-xl font-bold text-positive tabular-nums">{{ format_currency($interestTotal) }}</p>
                     </div>
                     <div class="space-y-3">
                         @foreach($monthlyInterest as $r)
                         <div class="flex items-center gap-2">
                             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $r['color'] }}"></div>
                             <span class="text-xs text-[#878787] flex-1 truncate">{{ $r['name'] }}</span>
-                            <span class="text-xs font-bold text-[#76a72b] tabular-nums">${{ number_format($r['total'], 2) }}</span>
+                            <span class="text-xs font-bold text-positive tabular-nums">${{ number_format($r['total'], 2) }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -367,9 +367,9 @@
     {{-- ── Fila 4: Últimos movimientos ──────────────────────────────── --}}
     <x-card>
         <div class="flex items-center justify-between p-5 border-b border-[#efeded] dark:border-white/10">
-            <p class="text-xs font-bold text-[#878787] uppercase tracking-widest">Últimos movimientos</p>
+            <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest">Últimos movimientos</h2>
             <a href="{{ route('transactions.create') }}"
-               class="inline-flex items-center gap-1.5 text-xs text-[#76a72b] hover:underline font-semibold">
+               class="inline-flex items-center gap-1.5 text-xs text-positive hover:underline font-semibold">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                 Registrar
             </a>
@@ -377,17 +377,17 @@
 
         @if($recent->isEmpty())
             <div class="text-center py-12">
-                <svg class="mx-auto w-10 h-10 text-[#ababab] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                <svg class="mx-auto w-10 h-10 text-[#878787] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                 <p class="text-[#878787] text-sm font-medium">Sin movimientos aún</p>
                 <x-btn href="{{ route('transactions.create') }}" class="mt-4">Registrar el primero</x-btn>
             </div>
         @else
             @php
             $txCfg = [
-                'income'   => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-[#76a72b]',  'sign' => '+', 'label' => 'Ingreso'],
-                'interest' => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-[#76a72b]',  'sign' => '+', 'label' => 'Interés'],
-                'expense'  => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-red-500',      'sign' => '-', 'label' => 'Egreso'],
-                'fee'      => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-red-500',      'sign' => '-', 'label' => 'Comisión'],
+                'income'   => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-positive',  'sign' => '+', 'label' => 'Ingreso'],
+                'interest' => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-positive',  'sign' => '+', 'label' => 'Interés'],
+                'expense'  => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-negative',      'sign' => '-', 'label' => 'Egreso'],
+                'fee'      => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-negative',      'sign' => '-', 'label' => 'Comisión'],
                 'transfer' => ['bg' => 'bg-[#efeded] dark:bg-white/10', 'text' => 'text-[#878787]',   'sign' => '',  'label' => 'Transferencia'],
             ];
             @endphp
@@ -400,10 +400,10 @@
                         {{ $c['sign'] ?: '⇄' }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">
+                        <p class="text-sm font-semibold text-[#373737] dark:text-white truncate" title="{{ $tx->description ?: $c['label'] }}">
                             {{ $tx->description ?: $c['label'] }}
                         </p>
-                        <p class="text-xs text-[#ababab]">
+                        <p class="text-xs text-[#878787]">
                             {{ $tx->date->translatedFormat('d M Y') }}
                             · {{ $tx->account->name }}
                             @if($tx->category) · {{ $tx->category->name }} @endif
@@ -416,7 +416,7 @@
                 @endforeach
             </div>
             <div class="p-4 border-t border-[#efeded] dark:border-white/10 text-center">
-                <a href="{{ route('transactions.index') }}" class="text-sm text-[#76a72b] font-semibold hover:underline">
+                <a href="{{ route('transactions.index') }}" class="text-sm text-positive font-semibold hover:underline">
                     Ver todos los movimientos →
                 </a>
             </div>
@@ -478,14 +478,14 @@
                     x: {
                         grid: { display: false },
                         border: { display: false },
-                        ticks: { font: { size: 11, family: 'Roboto' }, color: '#ababab' }
+                        ticks: { font: { size: 11, family: 'Roboto' }, color: '#878787' }
                     },
                     y: {
                         grid: { color: '#efeded' },
                         border: { display: false, dash: [4, 4] },
                         ticks: {
                             font: { size: 11, family: 'Roboto' },
-                            color: '#ababab',
+                            color: '#878787',
                             callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
                         }
                     }

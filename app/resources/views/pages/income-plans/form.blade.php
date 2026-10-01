@@ -15,18 +15,18 @@
             {{-- Nombre --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Nombre <span class="text-[#76a72b]">*</span>
+                    Nombre <span class="text-positive">*</span>
                 </label>
                 <input type="text" name="name" value="{{ old('name', $plan->name) }}" required autofocus
                     placeholder="ej. Agencia — quincena, UNAM — mensual"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('name')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Frecuencia --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-2">
-                    Frecuencia <span class="text-[#76a72b]">*</span>
+                    Frecuencia <span class="text-positive">*</span>
                 </label>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     @foreach(['once' => ['⚡', 'Único', 'Un solo pago'], 'biweekly' => ['🗓️', 'Quincenal', 'Cada 15 días'], 'monthly' => ['📅', 'Mensual', 'Una vez al mes'], 'weekly' => ['📆', 'Semanal', 'Cada semana']] as $val => [$emoji, $label, $sub])
@@ -37,7 +37,7 @@
                              class="border-2 rounded-xl p-3 text-center transition-colors duration-150 cursor-pointer">
                             <div class="text-xl mb-1">{{ $emoji }}</div>
                             <div class="text-xs font-bold text-[#373737] dark:text-white">{{ $label }}</div>
-                            <div class="text-[10px] text-[#ababab] mt-0.5">{{ $sub }}</div>
+                            <div class="text-[11px] text-[#878787] mt-0.5">{{ $sub }}</div>
                         </div>
                     </label>
                     @endforeach
@@ -62,7 +62,7 @@
                             value="{{ old('day_2', $plan->day_2) }}"
                             placeholder="ej. 30"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                        <p class="mt-1 text-[10px] text-[#ababab]">Días 15 y 30 = cobros quincenales</p>
+                        <p class="mt-1 text-[11px] text-[#878787]">Días 15 y 30 = cobros quincenales</p>
                     </div>
                 </div>
             </div>
@@ -70,7 +70,7 @@
             {{-- Monto estimado --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Monto estimado <span class="text-[#76a72b]">*</span>
+                    Monto estimado <span class="text-positive">*</span>
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
@@ -78,17 +78,17 @@
                         value="{{ old('expected_amount', $plan->expected_amount) }}"
                         placeholder="Aproximado — lo ajustas al registrar"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                 </div>
-                <p class="mt-1 text-[10px] text-[#ababab]">Solo para planeación — el monto real lo ingresas cuando llega el pago</p>
-                @error('expected_amount')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                <p class="mt-1 text-[11px] text-[#878787]">Solo para planeación — el monto real lo ingresas cuando llega el pago</p>
+                @error('expected_amount')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Cuenta + Fuente --}}
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                        Cuenta de depósito <span class="text-[#76a72b]">*</span>
+                        Cuenta de depósito <span class="text-positive">*</span>
                     </label>
                     <select name="account_id" required
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -118,12 +118,12 @@
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                     <span x-text="freq === 'once' ? 'Fecha esperada del pago' : 'Próxima fecha esperada'"></span>
-                    <span class="text-[#76a72b]">*</span>
+                    <span class="text-positive">*</span>
                 </label>
                 <input type="date" name="next_expected_date" required
                     value="{{ old('next_expected_date', $plan->next_expected_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                <p class="mt-1 text-[10px] text-[#ababab]"
+                <p class="mt-1 text-[11px] text-[#878787]"
                    x-text="freq === 'once' ? 'Al registrar el pago, este ingreso se marca como completado.' : 'La fecha se avanza automáticamente cada vez que registras un pago'">
                 </p>
             </div>

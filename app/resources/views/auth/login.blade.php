@@ -8,7 +8,7 @@
 
     {{-- Encabezado --}}
     <div style="margin-bottom:36px;">
-        <p style="color:rgba(255,255,255,0.3); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px;">
+        <p style="color:rgba(255,255,255,0.55); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px;">
             Finanzas Personales
         </p>
         <h1 style="color:#fff; font-size:24px; font-weight:700; line-height:1.2; margin:0;">
@@ -27,7 +27,7 @@
 
         {{-- Email --}}
         <div>
-            <label for="email" style="display:block; color:rgba(255,255,255,0.3); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
+            <label for="email" style="display:block; color:rgba(255,255,255,0.6); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
                 Correo
             </label>
             <input id="email" type="email" name="email" value="{{ old('email') }}"
@@ -41,13 +41,18 @@
 
         {{-- Contraseña --}}
         <div>
-            <label for="password" style="display:block; color:rgba(255,255,255,0.3); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
+            <label for="password" style="display:block; color:rgba(255,255,255,0.6); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
                 Contraseña
             </label>
-            <input id="password" type="password" name="password"
-                required autocomplete="current-password"
-                placeholder="••••••••••••"
-                class="fp-input">
+            <div x-data="{ show: false }" style="position:relative;">
+                <input id="password" x-bind:type="show ? 'text' : 'password'" type="password" name="password"
+                    required autocomplete="current-password"
+                    placeholder="••••••••••••"
+                    class="fp-input" style="padding-right:72px;">
+                <button type="button" data-no-spinner="true" x-on:click="show = !show"
+                    x-text="show ? 'Ocultar' : 'Mostrar'" x-bind:aria-pressed="show"
+                    style="position:absolute; right:0; top:50%; transform:translateY(-50%); min-height:44px; padding:0 4px; background:none; border:none; color:rgba(255,255,255,0.6); font-size:12px; font-weight:600; cursor:pointer;">Mostrar</button>
+            </div>
             @error('password')
                 <p style="color:#f87171; font-size:12px; margin-top:6px;">{{ $message }}</p>
             @enderror

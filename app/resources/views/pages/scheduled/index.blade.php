@@ -16,16 +16,16 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 {{-- ── Resumen del mes ───────────────────────────────────────────── --}}
 <div class="grid grid-cols-3 gap-3 mb-5">
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-3 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Ingresos</p>
-        <p class="text-base font-bold text-[#76a72b] tabular-nums">${{ number_format($totalIn, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Ingresos</p>
+        <p class="text-base font-bold text-positive tabular-nums">${{ number_format($totalIn, 2) }}</p>
     </div>
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-3 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Egresos</p>
-        <p class="text-base font-bold text-red-500 tabular-nums">${{ number_format($totalOut, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Egresos</p>
+        <p class="text-base font-bold text-negative tabular-nums">${{ number_format($totalOut, 2) }}</p>
     </div>
     <div class="rounded-xl p-3 text-center {{ ($totalIn - $totalOut) >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20' }}">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Neto</p>
-        <p class="text-base font-bold tabular-nums {{ ($totalIn - $totalOut) >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Neto</p>
+        <p class="text-base font-bold tabular-nums {{ ($totalIn - $totalOut) >= 0 ? 'text-positive' : 'text-negative' }}">
             {{ ($totalIn - $totalOut) < 0 ? '−' : '' }}${{ number_format(abs($totalIn - $totalOut), 2) }}
         </p>
     </div>
@@ -38,8 +38,8 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
 {{-- ── Navegación de mes ─────────────────────────────────────────── --}}
 <div class="flex items-center justify-between mb-4">
-    <a href="?month={{ $prev }}"
-       class="w-9 h-9 flex items-center justify-center rounded-full bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 text-[#878787] hover:text-[#76a72b] hover:border-[#76a72b] transition-colors">
+    <a href="?month={{ $prev }}" aria-label="Mes anterior" title="Mes anterior"
+       class="w-9 h-9 flex items-center justify-center rounded-full bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 text-[#878787] hover:text-positive hover:border-[#76a72b] transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
@@ -49,8 +49,8 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         {{ $month->translatedFormat('F Y') }}
     </h2>
 
-    <a href="?month={{ $next }}"
-       class="w-9 h-9 flex items-center justify-center rounded-full bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 text-[#878787] hover:text-[#76a72b] hover:border-[#76a72b] transition-colors">
+    <a href="?month={{ $next }}" aria-label="Mes siguiente" title="Mes siguiente"
+       class="w-9 h-9 flex items-center justify-center rounded-full bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 text-[#878787] hover:text-positive hover:border-[#76a72b] transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
@@ -63,7 +63,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     {{-- Cabecera días --}}
     <div class="grid grid-cols-7 border-b border-[#ababab]/10">
         @foreach($days as $d)
-        <div class="py-2 text-center text-[10px] font-bold text-[#ababab] uppercase tracking-wider">{{ $d }}</div>
+        <div class="py-2 text-center text-[11px] font-bold text-[#878787] uppercase tracking-wider">{{ $d }}</div>
         @endforeach
     </div>
 
@@ -101,13 +101,13 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
             <div class="flex flex-col gap-0.5 mt-1">
                 @if($hasIncome)
                 @php $inc = collect($items)->where('type','income')->sum('amount') @endphp
-                <span class="text-[9px] lg:text-[10px] font-bold text-[#76a72b] tabular-nums leading-tight truncate">
+                <span class="text-[10px] lg:text-[11px] font-bold text-positive tabular-nums leading-tight truncate">
                     +${{ number_format($inc, 0) }}
                 </span>
                 @endif
                 @if($hasCharge)
                 @php $out = collect($items)->where('type','charge')->sum('amount') @endphp
-                <span class="text-[9px] lg:text-[10px] font-bold text-red-500 tabular-nums leading-tight truncate">
+                <span class="text-[10px] lg:text-[11px] font-bold text-negative tabular-nums leading-tight truncate">
                     -${{ number_format($out, 0) }}
                 </span>
                 @endif
@@ -132,7 +132,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 <div class="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-1">
 @if(empty($dayMap))
 <x-card class="text-center py-12">
-    <svg class="mx-auto w-10 h-10 text-[#ababab] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="mx-auto w-10 h-10 text-[#878787] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
     </svg>
     <p class="text-[#878787] font-medium text-sm">Sin movimientos programados este mes</p>
@@ -165,12 +165,12 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
                 {{ $date->translatedFormat('l d \d\e F') }}
             </span>
             @if($isPast)
-            <span class="ml-2 text-[10px] text-[#ababab] bg-[#efeded] dark:bg-white/10 px-1.5 py-0.5 rounded-full">Pasado</span>
+            <span class="ml-2 text-[11px] text-[#878787] bg-[#efeded] dark:bg-white/10 px-1.5 py-0.5 rounded-full">Pasado</span>
             @endif
         </div>
         <div class="flex items-center gap-2 text-xs font-semibold">
-            @if($dayIncome > 0)<span class="text-[#76a72b] tabular-nums">+${{ number_format($dayIncome, 2) }}</span>@endif
-            @if($dayCharge > 0)<span class="text-red-500 tabular-nums">-${{ number_format($dayCharge, 2) }}</span>@endif
+            @if($dayIncome > 0)<span class="text-positive tabular-nums">+${{ number_format($dayIncome, 2) }}</span>@endif
+            @if($dayCharge > 0)<span class="text-negative tabular-nums">-${{ number_format($dayCharge, 2) }}</span>@endif
         </div>
     </div>
 
@@ -202,13 +202,13 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
                         {{ $item['type'] === 'income' ? 'Ingreso' : 'Cargo' }}
                     </span>
                     @if(!empty($item['account']))
-                    <span class="text-[11px] text-[#ababab]">· {{ $item['account'] }}</span>
+                    <span class="text-[11px] text-[#878787]">· {{ $item['account'] }}</span>
                     @endif
                     @if(!empty($item['category']))
-                    <span class="text-[11px] text-[#ababab]">· {{ $item['category'] }}</span>
+                    <span class="text-[11px] text-[#878787]">· {{ $item['category'] }}</span>
                     @endif
                     @if(!empty($item['source']))
-                    <span class="text-[11px] text-[#ababab]">· {{ $item['source'] }}</span>
+                    <span class="text-[11px] text-[#878787]">· {{ $item['source'] }}</span>
                     @endif
                 </div>
             </div>

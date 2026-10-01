@@ -44,6 +44,12 @@
   Reportes → Movimientos filtrados (`category_id` / `source_id`, `none` = sin asignar); selector de
   categoría con teclado (↓/↑/Enter, Esc no cierra el modal de atrás); Categorías, Fuentes y Perfil
   con el sistema de diseño y en español; Alpine se carga solo desde Vite (se quitó el CDN).
+- [x] Pasada de accesibilidad y UX (2026-10-01): Roboto se carga con `<link>` (el `@import` en el
+  CSS compilado se descartaba y nunca cargó); tokens `text-positive` / `text-negative` / `text-warn`
+  con contraste AA en claro y tonos de marca en oscuro; texto mínimo 11 px; anillo de foco para
+  teclado, «Saltar al contenido», `aria-current` y etiquetas en botones de solo ícono; cursor de
+  mano en botones (Tailwind v4 lo quita); botón «Nuevo movimiento» en la barra lateral con atajo N;
+  los modales piden confirmación antes de descartar lo capturado; contraseña con Mostrar/Ocultar.
 
 ## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
 

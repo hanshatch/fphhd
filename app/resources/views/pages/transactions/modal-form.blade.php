@@ -54,7 +54,7 @@
         {{-- Monto --}}
         <div>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                Monto <span class="text-[#76a72b]">*</span>
+                Monto <span class="text-positive">*</span>
             </label>
             <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
@@ -63,14 +63,14 @@
                     {{-- autofocus no aplica a HTML inyectado: se enfoca al montarse --}}
                     @if(! $exists) x-init="$nextTick(() => $el.focus())" @endif
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
             </div>
         </div>
 
         {{-- Cuenta --}}
         <div>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                Cuenta <span class="text-[#76a72b]">*</span>
+                Cuenta <span class="text-positive">*</span>
             </label>
             <select name="account_id" required
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -92,7 +92,7 @@
         {{-- Cuenta destino --}}
         <div x-show="type === 'transfer'" x-cloak>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                Cuenta destino <span class="text-[#76a72b]">*</span>
+                Cuenta destino <span class="text-positive">*</span>
             </label>
             <select name="counterparty_account_id" :required="type === 'transfer'"
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -141,7 +141,7 @@
         {{-- Fecha --}}
         <div>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                Fecha <span class="text-[#76a72b]">*</span>
+                Fecha <span class="text-positive">*</span>
             </label>
             <input type="date" name="date" required
                 value="{{ $transaction->date?->format('Y-m-d') }}"

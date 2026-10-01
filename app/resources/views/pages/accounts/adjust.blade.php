@@ -30,22 +30,22 @@
             {{-- Saldo deseado --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Saldo deseado <span class="text-[#76a72b]">*</span>
+                    Saldo deseado <span class="text-positive">*</span>
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
                     <input type="text" name="target_balance" data-money inputmode="decimal" required autofocus
                         value="{{ old('target_balance', number_format((float)$balance, 2, '.', '')) }}"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                 </div>
-                @error('target_balance')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('target_balance')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Fecha --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Fecha del ajuste <span class="text-[#76a72b]">*</span>
+                    Fecha del ajuste <span class="text-positive">*</span>
                 </label>
                 <input type="date" name="date" required
                     value="{{ old('date', now()->format('Y-m-d')) }}"

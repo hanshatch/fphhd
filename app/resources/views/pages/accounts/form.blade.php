@@ -22,17 +22,17 @@
 
                 {{-- Nombre --}}
                 <div>
-                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Nombre <span class="text-[#76a72b]">*</span></label>
+                    <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Nombre <span class="text-positive">*</span></label>
                     <input type="text" name="name" value="{{ old('name', $account->name) }}" required autofocus
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition"
                         placeholder="ej. Banamex débito / Amex Gold">
-                    @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('name')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Tipo + Institución --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tipo <span class="text-[#76a72b]">*</span></label>
+                        <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Tipo <span class="text-positive">*</span></label>
                         <select name="type" required x-model="type"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                             @foreach(['debit' => 'Débito', 'credit' => 'TDC', 'savings' => 'Caja de ahorro', 'investment' => 'Inversión', 'cash' => 'Efectivo'] as $val => $label)
@@ -41,7 +41,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Institución <span class="text-[#76a72b]">*</span></label>
+                        <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Institución <span class="text-positive">*</span></label>
                         <select name="institution" required x-model="institution"
                             x-on:change="if ($event.target.value === 'efectivo') type = 'cash'"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -56,16 +56,16 @@
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                         <span x-text="type === 'credit' ? 'Deuda actual' : 'Saldo inicial'"></span>
-                        <span class="text-[#76a72b]">*</span>
+                        <span class="text-positive">*</span>
                     </label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
                         <input type="text" name="initial_balance" data-money inputmode="decimal" required
                             value="{{ old('initial_balance', $account->initial_balance ?? '0.00') }}"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                     </div>
-                    @error('initial_balance')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('initial_balance')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- ── Campos exclusivos TDC ──────────────────────────────── --}}
@@ -75,35 +75,35 @@
                      x-transition:enter-end="opacity-100 translate-y-0"
                      class="space-y-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20">
 
-                    <p class="text-xs font-bold text-red-500 uppercase tracking-wider">Datos de la tarjeta de crédito</p>
+                    <p class="text-xs font-bold text-negative uppercase tracking-wider">Datos de la tarjeta de crédito</p>
 
                     {{-- Día de corte + Día de pago --}}
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                                 Día de corte
-                                <span class="text-[#76a72b]">*</span>
+                                <span class="text-positive">*</span>
                             </label>
                             <input type="number" name="statement_day" min="1" max="31" inputmode="numeric"
                                 x-bind:required="type === 'credit'"
                                 value="{{ old('statement_day', $creditCard->statement_day ?? '') }}"
                                 placeholder="ej. 15"
                                 class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                            <p class="mt-1 text-[10px] text-[#ababab]">Día del mes en que cierra el periodo</p>
-                            @error('statement_day')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                            <p class="mt-1 text-[11px] text-[#878787]">Día del mes en que cierra el periodo</p>
+                            @error('statement_day')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                                 Día de pago
-                                <span class="text-[#76a72b]">*</span>
+                                <span class="text-positive">*</span>
                             </label>
                             <input type="number" name="payment_day" min="1" max="31" inputmode="numeric"
                                 x-bind:required="type === 'credit'"
                                 value="{{ old('payment_day', $creditCard->payment_day ?? '') }}"
                                 placeholder="ej. 5"
                                 class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                            <p class="mt-1 text-[10px] text-[#ababab]">Fecha límite para pagar sin intereses</p>
-                            @error('payment_day')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                            <p class="mt-1 text-[11px] text-[#878787]">Fecha límite para pagar sin intereses</p>
+                            @error('payment_day')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                         </div>
                     </div>
 
@@ -118,9 +118,9 @@
                                 value="{{ old('credit_limit', isset($creditCard->credit_limit) && $creditCard->credit_limit !== null ? number_format((float) $creditCard->credit_limit, 2) : '') }}"
                                 placeholder="ej. 50,000.00"
                                 class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
-                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                         </div>
-                        @error('credit_limit')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                        @error('credit_limit')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                     </div>
                     <p x-show="institution === 'amex'" x-cloak class="text-xs text-[#878787]">
                         American Express es tarjeta de servicio: no aplica límite de crédito.
@@ -134,7 +134,7 @@
                         value="{{ old('invest_apr', $account->invest_apr) }}"
                         placeholder="Solo cajas de ahorro · ej. 13.00"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    @error('invest_apr')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('invest_apr')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Tope al que aplica el APR --}}
@@ -146,12 +146,12 @@
                             value="{{ old('invest_cap', $account->invest_cap !== null ? number_format((float) $account->invest_cap, 2) : '') }}"
                             placeholder="ej. 25,000.00"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
-                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                     </div>
                     <p class="mt-1 text-xs text-[#878787]">
                         Saldo máximo al que se paga ese APR. Déjalo vacío si la tasa aplica a todo el saldo.
                     </p>
-                    @error('invest_cap')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('invest_cap')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Logo + Color ──────────────────────────────────── --}}
@@ -255,14 +255,14 @@
                                 </template>
                                 <template x-if="!preview">
                                     <div class="text-center">
-                                        <svg class="w-6 h-6 text-[#ababab] mx-auto mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        <span class="text-[9px] text-[#ababab]">Logo</span>
+                                        <svg class="w-6 h-6 text-[#878787] mx-auto mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <span class="text-[10px] text-[#878787]">Logo</span>
                                     </div>
                                 </template>
                                 {{-- Overlay extracting --}}
                                 <template x-if="extracting">
                                     <div class="absolute inset-0 bg-white/80 dark:bg-black/60 flex items-center justify-center rounded-2xl">
-                                        <svg class="animate-spin w-5 h-5 text-[#76a72b]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14 6.373 14 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                        <svg class="animate-spin w-5 h-5 text-positive" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14 6.373 14 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     </div>
                                 </template>
                             </div>
@@ -282,7 +282,7 @@
                                     :style="extracted ? 'box-shadow:0 0 0 3px #76a72b44' : ''">
                                 <div>
                                     <p class="text-xs text-[#373737] dark:text-white font-medium" x-text="extracted ? '✓ Color extraído del logo' : 'Color identificador'"></p>
-                                    <p class="text-[10px] text-[#ababab]" x-text="extracted ? 'Puedes ajustarlo manualmente' : 'Se auto-completa al subir un logo'"></p>
+                                    <p class="text-[11px] text-[#878787]" x-text="extracted ? 'Puedes ajustarlo manualmente' : 'Se auto-completa al subir un logo'"></p>
                                 </div>
                             </div>
 
@@ -290,18 +290,18 @@
                             <div class="flex gap-2 flex-wrap">
                                 <button type="button" data-no-spinner="true"
                                     x-on:click="$refs.logoInput.click()"
-                                    class="h-8 px-3 text-xs font-semibold border border-[#ababab]/40 rounded-lg hover:border-[#76a72b] hover:text-[#76a72b] text-[#878787] transition-colors">
+                                    class="h-8 px-3 text-xs font-semibold border border-[#ababab]/40 rounded-lg hover:border-[#76a72b] hover:text-positive text-[#878787] transition-colors">
                                     <span x-text="hasLogo ? 'Cambiar logo' : 'Subir logo'"></span>
                                 </button>
                                 <template x-if="hasLogo">
                                     <button type="button" data-no-spinner="true"
                                         x-on:click="removeLogo()"
-                                        class="h-8 px-3 text-xs font-semibold border border-red-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                                        class="h-8 px-3 text-xs font-semibold border border-red-200 rounded-lg text-negative hover:bg-red-50 transition-colors">
                                         Quitar logo
                                     </button>
                                 </template>
                             </div>
-                            <p class="text-[10px] text-[#ababab]">PNG, JPG, SVG · máx. 2 MB · Mejor con fondo transparente</p>
+                            <p class="text-[11px] text-[#878787]">PNG, JPG, SVG · máx. 2 MB · Mejor con fondo transparente</p>
 
                             <input type="hidden" name="remove_logo" x-bind:value="hasLogo ? '0' : '1'">
                         </div>
@@ -311,7 +311,7 @@
                 @if($account->exists)
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-[#efeded]/50 dark:bg-white/5">
                     <input type="checkbox" name="is_active" id="is_active" value="1" {{ $account->is_active ? 'checked' : '' }}
-                        class="w-4 h-4 text-[#76a72b] rounded border-[#ababab] focus:ring-[#76a72b]">
+                        class="w-4 h-4 text-positive rounded border-[#ababab] focus:ring-[#76a72b]">
                     <label for="is_active" class="text-sm text-[#373737] dark:text-white font-medium">Cuenta activa</label>
                 </div>
                 @endif
@@ -325,7 +325,7 @@
                     <p class="mt-1 text-xs text-[#878787]">
                         Últimos dígitos con los que el banco identifica esta cuenta en sus correos («Cheques ***379»). Varias separadas por coma si la cuenta y su tarjeta usan distintos.
                     </p>
-                    @error('bank_last4')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('bank_last4')<p class="mt-1 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
 
                 <div>

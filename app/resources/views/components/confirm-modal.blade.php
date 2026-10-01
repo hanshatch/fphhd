@@ -20,6 +20,7 @@
             this.label    = detail.label   || 'Aceptar';
             this.onAccept = detail.onAccept || null;
             this.open     = true;
+            document.body.dataset.confirmOpen = '1';
             this.$nextTick(() => this.$refs.accept?.focus());
         },
         accept() {
@@ -27,7 +28,7 @@
             this.close();
             if (typeof fn === 'function') fn();
         },
-        close() { this.open = false; this.onAccept = null; }
+        close() { this.open = false; this.onAccept = null; delete document.body.dataset.confirmOpen; }
      }"
      x-on:confirm-modal.window="show($event.detail)"
      x-on:keydown.escape.window="if (open) close()"
@@ -41,7 +42,7 @@
          x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
 
         <div class="flex items-start gap-3">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-negative">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             </div>
             <div class="flex-1 min-w-0">

@@ -2,10 +2,10 @@
 
 @php
 $typeConfig = [
-    'income'   => ['sign' => '+', 'color' => '#76a72b', 'label' => 'Ingreso'],
-    'interest' => ['sign' => '+', 'color' => '#76a72b', 'label' => 'Interés'],
-    'expense'  => ['sign' => '-', 'color' => '#ef4444', 'label' => 'Egreso'],
-    'fee'      => ['sign' => '-', 'color' => '#ef4444', 'label' => 'Comisión'],
+    'income'   => ['sign' => '+', 'color' => 'var(--fp-positive)', 'label' => 'Ingreso'],
+    'interest' => ['sign' => '+', 'color' => 'var(--fp-positive)', 'label' => 'Interés'],
+    'expense'  => ['sign' => '-', 'color' => 'var(--fp-negative)', 'label' => 'Egreso'],
+    'fee'      => ['sign' => '-', 'color' => 'var(--fp-negative)', 'label' => 'Comisión'],
     'transfer' => ['sign' => '',  'color' => '#878787', 'label' => 'Transferencia'],
 ];
 
@@ -105,7 +105,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
     <div class="grid grid-cols-3 gap-2" x-data>
         <button type="button" data-no-spinner="true" x-on:click="$dispatch('new-tx')"
             class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-[#76a72b]/60 hover:shadow transition-[border-color,box-shadow,transform] duration-150 ease-snappy active:scale-[0.97]">
-            <span class="w-9 h-9 rounded-full bg-[#76a72b]/10 text-[#76a72b] flex items-center justify-center group-hover:bg-[#76a72b] group-hover:text-white transition-colors">
+            <span class="w-9 h-9 rounded-full bg-[#76a72b]/10 text-positive flex items-center justify-center group-hover:bg-[#76a72b] group-hover:text-white transition-colors">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
             </span>
             <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Nuevo movimiento</span>
@@ -113,7 +113,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
 
         <a href="{{ route('accounts.adjust.show', $account) }}"
            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-amber-400/60 hover:shadow transition-[border-color,box-shadow,transform] duration-150 ease-snappy active:scale-[0.97]">
-            <span class="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
+            <span class="w-9 h-9 rounded-full bg-amber-500/10 text-warn flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
             </span>
             <span class="text-[11px] sm:text-xs font-semibold text-[#373737] dark:text-white text-center leading-tight">Ajustar saldo</span>
@@ -133,11 +133,11 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
 {{-- ── Modal: importar capturas del estado de cuenta ───────────── --}}
 <div x-data="importCaptures('{{ route('accounts.import.upload', $account) }}')"
      x-on:open-import.window="open = true"
-     x-on:keydown.escape.window="if (open && !busy) close()"
+     x-on:keydown.escape.window="if (open && !busy) requestClose()"
      x-on:paste.window="if (open && !busy) onPaste($event)"
      x-show="open" x-cloak x-transition:leave="transition duration-150"
      class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
-    <div class="absolute inset-0 bg-black/50" x-on:click="if (!busy) close()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+    <div class="absolute inset-0 bg-black/50" x-on:click="if (!busy) requestClose()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
     <div class="relative w-full sm:max-w-lg bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col"
          x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
@@ -147,8 +147,8 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
                 <h2 class="text-base font-bold text-[#373737] dark:text-white">Importar capturas</h2>
                 <p class="text-xs text-[#878787]">{{ $account->displayLabel() }}</p>
             </div>
-            <button type="button" data-no-spinner="true" x-on:click="close()" x-bind:disabled="busy"
-                class="w-11 h-11 -mr-2 flex items-center justify-center rounded-full text-[#ababab] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors disabled:opacity-40">
+            <button type="button" data-no-spinner="true" x-on:click="requestClose()" x-bind:disabled="busy" aria-label="Cerrar"
+                class="w-11 h-11 -mr-2 flex items-center justify-center rounded-full text-[#878787] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors disabled:opacity-40">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -169,7 +169,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                 </span>
                 <span class="text-sm font-semibold text-[#373737] dark:text-white" x-text="items.length ? 'Agregar más capturas' : 'Elegir capturas'"></span>
-                <span class="hidden sm:block text-xs text-[#ababab]">También puedes arrastrarlas o pegarlas con ⌘V</span>
+                <span class="hidden sm:block text-xs text-[#878787]">También puedes arrastrarlas o pegarlas con ⌘V</span>
             </label>
 
             {{-- Miniaturas en el orden en que se agregaron --}}
@@ -177,7 +177,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
                 <template x-for="(item, i) in items" x-bind:key="item.url">
                     <div class="relative aspect-[9/16] max-w-full rounded-xl overflow-hidden bg-[#efeded] dark:bg-white/5 border border-[#ababab]/20">
                         <img x-bind:src="item.url" alt="" class="w-full h-full object-cover object-top">
-                        <span class="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/60 rounded-full px-1.5 py-0.5" x-text="i + 1"></span>
+                        <span class="absolute bottom-1 left-1 text-[11px] font-bold text-white bg-black/60 rounded-full px-1.5 py-0.5" x-text="i + 1"></span>
                         <button type="button" data-no-spinner="true" x-on:click="remove(i)" x-show="!busy" title="Quitar"
                             class="absolute top-1 right-1 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -186,7 +186,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
                 </template>
             </div>
 
-            <p x-show="error" x-text="error" class="text-xs text-red-500"></p>
+            <p x-show="error" x-text="error" class="text-xs text-negative"></p>
         </div>
 
         <div class="px-5 py-4 border-t border-[#ababab]/15 flex items-center gap-3">
@@ -226,6 +226,16 @@ function importCaptures(url) {
         onPaste(e) {
             const files = Array.from(e.clipboardData?.files || []);
             if (files.length) { e.preventDefault(); this.add(files); }
+        },
+        // Con capturas agregadas, cerrar pide confirmación para no perderlas
+        requestClose() {
+            if (document.body.dataset.confirmOpen) return;
+            if (!this.items.length) return this.close();
+            // En el siguiente ciclo: si no, el mismo Esc que lo pidió cerraría el modal de confirmación
+            setTimeout(() => window.dispatchEvent(new CustomEvent('confirm-modal', { detail: {
+                title: 'Descartar capturas', label: 'Descartar', onAccept: () => this.close(),
+                message: this.items.length === 1 ? 'Agregaste 1 captura que aún no se analiza.' : `Agregaste ${this.items.length} capturas que aún no se analizan.`,
+            }})));
         },
         close() {
             this.items.forEach(it => URL.revokeObjectURL(it.url));
@@ -275,6 +285,7 @@ function importCaptures(url) {
 <div x-data="{
         open: false,
         loading: false,
+        dirty: false,
         html: '',
         title: 'Editar movimiento',
         back: '{{ urlencode(route('accounts.show', $account, false)) }}',
@@ -282,11 +293,12 @@ function importCaptures(url) {
             this.title = title;
             this.open = true;
             this.loading = true;
+            this.dirty = false;
             this.html = '';
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             this.html = res.ok
                 ? await res.text()
-                : '<p class=\'text-sm text-red-500\'>No se pudo cargar el formulario.</p>';
+                : '<p class=\'text-sm text-negative\'>No se pudo cargar el formulario.</p>';
             this.loading = false;
         },
         edit(id) {
@@ -295,25 +307,38 @@ function importCaptures(url) {
         create() {
             return this.load('/transactions/create-modal?account_id={{ $account->id }}&redirect_to=' + this.back + '{{ $prefill }}', 'Nuevo movimiento');
         },
+        // Cerrar con datos capturados pide confirmación (fondo, Esc o ✕);
+        // «Cancelar» del formulario es explícito y cierra directo
+        requestClose() {
+            if (document.body.dataset.confirmOpen || !this.open) return;
+            if (!this.dirty) return this.close();
+            // En el siguiente ciclo: si no, el mismo Esc que lo pidió cerraría el modal de confirmación
+            setTimeout(() => window.dispatchEvent(new CustomEvent('confirm-modal', { detail: {
+                title: 'Descartar cambios', message: 'Lo que capturaste en este movimiento no se ha guardado.',
+                label: 'Descartar', onAccept: () => this.close(),
+            }})));
+        },
         // El formulario se vacía al terminar la salida, no a media animación
         close() { this.open = false; setTimeout(() => { if (!this.open) this.html = ''; }, 160); }
      }"
+     data-new-tx-modal
      x-on:edit-tx.window="edit($event.detail)"
      x-on:new-tx.window="create()"
      x-on:close-tx-modal="close()"
-     x-on:keydown.escape.window="close()"
+     x-on:keydown.escape.window="requestClose()"
      x-init="@if(request()->filled('edit')) edit({{ (int) request('edit') }}) @elseif(request()->boolean('new')) create() @endif">
 
-    <div x-show="open" x-cloak x-transition:leave="transition duration-150" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" x-on:click="close()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+    <div x-show="open" x-cloak x-transition:leave="transition duration-150" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+         role="dialog" aria-modal="true" aria-labelledby="tx-modal-title">
+        <div class="absolute inset-0 bg-black/50" x-on:click="requestClose()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
         <div class="relative w-full sm:max-w-md bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col"
              x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
 
             <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
-                <h2 class="text-base font-bold text-[#373737] dark:text-white" x-text="title"></h2>
-                <button type="button" data-no-spinner="true" x-on:click="close()"
-                    class="w-9 h-9 flex items-center justify-center rounded-full text-[#ababab] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors">
+                <h2 id="tx-modal-title" class="text-base font-bold text-[#373737] dark:text-white" x-text="title"></h2>
+                <button type="button" data-no-spinner="true" x-on:click="requestClose()" aria-label="Cerrar"
+                    class="w-9 h-9 flex items-center justify-center rounded-full text-[#878787] hover:text-[#373737] hover:bg-[#efeded] dark:hover:bg-white/10 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -329,7 +354,7 @@ function importCaptures(url) {
                     </template>
                     <div class="flex gap-3 pt-1"><div class="flex-1 h-11 rounded-xl bg-[#efeded] dark:bg-white/10"></div><div class="flex-1 h-11 rounded-xl bg-[#efeded] dark:bg-white/10"></div></div>
                 </div>
-                <div x-html="html"></div>
+                <div x-html="html" x-on:input="dirty = true" x-on:change="dirty = true"></div>
             </div>
         </div>
     </div>
@@ -361,11 +386,11 @@ function importCaptures(url) {
 <div class="flex items-center justify-between mb-2 mt-5 first:mt-0">
     <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider">{{ $monthLabel }}</h2>
     <div class="flex items-center gap-3 text-xs font-semibold">
-        <span class="text-[#ababab] font-medium tabular-nums">
+        <span class="text-[#878787] font-medium tabular-nums">
             {{ $txs->count() }} {{ $txs->count() === 1 ? 'movimiento' : 'movimientos' }}
         </span>
-        @if($inSum > 0)<span class="text-[#76a72b] tabular-nums">+${{ number_format($inSum, 2) }}</span>@endif
-        @if($outSum > 0)<span class="text-red-500 tabular-nums">-${{ number_format($outSum, 2) }}</span>@endif
+        @if($inSum > 0)<span class="text-positive tabular-nums">+${{ number_format($inSum, 2) }}</span>@endif
+        @if($outSum > 0)<span class="text-negative tabular-nums">-${{ number_format($outSum, 2) }}</span>@endif
     </div>
 </div>
 
@@ -388,7 +413,7 @@ function importCaptures(url) {
             ? ['sign' => '+', 'color' => '#878787', 'label' => 'Transferencia recibida']
             : ($typeConfig[$tx->type] ?? $typeConfig['expense']);
         // El ícono se queda gris (es transferencia), pero el monto que entra va en verde
-        $amountColor = $isIncoming ? '#76a72b' : $cfg['color'];
+        $amountColor = $isIncoming ? 'var(--fp-positive)' : $cfg['color'];
         if ($tx->category) {
             $iconBg    = $tx->category->color;
             $iconLabel = mb_strtoupper(mb_substr($tx->category->name, 0, 1));
@@ -404,7 +429,7 @@ function importCaptures(url) {
              si el día tiene un solo movimiento se ve apagada e inerte --}}
         @if($canDrag)
         <button type="button" data-drag-handle data-no-spinner="true" title="Arrastrar para acomodar dentro del día"
-            class="w-6 -ml-1 flex-shrink-0 flex items-center justify-center text-[#ababab] hover:text-[#878787] cursor-grab active:cursor-grabbing touch-none">
+            class="w-6 -ml-1 flex-shrink-0 flex items-center justify-center text-[#878787] hover:text-[#878787] cursor-grab active:cursor-grabbing touch-none">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
             </svg>
@@ -425,21 +450,21 @@ function importCaptures(url) {
         </div>
 
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">
+            <p class="text-sm font-semibold text-[#373737] dark:text-white truncate" title="{{ $tx->description ?: $cfg['label'] }}">
                 {{ $tx->description ?: $cfg['label'] }}
             </p>
             <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span class="text-[11px] text-[#ababab]">{{ $tx->date->translatedFormat('d M') }}</span>
+                <span class="text-[11px] text-[#878787]">{{ $tx->date->translatedFormat('d M') }}</span>
                 @if($tx->category)
-                <span class="text-[#ababab]/60 text-[10px]">·</span>
-                <span class="text-[11px] text-[#ababab]">{{ $tx->category->name }}</span>
+                <span class="text-[#ababab]/60 text-[11px]">·</span>
+                <span class="text-[11px] text-[#878787]">{{ $tx->category->name }}</span>
                 @endif
                 @if($isIncoming)
-                <span class="text-[#ababab]/60 text-[10px]">·</span>
-                <span class="text-[11px] text-[#ababab]">← {{ $tx->account->name }}</span>
+                <span class="text-[#ababab]/60 text-[11px]">·</span>
+                <span class="text-[11px] text-[#878787]">← {{ $tx->account->name }}</span>
                 @elseif($tx->counterpartyAccount)
-                <span class="text-[#ababab]/60 text-[10px]">·</span>
-                <span class="text-[11px] text-[#ababab]">→ {{ $tx->counterpartyAccount->name }}</span>
+                <span class="text-[#ababab]/60 text-[11px]">·</span>
+                <span class="text-[11px] text-[#878787]">→ {{ $tx->counterpartyAccount->name }}</span>
                 @endif
             </div>
         </div>
@@ -451,7 +476,7 @@ function importCaptures(url) {
             </p>
             @if(isset($runningBalances[$tx->id]))
             @php $rb = (float) $runningBalances[$tx->id]; @endphp
-            <p class="text-[10px] tabular-nums mt-0.5 {{ $rb < 0 ? 'text-red-400' : 'text-[#ababab]' }}">
+            <p class="text-[11px] tabular-nums mt-0.5 {{ $rb < 0 ? 'text-red-400' : 'text-[#878787]' }}">
                 ${{ number_format($rb, 2) }}
             </p>
             @endif
@@ -462,7 +487,7 @@ function importCaptures(url) {
         <div class="row-actions flex items-center gap-0.5 flex-shrink-0" x-data>
             <button type="button" data-no-spinner="true"
                x-on:click="$dispatch('edit-tx', {{ $tx->id }})"
-               class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors" title="Editar">
+               class="w-7 h-7 flex items-center justify-center text-[#878787] hover:text-positive hover:bg-[#76a72b]/10 rounded-lg transition-colors" title="Editar">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
@@ -471,7 +496,7 @@ function importCaptures(url) {
                 @csrf
                 <input type="hidden" name="redirect_to" value="{{ route('accounts.show', $account, false) }}">
                 <button type="submit"
-                    class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="Duplicar">
+                    class="w-7 h-7 flex items-center justify-center text-[#878787] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="Duplicar">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                     </svg>
@@ -482,7 +507,7 @@ function importCaptures(url) {
                 @csrf @method('DELETE')
                 <input type="hidden" name="redirect_to" value="{{ route('accounts.show', $account, false) }}">
                 <button type="submit"
-                    class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="Eliminar">
+                    class="w-7 h-7 flex items-center justify-center text-[#878787] hover:text-negative hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="Eliminar">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>

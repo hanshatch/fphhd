@@ -20,7 +20,7 @@
                          class="border-2 rounded-xl p-4 text-center transition-colors duration-150">
                         <div class="text-xl mb-1">🔄</div>
                         <div class="text-sm font-semibold text-[#373737] dark:text-white">Recurrente</div>
-                        <div class="text-[10px] text-[#ababab] mt-0.5">Sin fecha fin o con fecha límite</div>
+                        <div class="text-[11px] text-[#878787] mt-0.5">Sin fecha fin o con fecha límite</div>
                     </div>
                 </label>
                 <label class="cursor-pointer">
@@ -30,7 +30,7 @@
                          class="border-2 rounded-xl p-4 text-center transition-colors duration-150">
                         <div class="text-xl mb-1">💳</div>
                         <div class="text-sm font-semibold text-[#373737] dark:text-white">MSI</div>
-                        <div class="text-[10px] text-[#ababab] mt-0.5">Meses sin intereses</div>
+                        <div class="text-[11px] text-[#878787] mt-0.5">Meses sin intereses</div>
                     </div>
                 </label>
             </div>
@@ -38,12 +38,12 @@
             {{-- Nombre --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                    Nombre <span class="text-[#76a72b]">*</span>
+                    Nombre <span class="text-positive">*</span>
                 </label>
                 <input type="text" name="name" value="{{ old('name', $charge->name) }}" required autofocus
                     :placeholder="isMsi ? 'ej. iPhone 16 Pro MSI' : 'ej. Netflix, Spotify, Renta'"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                @error('name')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('name')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- MSI: monto original + número de cuotas --}}
@@ -62,14 +62,14 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                            Número de meses <span class="text-[#76a72b]">*</span>
+                            Número de meses <span class="text-positive">*</span>
                         </label>
                         <input type="number" name="total_installments" min="2" max="360" inputmode="numeric"
                             value="{{ old('total_installments', $charge->total_installments) }}"
                             placeholder="ej. 12"
                             :required="isMsi"
                             class="w-full rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                        <p class="mt-1 text-[10px] text-[#ababab]">La fecha fin se calcula automáticamente</p>
+                        <p class="mt-1 text-[11px] text-[#878787]">La fecha fin se calcula automáticamente</p>
                     </div>
                 </div>
             </div>
@@ -78,7 +78,7 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                        Cuenta <span class="text-[#76a72b]">*</span>
+                        Cuenta <span class="text-positive">*</span>
                     </label>
                     <select name="account_id" required
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -104,7 +104,7 @@
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
                     <span x-text="isMsi ? 'Cuota mensual' : 'Monto mensual'"></span>
-                    <span class="text-[#76a72b]">*</span>
+                    <span class="text-positive">*</span>
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold">$</span>
@@ -112,9 +112,9 @@
                         value="{{ old('amount', $charge->amount) }}"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-8 pr-16 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition"
                         placeholder="0.00">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#878787] text-xs font-semibold uppercase tracking-wider">MXN</span>
                 </div>
-                @error('amount')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                @error('amount')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
             </div>
 
             {{-- Categoría --}}
@@ -127,17 +127,17 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                        Día del mes <span class="text-[#76a72b]">*</span>
+                        Día del mes <span class="text-positive">*</span>
                     </label>
                     <input type="number" name="day_of_month" min="1" max="31" inputmode="numeric" required
                         value="{{ old('day_of_month', $charge->day_of_month) }}"
                         placeholder="ej. 15"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <p class="mt-1 text-[10px] text-[#ababab]">Día en que se aplica cada mes</p>
+                    <p class="mt-1 text-[11px] text-[#878787]">Día en que se aplica cada mes</p>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">
-                        Fecha inicio <span class="text-[#76a72b]">*</span>
+                        Fecha inicio <span class="text-positive">*</span>
                     </label>
                     <input type="date" name="start_date" required
                         value="{{ old('start_date', $charge->start_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
@@ -151,7 +151,7 @@
                 <input type="date" name="end_date"
                     value="{{ old('end_date', $charge->end_date?->format('Y-m-d')) }}"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                <p class="mt-1 text-[10px] text-[#ababab]">Opcional — vacío = indefinido</p>
+                <p class="mt-1 text-[11px] text-[#878787]">Opcional — vacío = indefinido</p>
             </div>
 
             {{-- Empate con estado de cuenta y correos --}}
@@ -166,16 +166,16 @@
                         value="{{ old('statement_text', $charge->statement_text) }}"
                         placeholder="ej. Seguros Monterrey"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
-                    <p class="mt-1 text-[10px] text-[#ababab]">Opcional. Si lo dejas vacío se empata por palabras del nombre, cuenta, fecha y monto.</p>
-                    @error('statement_text')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                    <p class="mt-1 text-[11px] text-[#878787]">Opcional. Si lo dejas vacío se empata por palabras del nombre, cuenta, fecha y monto.</p>
+                    @error('statement_text')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Variación de monto aceptada (%)</label>
                     <input type="number" name="amount_tolerance_pct" step="0.1" min="0" max="50" inputmode="decimal"
                         value="{{ old('amount_tolerance_pct', $charge->amount_tolerance_pct ?? '3.00') }}"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition tabular-nums">
-                    <p class="mt-1 text-[10px] text-[#ababab]">Para cargos en dólares o UDIs que cambian cada mes. 0 = monto exacto.</p>
-                    @error('amount_tolerance_pct')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+                    <p class="mt-1 text-[11px] text-[#878787]">Para cargos en dólares o UDIs que cambian cada mes. 0 = monto exacto.</p>
+                    @error('amount_tolerance_pct')<p class="mt-1.5 text-xs text-negative">{{ $message }}</p>@enderror
                 </div>
             </div>
 

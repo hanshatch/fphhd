@@ -49,7 +49,7 @@
             <span class="w-2 h-2 rounded-full flex-shrink-0" x-bind:style="`background-color: ${color || '#76a72b'}`"></span>
         </template>
         <span class="truncate" x-text="label || '{{ $placeholder }}'"></span>
-        <svg class="w-3.5 h-3.5 text-[#ababab] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <svg class="w-3.5 h-3.5 text-[#878787] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
     @else
     <button type="button" data-no-spinner="true" x-ref="trigger" x-on:click="show()"
@@ -57,14 +57,15 @@
         <template x-if="label">
             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" x-bind:style="`background-color: ${color || '#76a72b'}`"></span>
         </template>
-        <span class="flex-1 truncate text-[#373737] dark:text-white" x-bind:class="label ? '' : 'text-[#ababab]'"
+        <span class="flex-1 truncate text-[#373737] dark:text-white" x-bind:class="label ? '' : 'text-[#878787]'"
               x-text="label || '{{ $placeholder }}'"></span>
-        <svg class="w-4 h-4 text-[#ababab] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <svg class="w-4 h-4 text-[#878787] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
     @endif
 
     {{-- Modal --}}
     <div x-show="open" x-cloak x-transition:leave="transition duration-150" x-on:keydown.escape.stop="open = false"
+         role="dialog" aria-modal="true" aria-label="Elegir categoría"
          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
         <div class="absolute inset-0 bg-black/50" x-on:click="open = false" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
@@ -74,7 +75,7 @@
             {{-- Search --}}
             <div class="p-4 border-b border-[#ababab]/15">
                 <div class="relative">
-                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#ababab]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#878787]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input type="text" x-ref="search" x-model="q" placeholder="Buscar categoría…"
                         x-on:keydown.enter.prevent="pickFirst()" x-on:keydown.down.prevent="move(1)"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-10 pr-4 py-2.5 text-sm text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
@@ -86,7 +87,7 @@
                  x-on:keydown.down.prevent="move(1)" x-on:keydown.up.prevent="move(-1)">
                 <button type="button" data-no-spinner="true" data-none x-on:click="pick('', null, null)" x-show="matches('sin categoria')"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#efeded] dark:hover:bg-white/5 focus:bg-[#efeded] dark:focus:bg-white/5 focus:outline-none text-left transition-colors">
-                    <span class="w-7 h-7 rounded-lg bg-[#efeded] dark:bg-white/10 flex items-center justify-center text-[#ababab] flex-shrink-0 text-xs">—</span>
+                    <span class="w-7 h-7 rounded-lg bg-[#efeded] dark:bg-white/10 flex items-center justify-center text-[#878787] flex-shrink-0 text-xs">—</span>
                     <span class="text-sm text-[#878787]">{{ $placeholder }}</span>
                 </button>
 
@@ -96,7 +97,7 @@
                         $kindGuard   = $kindExpr ? "({$kindExpr}) === '{$kind}' && " : '';
                     @endphp
                     @if($kindParents->isNotEmpty())
-                    <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-[#ababab] uppercase tracking-widest"
+                    <p class="px-3 pt-4 pb-1 text-[11px] font-bold text-[#878787] uppercase tracking-widest"
                        x-show="{{ $kindGuard }}[@foreach($kindParents as $cat)'{{ addslashes($cat->name) }}',@foreach($cat->children as $child)'{{ addslashes($child->name) }}',@endforeach @endforeach].some(n => matches(n))">
                         {{ $kindLabel }}
                     </p>

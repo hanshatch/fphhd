@@ -30,11 +30,11 @@ $instLabels = [
 
 @if($groups->isEmpty())
 <x-card class="text-center py-16">
-    <svg class="mx-auto w-12 h-12 text-[#ababab] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="mx-auto w-12 h-12 text-[#878787] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
     </svg>
     <p class="text-[#878787] font-medium">Aún no tienes cuentas</p>
-    <p class="text-[#ababab] text-sm mt-1">Agrega tus cuentas bancarias, cajas de ahorro y tarjetas</p>
+    <p class="text-[#878787] text-sm mt-1">Agrega tus cuentas bancarias, cajas de ahorro y tarjetas</p>
     <x-btn href="{{ route('accounts.create') }}" class="mt-4">Crear primera cuenta</x-btn>
 </x-card>
 @else
@@ -130,15 +130,15 @@ $instLabels = [
                 <div class="flex items-center gap-2">
                     <span class="font-semibold text-[#373737] dark:text-white text-sm truncate">{{ $account->name }}</span>
                     @if($showYield)
-                    <span class="text-[10px] bg-[#76a72b]/10 text-[#76a72b] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 tabular-nums">
+                    <span class="text-[11px] bg-[#76a72b]/10 text-positive px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 tabular-nums">
                         {{ rtrim(rtrim(number_format((float) $account->invest_apr, 2), '0'), '.') }}%
                     </span>
                     @endif
                     @if(! $account->is_active)
-                    <span class="text-[10px] bg-[#efeded] dark:bg-white/10 text-[#ababab] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">Inactiva</span>
+                    <span class="text-[11px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">Inactiva</span>
                     @endif
                 </div>
-                <p class="text-[11px] text-[#ababab] mt-0.5">
+                <p class="text-[11px] text-[#878787] mt-0.5">
                     {{ $instLabels[$account->institution] ?? $account->institution }}
                     @if($showYield && $cap)
                         · tope ${{ number_format($cap, 2) }}
@@ -148,15 +148,15 @@ $instLabels = [
 
             {{-- Saldo --}}
             <div class="text-right flex-shrink-0">
-                <p class="font-bold text-sm tabular-nums {{ $isCredit ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
+                <p class="font-bold text-sm tabular-nums {{ $isCredit ? 'text-negative' : 'text-[#373737] dark:text-white' }}">
                     ${{ number_format(abs((float)$balance), 2) }}
                 </p>
-                <p class="text-[10px] text-[#ababab] uppercase tracking-wider">MXN</p>
+                <p class="text-[11px] text-[#878787] uppercase tracking-wider">MXN</p>
             </div>
 
             {{-- Acción editar: con mouse aparece al pasar por la fila --}}
             <a href="{{ route('accounts.edit', $account) }}" title="Editar cuenta"
-               class="row-actions relative z-10 w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors flex-shrink-0">
+               class="row-actions relative z-10 w-8 h-8 flex items-center justify-center text-[#878787] hover:text-positive hover:bg-[#76a72b]/10 rounded-lg transition-colors flex-shrink-0">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>

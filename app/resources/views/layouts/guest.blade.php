@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }} · Finanzas Personales</title>
+    {{-- Roboto con <link>: un @import dentro del CSS compilado queda después de
+         las reglas de Tailwind y el navegador lo descarta (nunca cargaba) --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         body { font-family: 'Roboto', system-ui, sans-serif; }
@@ -12,14 +17,14 @@
             width: 100%;
             background: transparent;
             border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.12);
+            border-bottom: 1px solid rgba(255,255,255,0.25);
             padding: 12px 0;
             color: #fff;
             font-size: 15px;
             outline: none;
             transition: border-color 0.2s;
         }
-        .fp-input::placeholder { color: rgba(255,255,255,0.2); }
+        .fp-input::placeholder { color: rgba(255,255,255,0.35); }
         .fp-input:focus { border-bottom-color: #76a72b; }
         .fp-input:-webkit-autofill {
             -webkit-box-shadow: 0 0 0px 1000px #232323 inset;

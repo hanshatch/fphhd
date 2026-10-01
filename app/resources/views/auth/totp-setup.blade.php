@@ -1,7 +1,7 @@
 <x-guest-layout>
 
     <div style="text-align:center; margin-bottom:28px;">
-        <p style="color:rgba(255,255,255,0.3); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
+        <p style="color:rgba(255,255,255,0.6); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
             Configuración única
         </p>
         <h2 style="color:#fff; font-size:20px; font-weight:700; margin:0 0 8px;">
@@ -29,7 +29,7 @@
 
     {{-- Clave manual --}}
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; text-align:center; margin-bottom:24px;">
-        <p style="color:rgba(255,255,255,0.3); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 6px;">
+        <p style="color:rgba(255,255,255,0.6); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 6px;">
             Clave manual
         </p>
         <code style="color:#76a72b; font-family:'Roboto Mono',monospace; font-size:14px; letter-spacing:0.2em; font-weight:700; user-select:all;">
@@ -41,7 +41,7 @@
         @csrf
 
         <div>
-            <label for="code" style="display:block; color:rgba(255,255,255,0.3); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
+            <label for="code" style="display:block; color:rgba(255,255,255,0.6); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">
                 Código de verificación
             </label>
             <input id="code" name="code" type="text"

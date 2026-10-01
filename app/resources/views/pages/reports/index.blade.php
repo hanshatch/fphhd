@@ -51,16 +51,16 @@
 {{-- Resumen del año --}}
 <div class="grid grid-cols-3 gap-3 mb-5">
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Ingresos {{ $year }}</p>
-        <p class="text-lg font-bold text-[#76a72b] tabular-nums">${{ number_format($totalIncome, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Ingresos {{ $year }}</p>
+        <p class="text-lg font-bold text-positive tabular-nums">${{ number_format($totalIncome, 2) }}</p>
     </div>
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Egresos {{ $year }}</p>
-        <p class="text-lg font-bold text-red-500 tabular-nums">${{ number_format($totalExpense, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Egresos {{ $year }}</p>
+        <p class="text-lg font-bold text-negative tabular-nums">${{ number_format($totalExpense, 2) }}</p>
     </div>
     <div class="rounded-xl p-4 text-center {{ $netBalance >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20' }}">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Balance</p>
-        <p class="text-lg font-bold tabular-nums {{ $netBalance >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Balance</p>
+        <p class="text-lg font-bold tabular-nums {{ $netBalance >= 0 ? 'text-positive' : 'text-negative' }}">
             {{ $netBalance >= 0 ? '+' : '−' }}${{ number_format(abs($netBalance), 2) }}
         </p>
     </div>
@@ -70,7 +70,7 @@
 <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4 mb-5">
     <h3 class="text-sm font-bold text-[#373737] dark:text-white mb-4">Ingresos vs Egresos por mes</h3>
     <div class="relative" style="height:240px">
-        <canvas id="annualChart"></canvas>
+        <canvas id="annualChart" role="img" aria-label="Ingresos y egresos por mes de {{ $year }}; el detalle está en la tabla de abajo"></canvas>
     </div>
 </div>
 
@@ -79,11 +79,11 @@
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-[#ababab]/10">
-                <th class="px-4 py-3 text-left text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Mes</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Ingresos</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Egresos</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Neto</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Acumulado</th>
+                <th class="px-4 py-3 text-left text-[11px] font-bold text-[#878787] uppercase tracking-wider">Mes</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">Ingresos</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">Egresos</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">Neto</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider hidden sm:table-cell">Acumulado</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-[#ababab]/10">
@@ -91,13 +91,13 @@
             @php $hasData = $row['income'] > 0 || $row['expense'] > 0; @endphp
             <tr class="{{ $hasData ? '' : 'opacity-40' }} hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
                 <td class="px-4 py-3 font-medium text-[#373737] dark:text-white capitalize">{{ $row['label'] }}</td>
-                <td class="px-4 py-3 text-right tabular-nums text-[#76a72b] font-semibold">
+                <td class="px-4 py-3 text-right tabular-nums text-positive font-semibold">
                     {{ $row['income'] > 0 ? '+$'.number_format($row['income'], 2) : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums text-red-500 font-semibold">
+                <td class="px-4 py-3 text-right tabular-nums text-negative font-semibold">
                     {{ $row['expense'] > 0 ? '-$'.number_format($row['expense'], 2) : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-bold {{ $row['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                <td class="px-4 py-3 text-right tabular-nums font-bold {{ $row['net'] >= 0 ? 'text-positive' : 'text-negative' }}">
                     {{ $row['net'] != 0 ? ($row['net'] > 0 ? '+' : '−').'$'.number_format(abs($row['net']), 2) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787] hidden sm:table-cell">
@@ -118,12 +118,12 @@
 
 <div class="grid grid-cols-2 gap-3 mb-5">
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Egresos {{ $monthCarbon->translatedFormat('M Y') }}</p>
-        <p class="text-xl font-bold text-red-500 tabular-nums">${{ number_format($totalExpense, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Egresos {{ $monthCarbon->translatedFormat('M Y') }}</p>
+        <p class="text-xl font-bold text-negative tabular-nums">${{ number_format($totalExpense, 2) }}</p>
     </div>
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Ingresos {{ $monthCarbon->translatedFormat('M Y') }}</p>
-        <p class="text-xl font-bold text-[#76a72b] tabular-nums">${{ number_format($totalIncome, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Ingresos {{ $monthCarbon->translatedFormat('M Y') }}</p>
+        <p class="text-xl font-bold text-positive tabular-nums">${{ number_format($totalIncome, 2) }}</p>
     </div>
 </div>
 
@@ -138,7 +138,7 @@
     <h3 class="text-sm font-bold text-[#373737] dark:text-white mb-4">Distribución de egresos</h3>
     <div class="flex flex-col sm:flex-row items-center gap-4">
         <div class="relative w-48 h-48 flex-shrink-0">
-            <canvas id="catChart"></canvas>
+            <canvas id="catChart" role="img" aria-label="Distribución de egresos por categoría; el detalle está en la tabla de abajo"></canvas>
         </div>
         <div class="flex-1 space-y-1.5 w-full">
             @foreach($byCategory->take(8) as $cat)
@@ -165,10 +165,10 @@
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-[#ababab]/10">
-                <th class="px-4 py-3 text-left text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Categoría</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Total</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">%</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
+                <th class="px-4 py-3 text-left text-[11px] font-bold text-[#878787] uppercase tracking-wider">Categoría</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">Total</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">%</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-[#ababab]/10">
@@ -189,12 +189,12 @@
                              style="background-color:{{ $cat['color'] }}">
                             <x-category-icon :name="$cat['icon'] ?? 'tag'" class="w-3.5 h-3.5" />
                         </div>
-                        <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-[#76a72b] transition-colors">{{ $cat['name'] }}</a>
+                        <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-positive transition-colors">{{ $cat['name'] }}</a>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-bold text-red-500">-${{ number_format($cat['total'], 2) }}</td>
+                <td class="px-4 py-3 text-right tabular-nums font-bold text-negative">-${{ number_format($cat['total'], 2) }}</td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">{{ number_format($pct, 1) }}%</td>
-                <td class="px-4 py-3 text-right tabular-nums text-[#ababab] hidden sm:table-cell">{{ $cat['count'] }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-[#878787] hidden sm:table-cell">{{ $cat['count'] }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -211,23 +211,23 @@
 {{-- Resumen --}}
 <div class="grid grid-cols-3 gap-3 mb-5">
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Últimos {{ $yieldMonths }} meses</p>
-        <p class="text-lg font-bold text-[#76a72b] tabular-nums">${{ number_format($yieldTotal, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Últimos {{ $yieldMonths }} meses</p>
+        <p class="text-lg font-bold text-positive tabular-nums">${{ number_format($yieldTotal, 2) }}</p>
     </div>
     <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1 capitalize">{{ $prevMonthName }}</p>
-        <p class="text-lg font-bold text-[#76a72b] tabular-nums">${{ number_format($yieldPrevTotal, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1 capitalize">{{ $prevMonthName }}</p>
+        <p class="text-lg font-bold text-positive tabular-nums">${{ number_format($yieldPrevTotal, 2) }}</p>
     </div>
     <div class="bg-[#76a72b]/10 border border-[#76a72b]/20 rounded-xl p-4 text-center">
-        <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Promedio mensual</p>
-        <p class="text-lg font-bold text-[#76a72b] tabular-nums">${{ number_format($yieldAvgMonth, 2) }}</p>
+        <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Promedio mensual</p>
+        <p class="text-lg font-bold text-positive tabular-nums">${{ number_format($yieldAvgMonth, 2) }}</p>
     </div>
 </div>
 
 @if($yieldRows->isEmpty())
 <x-card class="text-center py-12">
     <p class="text-[#878787] text-sm">No hay cuentas de ahorro o inversión activas.</p>
-    <a href="{{ route('accounts.create') }}" class="mt-3 inline-block text-[#4a7018] dark:text-[#76a72b] text-sm hover:underline">Crear cuenta de ahorro →</a>
+    <a href="{{ route('accounts.create') }}" class="mt-3 inline-block text-[#4a7018] dark:text-positive text-sm hover:underline">Crear cuenta de ahorro →</a>
 </x-card>
 @else
 
@@ -240,7 +240,7 @@
         @foreach($yieldPendings as $row)
         <a href="{{ route('transactions.create') }}" class="text-sm text-amber-700 dark:text-amber-300 hover:underline">
             {{ $row['account']->displayLabel() }}
-            <span class="text-xs text-amber-500">({{ $row['last_capture'] ? 'último: '.$row['last_capture']->translatedFormat('j M Y') : 'sin capturas' }})</span>
+            <span class="text-xs text-warn">({{ $row['last_capture'] ? 'último: '.$row['last_capture']->translatedFormat('j M Y') : 'sin capturas' }})</span>
         </a>
         @endforeach
     </div>
@@ -251,7 +251,7 @@
 <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4 mb-5">
     <h3 class="text-sm font-bold text-[#373737] dark:text-white mb-4">Rendimiento mensual por cuenta</h3>
     <div class="relative" style="height:240px">
-        <canvas id="yieldsChart"></canvas>
+        <canvas id="yieldsChart" role="img" aria-label="Rendimiento mensual por cuenta; el detalle está en la tabla de abajo"></canvas>
     </div>
 </div>
 
@@ -261,12 +261,12 @@
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-[#ababab]/10">
-                <th class="px-4 py-3 text-left text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Cuenta</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider capitalize">{{ $prevMonthName }}</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">{{ $yieldMonths }} meses</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">APR nominal</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">APR efectivo</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Última captura</th>
+                <th class="px-4 py-3 text-left text-[11px] font-bold text-[#878787] uppercase tracking-wider">Cuenta</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider capitalize">{{ $prevMonthName }}</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">{{ $yieldMonths }} meses</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">APR nominal</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">APR efectivo</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider hidden sm:table-cell">Última captura</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-[#ababab]/10">
@@ -284,23 +284,23 @@
                         <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $row['color'] }}"></div>
                         <span class="font-semibold text-[#373737] dark:text-white">{{ $row['label'] }}</span>
                         @if($row['pending'])
-                        <span class="text-[10px] bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold">Pendiente</span>
+                        <span class="text-[11px] bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold">Pendiente</span>
                         @endif
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-semibold text-[#76a72b]">
+                <td class="px-4 py-3 text-right tabular-nums font-semibold text-positive">
                     {{ $row['interest_prev'] > 0 ? '+$'.number_format($row['interest_prev'], 2) : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-bold text-[#76a72b]">
+                <td class="px-4 py-3 text-right tabular-nums font-bold text-positive">
                     {{ $row['interest_sum'] > 0 ? '+$'.number_format($row['interest_sum'], 2) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">
                     {{ $nominal > 0 ? number_format($nominal, 2).'%' : '—' }}
                     @if($nominal > 0 && $cap)
-                    <span class="block text-[10px] text-[#ababab]">hasta ${{ number_format($cap, 2) }}</span>
+                    <span class="block text-[11px] text-[#878787]">hasta ${{ number_format($cap, 2) }}</span>
                     @endif
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-bold {{ $belowNominal ? 'text-amber-500' : 'text-[#373737] dark:text-white' }}">
+                <td class="px-4 py-3 text-right tabular-nums font-bold {{ $belowNominal ? 'text-warn' : 'text-[#373737] dark:text-white' }}">
                     {{ $effective !== null && $effective > 0 ? number_format($effective, 2).'%' : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right text-xs text-[#878787] hidden sm:table-cell">
@@ -311,7 +311,7 @@
         </tbody>
     </table>
     </div>
-    <p class="px-4 py-3 text-[10px] text-[#ababab] border-t border-[#ababab]/10">
+    <p class="px-4 py-3 text-[11px] text-[#878787] border-t border-[#ababab]/10">
         APR efectivo = interés capturado ÷ saldo promedio mensual, anualizado. Si queda por debajo del nominal
         (en ámbar) suele deberse a retención de ISR o a saldo por arriba del tope de la tasa promocional.
     </p>
@@ -327,15 +327,15 @@
 @php $monthCarbon = \Illuminate\Support\Carbon::createFromFormat('Y-m', $month); @endphp
 
 <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center mb-5">
-    <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Ingresos totales {{ $monthCarbon->translatedFormat('F Y') }}</p>
-    <p class="text-2xl font-bold text-[#76a72b] tabular-nums">${{ number_format($totalIncome, 2) }}</p>
+    <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">Ingresos totales {{ $monthCarbon->translatedFormat('F Y') }}</p>
+    <p class="text-2xl font-bold text-positive tabular-nums">${{ number_format($totalIncome, 2) }}</p>
 </div>
 
 {{-- Evolución últimos 6 meses --}}
 <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4 mb-5">
     <h3 class="text-sm font-bold text-[#373737] dark:text-white mb-4">Ingresos últimos 6 meses</h3>
     <div class="relative" style="height:200px">
-        <canvas id="sourcesChart"></canvas>
+        <canvas id="sourcesChart" role="img" aria-label="Ingresos de los últimos 6 meses"></canvas>
     </div>
 </div>
 
@@ -349,10 +349,10 @@
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-[#ababab]/10">
-                <th class="px-4 py-3 text-left text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Fuente</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">Total</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider">%</th>
-                <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
+                <th class="px-4 py-3 text-left text-[11px] font-bold text-[#878787] uppercase tracking-wider">Fuente</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">Total</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider">%</th>
+                <th class="px-4 py-3 text-right text-[11px] font-bold text-[#878787] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-[#ababab]/10">
@@ -369,19 +369,19 @@
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                         <div class="w-7 h-7 rounded-lg bg-[#76a72b]/15 flex items-center justify-center flex-shrink-0">
-                            <span class="text-xs font-bold text-[#76a72b]">{{ mb_strtoupper(mb_substr($src['name'], 0, 1)) }}</span>
+                            <span class="text-xs font-bold text-positive">{{ mb_strtoupper(mb_substr($src['name'], 0, 1)) }}</span>
                         </div>
                         <div>
-                            <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-[#76a72b] transition-colors">{{ $src['name'] }}</a>
+                            <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-positive transition-colors">{{ $src['name'] }}</a>
                             <div class="h-1 bg-[#efeded] dark:bg-white/10 rounded-full mt-1 w-24 overflow-hidden">
                                 <div class="h-full rounded-full bg-[#76a72b]" style="width:{{ number_format($pct, 1) }}%"></div>
                             </div>
                         </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right tabular-nums font-bold text-[#76a72b]">+${{ number_format($src['total'], 2) }}</td>
+                <td class="px-4 py-3 text-right tabular-nums font-bold text-positive">+${{ number_format($src['total'], 2) }}</td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">{{ number_format($pct, 1) }}%</td>
-                <td class="px-4 py-3 text-right tabular-nums text-[#ababab] hidden sm:table-cell">{{ $src['count'] }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-[#878787] hidden sm:table-cell">{{ $src['count'] }}</td>
             </tr>
             @endforeach
         </tbody>

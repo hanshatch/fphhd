@@ -11,14 +11,14 @@
             @php $days = (int) now()->startOfDay()->diffInDays($item->next_application_date->startOfDay(), false); @endphp
             <a href="{{ route('recurring.apply.show', $item) }}"
                class="flex-shrink-0 block bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 rounded-xl p-3 min-w-[140px] lg:min-w-0 hover:border-[#76a72b]/50 transition-colors">
-                <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">
+                <p class="text-[11px] text-[#878787] uppercase tracking-wider mb-1">
                     {{ $days === 0 ? 'Hoy' : ($days === 1 ? 'Mañana' : "En {$days} días") }}
                 </p>
                 <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">{{ $item->name }}</p>
-                <p class="text-sm font-bold tabular-nums {{ $item->type === 'expense' ? 'text-red-500' : 'text-[#76a72b]' }} mt-1">
+                <p class="text-sm font-bold tabular-nums {{ $item->type === 'expense' ? 'text-negative' : 'text-positive' }} mt-1">
                     {{ $item->type === 'expense' ? '−' : '+' }}${{ number_format((float)$item->amount, 2) }}
                 </p>
-                <p class="text-[10px] text-[#76a72b] font-semibold mt-1">Aplicar / ajustar →</p>
+                <p class="text-[11px] text-positive font-semibold mt-1">Aplicar / ajustar →</p>
             </a>
             @endforeach
         </div>
@@ -30,7 +30,7 @@
 
     @if($active->isEmpty())
     <x-card class="text-center py-12 mb-5">
-        <svg class="mx-auto w-10 h-10 text-[#ababab] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <svg class="mx-auto w-10 h-10 text-[#878787] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         <p class="text-[#878787] font-medium text-sm">No hay cargos recurrentes activos</p>
         <x-btn href="{{ route('recurring.create') }}" class="mt-4 text-sm">Crear primero</x-btn>
     </x-card>
@@ -56,11 +56,11 @@
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="font-semibold text-[#373737] dark:text-white text-sm">{{ $charge->name }}</span>
                         @if($charge->is_msi)
-                            <span class="text-[10px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-2 py-0.5 rounded-full font-bold">MSI</span>
+                            <span class="text-[11px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-2 py-0.5 rounded-full font-bold">MSI</span>
                         @endif
                     </div>
 
-                    <div class="flex items-center gap-2 mt-0.5 text-xs text-[#ababab] flex-wrap">
+                    <div class="flex items-center gap-2 mt-0.5 text-xs text-[#878787] flex-wrap">
                         <span>{{ $charge->account->name }}</span>
                         @if($charge->category) <span>· {{ $charge->category->name }}</span> @endif
                         <span>· Día {{ $charge->day_of_month }} de cada mes</span>
@@ -69,7 +69,7 @@
                     {{-- Barra de progreso MSI --}}
                     @if($charge->is_msi && $charge->total_installments)
                     <div class="mt-2">
-                        <div class="flex items-center justify-between text-[10px] text-[#ababab] mb-1">
+                        <div class="flex items-center justify-between text-[11px] text-[#878787] mb-1">
                             <span>{{ $charge->applied_installments }} / {{ $charge->total_installments }} cuotas pagadas</span>
                             <span>${{ number_format((float)$charge->pendingAmount(), 2) }} pendiente</span>
                         </div>
@@ -81,7 +81,7 @@
                     @endif
 
                     <div class="mt-2 text-xs">
-                        <span class="{{ $urgency === 'red' ? 'text-red-500 font-semibold' : 'text-[#878787]' }}">
+                        <span class="{{ $urgency === 'red' ? 'text-negative font-semibold' : 'text-[#878787]' }}">
                             Próximo:
                             {{ $daysUntil === 0 ? 'Hoy' : ($daysUntil === 1 ? 'Mañana' : $charge->next_application_date->translatedFormat('d M Y')) }}
                         </span>
@@ -90,10 +90,10 @@
 
                 {{-- Monto --}}
                 <div class="text-right flex-shrink-0">
-                    <div class="font-bold text-sm tabular-nums {{ $charge->type === 'expense' ? 'text-red-500' : 'text-[#76a72b]' }}">
+                    <div class="font-bold text-sm tabular-nums {{ $charge->type === 'expense' ? 'text-negative' : 'text-positive' }}">
                         {{ $charge->type === 'expense' ? '−' : '+' }}${{ number_format((float)$charge->amount, 2) }}
                     </div>
-                    <div class="text-[10px] text-[#ababab]">/ mes</div>
+                    <div class="text-[11px] text-[#878787]">/ mes</div>
                 </div>
 
             </div>
@@ -104,7 +104,7 @@
                        class="flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg text-xs font-semibold
                               {{ $daysUntil <= 0
                                     ? 'bg-[#76a72b] text-white hover:bg-[#6a9626]'
-                                    : 'text-[#76a72b] hover:bg-[#76a72b]/10' }} transition-colors">
+                                    : 'text-positive hover:bg-[#76a72b]/10' }} transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Aplicar / ajustar monto
                     </a>
@@ -126,13 +126,13 @@
                     <div class="flex-1"></div>
 
                     <a href="{{ route('recurring.edit', $charge) }}" title="Editar"
-                       class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors">
+                       class="w-8 h-8 flex items-center justify-center text-[#878787] hover:text-positive hover:bg-[#76a72b]/10 rounded-lg transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </a>
                     <form method="POST" action="{{ route('recurring.toggle', $charge) }}">
                         @csrf
                         <button type="submit" title="Pausar"
-                            class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors">
+                            class="w-8 h-8 flex items-center justify-center text-[#878787] hover:text-warn hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </button>
                     </form>
@@ -140,7 +140,7 @@
                           data-confirm="¿Eliminar «{{ $charge->name }}»? Los movimientos ya aplicados no se borran." data-confirm-label="Eliminar">
                         @csrf @method('DELETE')
                         <button type="submit" title="Eliminar"
-                            class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors">
+                            class="w-8 h-8 flex items-center justify-center text-[#878787] hover:text-negative hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                     </form>
@@ -153,7 +153,7 @@
     {{-- Completados / Pausados --}}
     @if($completed->isNotEmpty())
     <details class="group">
-        <summary class="text-xs font-bold text-[#ababab] uppercase tracking-wider cursor-pointer hover:text-[#878787] transition-colors list-none flex items-center gap-2 mb-2">
+        <summary class="text-xs font-bold text-[#878787] uppercase tracking-wider cursor-pointer hover:text-[#878787] transition-colors list-none flex items-center gap-2 mb-2">
             <svg class="w-3.5 h-3.5 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             Completados / pausados ({{ $completed->count() }})
         </summary>
@@ -163,22 +163,22 @@
                 <div class="flex-1 min-w-0">
                     <span class="text-sm font-medium text-[#373737] dark:text-white">{{ $charge->name }}</span>
                     @if($charge->is_msi)
-                        <span class="ml-2 text-[10px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-1.5 py-0.5 rounded tabular-nums">{{ $charge->applied_installments }}/{{ $charge->total_installments }} cuotas</span>
+                        <span class="ml-2 text-[11px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-1.5 py-0.5 rounded tabular-nums">{{ $charge->applied_installments }}/{{ $charge->total_installments }} cuotas</span>
                     @endif
                 </div>
-                <span class="text-xs text-[#ababab]">
+                <span class="text-xs text-[#878787]">
                     {{ $charge->is_active ? 'Pausado' : 'Completado' }}
                 </span>
                 @if(! $charge->is_active && ! $charge->isCompleted())
                 <form method="POST" action="{{ route('recurring.toggle', $charge) }}">
                     @csrf
-                    <button type="submit" class="text-xs text-[#76a72b] hover:underline">Reactivar</button>
+                    <button type="submit" class="text-xs text-positive hover:underline">Reactivar</button>
                 </form>
                 @endif
                 <form method="POST" action="{{ route('recurring.destroy', $charge) }}"
                       data-confirm="¿Eliminar «{{ $charge->name }}»?" data-confirm-label="Eliminar">
                     @csrf @method('DELETE')
-                    <button type="submit" title="Eliminar" class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                    <button type="submit" title="Eliminar" class="w-7 h-7 flex items-center justify-center text-[#878787] hover:text-negative rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </form>

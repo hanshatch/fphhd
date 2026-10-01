@@ -18,7 +18,7 @@
     @if(empty($rows))
     <x-card class="text-center py-12">
         <p class="text-[#878787] font-medium text-sm">No encontré movimientos legibles en la captura.</p>
-        <p class="text-xs text-[#ababab] mt-1">Prueba con un recorte más cerrado a la lista de cargos.</p>
+        <p class="text-xs text-[#878787] mt-1">Prueba con un recorte más cerrado a la lista de cargos.</p>
         <x-btn href="{{ route('accounts.show', $account) }}" variant="secondary" class="mt-4 text-sm">Volver a la cuenta</x-btn>
     </x-card>
     @else
@@ -34,7 +34,7 @@
             el otro lado ya está registrado y se convertirá en transferencia, sin duplicar.
         @endif
         @if($recs)
-            <span class="text-[#76a72b] font-semibold">{{ $recs }} {{ $recs === 1 ? 'corresponde' : 'corresponden' }} a cargos recurrentes</span>
+            <span class="text-positive font-semibold">{{ $recs }} {{ $recs === 1 ? 'corresponde' : 'corresponden' }} a cargos recurrentes</span>
             y se aplicarán con el monto real.
         @endif
     </p>
@@ -57,7 +57,7 @@
                         linked: {{ $rec ? 'true' : 'false' }},
                         get isTransfer() { return this.type === 'transfer_out' || this.type === 'transfer_in'; },
                         get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
-                        get amountClass() { return this.isIn ? 'text-[#76a72b]' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-red-500'); },
+                        get amountClass() { return this.isIn ? 'text-positive' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-negative'); },
                     }"
                     x-bind:class="on ? '' : 'opacity-50'">
                 @if($twin)
@@ -71,7 +71,7 @@
                 <div class="flex items-start gap-3">
                     <label class="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 -mt-2 cursor-pointer">
                         <input type="checkbox" name="rows[{{ $i }}][include]" value="1" data-include x-model="on"
-                               class="w-5 h-5 rounded border-[#ababab] text-[#76a72b] focus:ring-[#76a72b]">
+                               class="w-5 h-5 rounded border-[#ababab] text-positive focus:ring-[#76a72b]">
                     </label>
 
                     <div class="flex-1 min-w-0">
@@ -84,13 +84,13 @@
                                     <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" required
                                         class="rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                                     @if($twin)
-                                        <span class="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full">🔁 Transferencia</span>
+                                        <span class="text-[11px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full"><svg class="inline-block w-3 h-3 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> Transferencia</span>
                                     @elseif($rec)
-                                        <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" x-show="linked">↻ Recurrente</span>
+                                        <span class="text-[11px] font-bold text-positive bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" x-show="linked">↻ Recurrente</span>
                                     @elseif(($row['category_source'] ?? null) === 'memory')
-                                        <span class="text-[10px] font-bold text-[#76a72b] bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" title="Categoría aprendida de tus movimientos anteriores">✓ Aprendida</span>
+                                        <span class="text-[11px] font-bold text-positive bg-[#76a72b]/10 px-1.5 py-0.5 rounded-full" title="Categoría aprendida de tus movimientos anteriores">✓ Aprendida</span>
                                     @elseif(($row['category_source'] ?? null) === 'model')
-                                        <span class="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-full" title="Sugerida por el lector de imágenes">Sugerida</span>
+                                        <span class="text-[11px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-full" title="Sugerida por el lector de imágenes">Sugerida</span>
                                     @endif
                                 </div>
                             </div>
@@ -103,14 +103,14 @@
                         </div>
 
                         @if($dup)
-                        <p class="mt-1 text-[11px] text-amber-600">
-                            ⚠️ Ya existe: {{ $dup['description'] }} · {{ $dup['account'] }} · {{ $dup['date'] }}
+                        <p class="mt-1 text-[11px] text-warn">
+                            <svg class="inline-block w-3.5 h-3.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> Ya existe: {{ $dup['description'] }} · {{ $dup['account'] }} · {{ $dup['date'] }}
                         </p>
                         @endif
 
                         @if($twin)
-                        <p class="mt-1 text-[11px] text-blue-600" x-show="isTransfer">
-                            🔁 El otro lado ya está en {{ $twin['account'] }}: {{ $twin['description'] }} · {{ $twin['date'] }}.
+                        <p class="mt-1 text-[11px] text-blue-700 dark:text-blue-400" x-show="isTransfer">
+                            <svg class="inline-block w-3 h-3 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> El otro lado ya está en {{ $twin['account'] }}: {{ $twin['description'] }} · {{ $twin['date'] }}.
                             Se convertirá en transferencia, no se duplica.
                         </p>
                         @endif
