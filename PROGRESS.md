@@ -84,7 +84,7 @@
 ## Deploy a producción (2026-07-16)
 
 - Desplegado commit 1724491 en Hostinger (`~/domains/hanshatch.com/public_html/_fphhd`,
-  SSH `ssh -p 65002 u863784331@191.96.54.156`, PHP 8.4).
+  SSH en puerto no estándar, datos en notas privadas, PHP 8.4).
 - `.env` de prod corregido: APP_ENV=production, APP_DEBUG=false (¡estaba en local/true!),
   SESSION_ENCRYPT=true, SESSION_SECURE_COOKIE=true.
 - Migración audit_logs corrida; config/route/view cacheados.
