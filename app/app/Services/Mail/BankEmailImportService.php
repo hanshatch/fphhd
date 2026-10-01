@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AuditLog;
 use App\Models\BankEmail;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\MerchantMemoryService;
 use App\Services\TelegramExpenseService;
 use App\Services\TelegramService;
@@ -145,6 +146,16 @@ class BankEmailImportService
 
         // 3) Ya registrado en esta cuenta (también si fue como transferencia desde la otra cuenta)
         if ($account && ($dup = $this->matcher->existing($account, $direction, $p['amount'], $p['date'], 1))) {
+            // Si ya es transferencia, este correo es la otra mitad: se cierra sin preguntar
+            if ($dup->type === Transaction::TYPE_TRANSFER) {
+                $email->update(['status' => BankEmail::STATUS_DUPLICATE, 'transaction_id' => $dup->id]);
+                $d = $this->matcher->describe($dup, $account);
+                $this->notify('🔁 ' . ucfirst($email->bank) . ' · ' . format_currency($p['amount']) . ' · ' . $p['description']
+                    . "\nYa estaba registrada: " . $d['account'] . ' · ' . $d['date'] . '.');
+
+                return;
+            }
+
             $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $account, $type, [
                 'duplicate' => $this->matcher->describe($dup, $account),
             ]));
@@ -166,6 +177,30 @@ class BankEmailImportService
                 ], [
                     ['text' => '⏭ No registrar', 'callback_data' => 'mail:skip:' . $email->id],
                 ]]
+            );
+
+            return;
+        }
+
+        // 4b) Transferencia con tu propio nombre: preguntar la otra cuenta tuya
+        if ($account && ($p['counterparty'] ?? null) && $this->isOwnName($p['counterparty'])) {
+            $incoming = $type === 'income';
+            $others   = Account::where('is_active', true)->where('id', '<>', $account->id)->get()
+                ->sortBy(fn (Account $a) => mb_strtolower($a->displayLabel()))->values();
+            $hinted   = $this->hintedAccounts($p['counterparty'], $others);
+
+            $buttons = $others
+                ->sortByDesc(fn (Account $a) => in_array($a->id, $hinted, true))
+                ->map(fn (Account $a) => ['text' => (in_array($a->id, $hinted, true) ? '⭐ ' : '') . $a->displayLabel(), 'callback_data' => 'mail:xacc:' . $email->id . ':' . $a->id])
+                ->values()->all();
+
+            $this->notify(
+                '🔁 ' . ucfirst($email->bank) . ' · ' . format_currency($p['amount']) . ' · ' . $p['description'] . ' · ' . Carbon::parse($p['date'])->translatedFormat('j M Y')
+                    . "\n\nParece transferencia entre tus cuentas. " . ($incoming ? '¿Desde qué cuenta salió?' : '¿A qué cuenta llegó?'),
+                array_merge(array_chunk($buttons, 2), [[
+                    ['text' => '✋ No, es otro movimiento', 'callback_data' => 'mail:ask:' . $email->id],
+                    ['text' => '⏭ No registrar', 'callback_data' => 'mail:skip:' . $email->id],
+                ]])
             );
 
             return;
@@ -253,6 +288,33 @@ class BankEmailImportService
     {
         $type = ($email->parsed['kind'] ?? 'expense') === 'income' ? 'income' : 'expense';
         $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $email->account, $type));
+    }
+
+    /** Registra la transferencia entre esta cuenta y otra cuenta propia elegida en Telegram */
+    public function registerOwnTransfer(BankEmail $email, Account $other): ?Transaction
+    {
+        $p       = $email->parsed;
+        $account = $email->account;
+
+        if ($email->status !== BankEmail::STATUS_PENDING || ! $account || ! $p || $other->id === $account->id) {
+            return null;
+        }
+
+        [$from, $to] = $p['kind'] === 'income' ? [$other, $account] : [$account, $other];
+
+        $tx = Transaction::create([
+            'date'                    => $p['date'],
+            'type'                    => Transaction::TYPE_TRANSFER,
+            'amount'                  => $p['amount'],
+            'account_id'              => $from->id,
+            'counterparty_account_id' => $to->id,
+            'description'             => 'Transferencia ' . $from->displayLabel() . ' → ' . $to->displayLabel(),
+        ]);
+
+        $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $tx->id]);
+        AuditLog::record('bank_email_own_transfer', ['transaction_id' => $tx->id, 'bank_email_id' => $email->id]);
+
+        return $tx;
     }
 
     /** Aplica el recurrente con el monto y fecha del correo */
@@ -367,9 +429,49 @@ class BankEmailImportService
             if ($candidates->count() === 1) {
                 return $candidates->first();
             }
+
+            // Varias cuentas en la institución (ej. Nu débito + cajitas): la de débito es la operativa
+            $debit = $candidates->where('type', Account::TYPE_DEBIT);
+
+            if ($debit->count() === 1) {
+                return $debit->first();
+            }
         }
 
         return null;
+    }
+
+    /** ¿El nombre de la contraparte es el del dueño? ("HANS,HATCH/DORANTES", "Hans Revolut") */
+    private function isOwnName(string $who): bool
+    {
+        $words = $this->nameWords($who);
+        $owner = $this->nameWords((string) User::query()->value('name'));
+
+        if ($owner === []) {
+            return false;
+        }
+
+        $hits = count(array_intersect($words, $owner));
+
+        // Nombre + institución propia, como "Hans Revolut en STP"
+        return $hits >= 2 || ($hits >= 1 && $this->hintedAccounts($who, Account::where('is_active', true)->get()) !== []);
+    }
+
+    /** Cuentas cuya institución aparece en el texto (para sugerirlas primero) */
+    private function hintedAccounts(string $who, $accounts): array
+    {
+        $words = $this->nameWords($who);
+
+        return $accounts
+            ->filter(fn (Account $a) => array_intersect($this->nameWords($a->institutionLabel()), $words) !== [])
+            ->pluck('id')->all();
+    }
+
+    private function nameWords(string $text): array
+    {
+        preg_match_all('/[a-z]{3,}/', Str::ascii(mb_strtolower($text)), $m);
+
+        return array_values(array_diff(array_unique($m[0]), ['otra', 'cuenta', 'banco', 'mexico']));
     }
 
     private function webUrl(?Account $account, array $p): string

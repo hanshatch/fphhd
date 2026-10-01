@@ -336,6 +336,17 @@ class TelegramExpenseService
             return;
         }
 
+        if ($action === 'xacc') {
+            $other = ctype_digit((string) $twinId) ? Account::find((int) $twinId) : null;
+            $tx    = $other ? $service->registerOwnTransfer($email, $other) : null;
+
+            $this->telegram->editMessageText($chatId, $messageId, $tx
+                ? "🔁 Transferencia registrada\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
+                : 'ℹ️ Ese correo ya no está pendiente.');
+
+            return;
+        }
+
         if ($action === 'rec') {
             $charge = ctype_digit((string) $twinId) ? \App\Models\RecurringCharge::find((int) $twinId) : null;
             $tx     = $charge ? $service->applyRecurring($email, $charge) : null;

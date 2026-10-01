@@ -157,8 +157,9 @@ class BankEmailImportTest extends TestCase
         $this->inbox = [$this->mail('u11', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
         app(BankEmailImportService::class)->sync();
 
-        $this->assertStringContainsString('Ya tienes un movimiento parecido registrado', $this->lastText());
-        $this->assertStringContainsString('Transferencia Banamex · Cheques → Revolut', $this->lastText());
+        // Ya es transferencia: el correo se cierra solo con un aviso, sin preguntar
+        $this->assertStringContainsString('Ya estaba registrada: Transferencia Banamex · Cheques → Revolut', $this->lastText());
+        $this->assertSame(BankEmail::STATUS_DUPLICATE, BankEmail::sole()->status);
         $this->assertSame(1, Transaction::count());
     }
 
@@ -187,6 +188,67 @@ class BankEmailImportTest extends TestCase
         $this->assertSame('2026-09-29', $tx->date->toDateString());
         $this->assertSame('2026-10-29', $charge->fresh()->next_application_date->toDateString());
         $this->assertSame(BankEmail::STATUS_REGISTERED, $email->fresh()->status);
+    }
+
+    public function test_nu_transfer_from_own_name_asks_source_account_and_banamex_side_closes_itself(): void
+    {
+        \App\Models\User::factory()->create(['name' => 'Hans Hatch']);
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        $nu      = $this->account('Nu', 'nu');
+        Account::create(['name' => 'Cajita Turbo', 'type' => 'investment', 'institution' => 'nu', 'initial_balance' => '0.00', 'color' => '#000000']);
+
+        $retiro = str_replace(['20,000.00', '383450', '30 Septiembre 2026 / 14:56:00'], ['4,000.00', '990001', '30 Septiembre 2026 / 23:03:00'], BankEmailParserTest::BANAMEX_RETIRO);
+
+        $this->inbox = [$this->mail('n1', 'nu@nu.com.mx', '¡Recibiste una transferencia!', BankEmailParserTest::NU_RECIBIDA, '2026-09-30 23:04')];
+        app(BankEmailImportService::class)->sync();
+
+        // Cuenta Nu = la de débito aunque haya cajitas; pregunta de qué cuenta salió
+        $email = BankEmail::sole();
+        $this->assertSame($nu->id, $email->account_id);
+        $this->assertStringContainsString('Parece transferencia entre tus cuentas. ¿Desde qué cuenta salió?', $this->lastText());
+
+        $this->tgCallback("mail:xacc:{$email->id}:{$cheques->id}")->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame($nu->id, $tx->counterparty_account_id);
+        $this->assertSame('4000.00', $tx->amount);
+
+        // Llega el correo de Banamex del mismo envío: se cierra solo, sin preguntar
+        $sentBefore  = count($this->sent);
+        $this->inbox = [$this->mail('b1', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', $retiro, '2026-09-30 23:03')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertSame(1, Transaction::count());
+        $this->assertSame(BankEmail::STATUS_DUPLICATE, BankEmail::where('message_uid', 'b1')->sole()->status);
+        $this->assertCount($sentBefore + 1, $this->sent);
+        $this->assertStringContainsString('Ya estaba registrada', $this->lastText());
+    }
+
+    public function test_nu_transfer_from_third_party_is_not_treated_as_own(): void
+    {
+        \App\Models\User::factory()->create(['name' => 'Hans Hatch']);
+        $this->account('Nu', 'nu');
+        Category::create(['name' => 'Otros ingresos', 'kind' => 'income']);
+
+        $text = str_replace('HANS,HATCH/DORANTES', 'MIRANDA,SANCHEZ/LOPEZ', BankEmailParserTest::NU_RECIBIDA);
+        $this->inbox = [$this->mail('n2', 'nu@nu.com.mx', '¡Recibiste una transferencia!', $text, '2026-09-30 23:04')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertStringContainsString('¿Qué categoría?', $this->lastText());
+        $this->assertStringNotContainsString('entre tus cuentas', $this->lastText());
+    }
+
+    public function test_nu_notice_without_amount_is_ignored_silently(): void
+    {
+        $this->account('Nu', 'nu');
+
+        $this->inbox = [$this->mail('n3', 'nu@nu.com.mx', 'Agregaste un contacto a tu cuenta', 'Hola Hans, agregaste un contacto.', '2026-09-30 10:00')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertSame(BankEmail::STATUS_IGNORED, BankEmail::sole()->status);
+        $this->assertCount(0, $this->sent);
     }
 
     public function test_existing_same_movement_is_flagged_as_duplicate(): void

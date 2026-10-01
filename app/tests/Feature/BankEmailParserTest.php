@@ -98,6 +98,41 @@ Protege tus cuentas
 Nunca compartas con nadie
 TXT;
 
+    public const NU_RECIBIDA = <<<TXT
+Transferencia recibida
+Hola, Hans:
+HANS,HATCH/DORANTES hizo una transferencia a tu Cuenta Nu por:Monto: $4,000.00
+Fecha: 30 SEP 2026
+Hora: 23:04
+Esta cantidad ya está disponible en tu cuenta.
+TXT;
+
+    public const NU_ENVIADA = <<<TXT
+Transferencia exitosa
+Hola, Hans:
+Nos da gusto confirmar que la transferencia que hiciste a la cuenta de Hans Revolut en STP fue exitosa.
+Monto: $150.00
+Fecha: 07/02/2026
+Hora: 13:10
+TXT;
+
+    public const NU_RECARGA = <<<TXT
+Aquí está tu comprobante de tu pago de recarga de celular
+24 sep 2026 - 06:19:48
+Detalle
+Monto: $200.00
+Costo extra: $0
+Tipo de transacción: Recarga telefónica
+Número de celular: 5530808688
+Recibe
+Empresa a la cual se realizará el pago: Telcel Amigo Sin Límite
+Envía
+Nombre: Hans Hatch Dorantes
+Método de pago: Cuenta Nu
+Información adicional
+Código de operación: b4116c00-31e6-4911-9538-9ee34b7040cc
+TXT;
+
     private function parser(): BankEmailParser
     {
         return app(BankEmailParser::class);
@@ -193,6 +228,53 @@ TXT;
         $this->assertSame('MXN', $r['currency']);
         $this->assertSame('OXXO', $r['description']);
         $this->assertFalse($r['generic']);
+    }
+
+    public function test_nu_received_transfer(): void
+    {
+        $r = $this->parser()->parse('nu@nu.com.mx', '¡Recibiste una transferencia!', self::NU_RECIBIDA, Carbon::parse('2026-10-01 05:04'));
+
+        $this->assertSame('nu', $r['bank']);
+        $this->assertSame('income', $r['kind']);
+        $this->assertSame('4000.00', $r['amount']);
+        $this->assertSame('2026-09-30', $r['date']);
+        $this->assertSame('HANS,HATCH/DORANTES', $r['counterparty']);
+        $this->assertSame('Transferencia de Hans Hatch Dorantes', $r['description']);
+    }
+
+    public function test_nu_sent_transfer_with_numeric_date(): void
+    {
+        $r = $this->parser()->parse('nu@nu.com.mx', 'Tu transferencia fue exitosa', self::NU_ENVIADA, Carbon::parse('2026-02-07 13:11'));
+
+        $this->assertSame('transfer_out', $r['kind']);
+        $this->assertSame('150.00', $r['amount']);
+        $this->assertSame('2026-02-07', $r['date']);
+        $this->assertSame('Hans Revolut STP', $r['counterparty']);
+        $this->assertSame('Transferencia a Hans Revolut (STP)', $r['description']);
+
+        $oct = $this->parser()->parse('nu@nu.com.mx', 'Tu transferencia fue exitosa',
+            "la transferencia que hiciste a la cuenta de Miranda S en NU MEXICO fue exitosa.\nMonto: $850.00\nFecha: 09/OCT/2025", now());
+        $this->assertSame('2025-10-09', $oct['date']);
+        $this->assertSame('850.00', $oct['amount']);
+    }
+
+    public function test_nu_phone_top_up(): void
+    {
+        $r = $this->parser()->parse('nu@nu.com.mx', 'Tu comprobante de pago de recarga de celular', self::NU_RECARGA, Carbon::parse('2026-09-24 06:20'));
+
+        $this->assertSame('expense', $r['kind']);
+        $this->assertSame('200.00', $r['amount']);
+        $this->assertSame('2026-09-24', $r['date']);
+        $this->assertSame('Telcel Amigo Sin Límite · 5530808688', $r['description']);
+        $this->assertSame('b4116c00-31e6-4911-9538-9ee34b7040cc', $r['auth']);
+        $this->assertFalse($r['generic']);
+    }
+
+    public function test_nu_notice_without_amount_is_info(): void
+    {
+        $r = $this->parser()->parse('nu@nu.com.mx', 'Agregaste un contacto a tu cuenta', 'Hola Hans, agregaste a Miranda como contacto.', now());
+
+        $this->assertSame('info', $r['kind']);
     }
 
     public function test_unknown_subject_returns_null(): void

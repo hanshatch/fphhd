@@ -72,6 +72,7 @@ class BankEmailParser
         $result = match ($bank) {
             'banamex' => $this->parseBanamex($subject, $text, $receivedAt),
             'revolut' => $this->parseRevolut($subject, $text, $receivedAt),
+            'nu'      => $this->parseNu($subject, $text, $receivedAt),
             default   => null,
         };
 
@@ -187,6 +188,7 @@ class BankEmailParser
             : null;
 
         return [
+            'counterparty' => in_array($verb, ['enviaste', 'recibiste'], true) ? $who : null,
             'kind'        => $kind,
             'amount'      => $amount,
             'currency'    => strtoupper($m[3]),
@@ -196,6 +198,77 @@ class BankEmailParser
             'description' => Str::limit($description, 500, ''),
             'generic'     => $verb === 'enviaste' || $verb === 'recibiste',
         ];
+    }
+
+    // ── Nu ────────────────────────────────────────────────────────────
+
+    /**
+     * Asuntos:
+     *  - "¡Recibiste una transferencia!": "<NOMBRE> hizo una transferencia a tu Cuenta Nu por: Monto: $300.00 / Fecha: 19 DIC 2025"
+     *  - "Tu transferencia fue exitosa":   "la transferencia que hiciste a la cuenta de <NOMBRE> en <BANCO> fue exitosa. Monto: $850.00 / Fecha: 09/OCT/2025"
+     *  - "Tu comprobante de pago de recarga de celular": "Monto: $200.00 … Empresa…: Telcel Amigo Sin Límite … Código de operación: <uuid>"
+     * Correos de Nu sin monto (avisos, contactos, códigos) son informativos.
+     */
+    private function parseNu(string $subject, string $text, Carbon $receivedAt): ?array
+    {
+        if (! preg_match('/Monto:?\s*\$?\s*([\d.,]+)/iu', $text, $m)) {
+            return ['kind' => 'info', 'description' => $subject];
+        }
+
+        $amount = parse_money($m[1]);
+
+        if ($amount === null || bccomp($amount, '0.00', 2) <= 0) {
+            return ['kind' => 'info', 'description' => $subject];
+        }
+
+        $date = $this->nuDate($text) ?? $receivedAt->toDateString();
+        $base = ['amount' => $amount, 'currency' => 'MXN', 'date' => $date, 'last4' => null, 'auth' => null];
+
+        if (preg_match('/\n?([^\n]+?)\s+hizo una transferencia a tu Cuenta\s+Nu/iu', $text, $w)) {
+            $who = trim($w[1]);
+
+            return $base + [
+                'kind'         => 'income',
+                'counterparty' => $who,
+                'description'  => 'Transferencia de ' . Str::title(mb_strtolower(str_replace([',', '/'], ' ', $who))),
+                'generic'      => true,
+            ];
+        }
+
+        if (preg_match('/transferencia que hiciste a la cuenta de\s+(.+?)\s+en\s+(.+?)\s+fue exitosa/iu', $text, $w)) {
+            return $base + [
+                'kind'         => 'transfer_out',
+                'counterparty' => trim($w[1]) . ' ' . trim($w[2]),
+                'description'  => 'Transferencia a ' . trim($w[1]) . ' (' . trim($w[2]) . ')',
+                'generic'      => true,
+            ];
+        }
+
+        if (preg_match('/Empresa a la cual se realizar[aá] el pago:\s*([^\n]+)/iu', $text, $c)) {
+            $phone = preg_match('/N[uú]mero de celular:\s*(\d{6,})/iu', $text, $ph) ? $ph[1] : null;
+            $op    = preg_match('/C[oó]digo de operaci[oó]n:\s*([A-Za-z0-9-]{8,40})/iu', $text, $o) ? $o[1] : null;
+
+            return array_merge($base, [
+                'kind'        => 'expense',
+                'auth'        => $op,
+                'description' => trim($c[1]) . ($phone ? ' · ' . $phone : ''),
+                'generic'     => false,
+            ]);
+        }
+
+        return null;
+    }
+
+    /** "30 SEP 2026", "09/OCT/2025", "07/02/2026" o "6 oct 2025 - 06:19:48" */
+    private function nuDate(string $text): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/Fecha:\s*(\d{1,2})\s+([[:alpha:]]{3,})\.?\s+(\d{4})/iu', $text, $d)      => $this->spanishDate((int) $d[1], $d[2], (int) $d[3]),
+            (bool) preg_match('/Fecha:\s*(\d{1,2})\/([[:alpha:]]{3,})\/(\d{4})/iu', $text, $d)           => $this->spanishDate((int) $d[1], $d[2], (int) $d[3]),
+            (bool) preg_match('/Fecha:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/u', $text, $d)                  => checkdate((int) $d[2], (int) $d[1], (int) $d[3]) ? sprintf('%04d-%02d-%02d', $d[3], $d[2], $d[1]) : null,
+            (bool) preg_match('/(\d{1,2})\s+([[:alpha:]]{3,})\.?\s+(\d{4})\s*-\s*\d{1,2}:\d{2}/iu', $text, $d) => $this->spanishDate((int) $d[1], $d[2], (int) $d[3]),
+            default => null,
+        };
     }
 
     /** Revolut usa "5.800" (miles) y "64,50" (decimales) al estilo europeo */
