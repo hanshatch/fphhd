@@ -75,7 +75,8 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
         <div class="relative mt-5">
             <p class="text-white/70 text-[11px] font-semibold uppercase tracking-wider">{{ $isCredit ? 'Saldo deudor' : 'Saldo disponible' }}</p>
             <p class="text-[34px] leading-none font-bold tabular-nums mt-1.5">
-                ${{ number_format(abs((float)$balance), 2) }}
+                {{-- Débito en negativo = sobregiro o captura incompleta: debe verse el signo --}}
+                @if(! $isCredit && bccomp((string) $balance, '0', 2) < 0)−@endif${{ number_format(abs((float)$balance), 2) }}
                 <span class="text-sm font-normal text-white/60 ml-1">MXN</span>
             </p>
         </div>
