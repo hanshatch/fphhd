@@ -5,15 +5,15 @@
     <div class="grid grid-cols-3 gap-3 mb-5">
         <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
             <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Esperado</p>
-            <p class="text-lg font-bold text-[#373737] dark:text-white">${{ number_format((float)$summary['expected'], 2) }}</p>
+            <p class="text-lg font-bold text-[#373737] dark:text-white tabular-nums">${{ number_format((float)$summary['expected'], 2) }}</p>
         </div>
         <div class="bg-[#76a72b]/10 border border-[#76a72b]/20 rounded-xl p-4 text-center">
             <p class="text-[10px] text-[#76a72b]/70 uppercase tracking-wider mb-1">Registrado</p>
-            <p class="text-lg font-bold text-[#76a72b]">${{ number_format((float)$summary['registered'], 2) }}</p>
+            <p class="text-lg font-bold text-[#76a72b] tabular-nums">${{ number_format((float)$summary['registered'], 2) }}</p>
         </div>
         <div class="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#ababab]/20 p-4 text-center">
             <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Pendiente</p>
-            <p class="text-lg font-bold {{ (float)$summary['pending'] > 0 ? 'text-amber-500' : 'text-[#ababab]' }}">
+            <p class="text-lg font-bold tabular-nums {{ (float)$summary['pending'] > 0 ? 'text-amber-500' : 'text-[#ababab]' }}">
                 ${{ number_format((float)$summary['pending'], 2) }}
             </p>
         </div>
@@ -22,15 +22,15 @@
     {{-- Próximos 30 días --}}
     @if($upcoming->isNotEmpty())
     <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider mb-2">Próximos 30 días</h2>
-    <div class="flex gap-2 overflow-x-auto pb-1 mb-5">
+    <div class="flex gap-2 overflow-x-auto pb-1 mb-5 lg:grid lg:grid-cols-4 lg:overflow-visible">
         @foreach($upcoming as $plan)
         @php $days = $plan->daysUntilNext(); @endphp
-        <div class="flex-shrink-0 bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 rounded-xl p-3 min-w-[160px]">
+        <div class="flex-shrink-0 bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 rounded-xl p-3 min-w-[160px] lg:min-w-0">
             <p class="text-[10px] text-[#76a72b] font-bold uppercase tracking-wider mb-1">
                 {{ $days === 0 ? 'Hoy' : ($days === 1 ? 'Mañana' : "En {$days} días") }}
             </p>
             <p class="text-sm font-semibold text-[#373737] dark:text-white truncate">{{ $plan->name }}</p>
-            <p class="text-sm font-bold text-[#76a72b] mt-1">~${{ number_format((float)$plan->expected_amount, 2) }}</p>
+            <p class="text-sm font-bold text-[#76a72b] mt-1 tabular-nums">~${{ number_format((float)$plan->expected_amount, 2) }}</p>
             <p class="text-[10px] text-[#ababab] mt-0.5">{{ $plan->next_expected_date->translatedFormat('d M') }}</p>
         </div>
         @endforeach
@@ -49,7 +49,7 @@
         <x-btn href="{{ route('income-plans.create') }}" class="mt-4 text-sm">Agregar primero</x-btn>
     </x-card>
     @else
-    <div class="space-y-3">
+    <div class="space-y-3 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-3">
         @foreach($plans as $plan)
         @php $days = $plan->daysUntilNext(); $urgency = $days <= 2 ? 'green' : ($days <= 5 ? 'amber' : 'gray'); @endphp
         <x-card class="{{ ! $plan->is_active ? 'opacity-50' : '' }} p-4">
@@ -69,7 +69,7 @@
                             {{ $plan->frequencyLabel() }}
                         </span>
                         @if(! $plan->is_active)
-                            <span class="text-[10px] bg-[#efeded] text-[#878787] px-2 py-0.5 rounded-full">Pausado</span>
+                            <span class="text-[10px] bg-[#efeded] dark:bg-white/10 text-[#878787] px-2 py-0.5 rounded-full">Pausado</span>
                         @endif
                     </div>
                     <div class="flex items-center gap-2 mt-0.5 text-xs text-[#ababab] flex-wrap">
@@ -84,7 +84,7 @@
 
                 {{-- Monto estimado --}}
                 <div class="text-right flex-shrink-0">
-                    <div class="font-bold text-sm text-[#76a72b]">~${{ number_format((float)$plan->expected_amount, 2) }}</div>
+                    <div class="font-bold text-sm text-[#76a72b] tabular-nums">~${{ number_format((float)$plan->expected_amount, 2) }}</div>
                     <div class="text-[10px] text-[#ababab]">estimado</div>
                 </div>
             </div>
@@ -100,7 +100,7 @@
                     </a>
                     @endif
                     {{-- Editar --}}
-                    <a href="{{ route('income-plans.edit', $plan) }}"
+                    <a href="{{ route('income-plans.edit', $plan) }}" title="Editar"
                        class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </a>
@@ -115,7 +115,7 @@
                     {{-- Pausar/Reactivar --}}
                     <form method="POST" action="{{ route('income-plans.toggle', $plan) }}">
                         @csrf
-                        <button type="submit" class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
+                        <button type="submit" class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors"
                                 title="{{ $plan->is_active ? 'Pausar' : 'Reactivar' }}">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 @if($plan->is_active)

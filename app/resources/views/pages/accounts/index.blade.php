@@ -23,7 +23,7 @@ $instLabels = [
 <div class="rounded-2xl p-5 mb-6" style="background:#373737">
     <p class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Patrimonio neto</p>
     <p class="text-3xl font-bold text-white tabular-nums">
-        ${{ number_format((float)$netWorth, 2) }}
+        {{ bccomp((string) $netWorth, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$netWorth), 2) }}
         <span class="text-base font-normal text-white/40 ml-1">MXN</span>
     </p>
 </div>
@@ -39,7 +39,8 @@ $instLabels = [
 </x-card>
 @else
 
-<div class="space-y-4">
+{{-- En pantallas anchas los grupos van en dos columnas --}}
+<div class="space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start">
 @foreach($groups as $type => $items)
 @php
     $cfg   = $typeConfig[$type] ?? ['label' => $type, 'color' => '#878787', 'icon' => 'bank'];
@@ -102,8 +103,10 @@ $instLabels = [
         @foreach($items as $item)
         @php $account = $item['account']; $balance = $item['balance']; @endphp
 
-        <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group"
-             onclick="window.location='{{ route('accounts.show', $account) }}'">
+        <div class="relative flex items-center gap-3 px-4 py-3.5 hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group">
+
+            {{-- Liga real (⌘clic, Tab); el lápiz queda por encima con z-10 --}}
+            <a href="{{ route('accounts.show', $account) }}" class="absolute inset-0" aria-label="{{ $account->name }}"></a>
 
             {{-- Logo / inicial --}}
             <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
@@ -151,10 +154,9 @@ $instLabels = [
                 <p class="text-[10px] text-[#ababab] uppercase tracking-wider">MXN</p>
             </div>
 
-            {{-- Acción editar (hover) --}}
-            <a href="{{ route('accounts.edit', $account) }}"
-               onclick="event.stopPropagation()"
-               class="w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors flex-shrink-0">
+            {{-- Acción editar: con mouse aparece al pasar por la fila --}}
+            <a href="{{ route('accounts.edit', $account) }}" title="Editar cuenta"
+               class="row-actions relative z-10 w-8 h-8 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors flex-shrink-0">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>

@@ -17,7 +17,7 @@
                     <input type="radio" name="is_msi" value="0" x-model="isMsi"
                            {{ ! $charge->is_msi ? 'checked' : '' }} class="sr-only">
                     <div :class="!isMsi ? 'border-[#76a72b] bg-[#76a72b]/10' : 'border-[#ababab]/30'"
-                         class="border-2 rounded-xl p-4 text-center transition-all">
+                         class="border-2 rounded-xl p-4 text-center transition-colors duration-150">
                         <div class="text-xl mb-1">🔄</div>
                         <div class="text-sm font-semibold text-[#373737] dark:text-white">Recurrente</div>
                         <div class="text-[10px] text-[#ababab] mt-0.5">Sin fecha fin o con fecha límite</div>
@@ -27,7 +27,7 @@
                     <input type="radio" name="is_msi" value="1" x-model="isMsi"
                            {{ $charge->is_msi ? 'checked' : '' }} class="sr-only">
                     <div :class="isMsi ? 'border-[#76a72b] bg-[#76a72b]/10' : 'border-[#ababab]/30'"
-                         class="border-2 rounded-xl p-4 text-center transition-all">
+                         class="border-2 rounded-xl p-4 text-center transition-colors duration-150">
                         <div class="text-xl mb-1">💳</div>
                         <div class="text-sm font-semibold text-[#373737] dark:text-white">MSI</div>
                         <div class="text-[10px] text-[#ababab] mt-0.5">Meses sin intereses</div>

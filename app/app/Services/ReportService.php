@@ -77,6 +77,7 @@ class ReportService
         $byCategory = $q->get()
             ->groupBy(fn ($tx) => $tx->category?->name ?? 'Sin categoría')
             ->map(fn ($txs) => [
+                'id'    => $txs->first()->category_id,
                 'name'  => $txs->first()->category?->name ?? 'Sin categoría',
                 'color' => $txs->first()->category?->color ?? '#ababab',
                 'icon'  => $txs->first()->category?->icon ?? 'tag',
@@ -116,6 +117,7 @@ class ReportService
         $bySource = $q->get()
             ->groupBy(fn ($tx) => $tx->source?->name ?? 'Sin fuente')
             ->map(fn ($txs) => [
+                'id'    => $txs->first()->source_id,
                 'name'  => $txs->first()->source?->name ?? 'Sin fuente',
                 'total' => bcsum($txs->pluck('amount')),
                 'count' => $txs->count(),

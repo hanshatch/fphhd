@@ -38,6 +38,12 @@
   Cuenta identificada por `accounts.bank_last4` («Cheques ***379»). Env: `GMAIL_USER`,
   `GMAIL_APP_PASSWORD`, `GMAIL_LABEL`. Tabla `bank_emails` guarda cada correo y su estado.
   Pendiente: formatos de Amex, Nu y Mercado Pago (agregar remitente en `SENDERS` + `parseXxx`).
+- [x] Pulido de escritorio (2026-10-01): contenido a `max-w-6xl`; modales con entrada y salida
+  (`ease-snappy`, 150–200 ms); acciones de fila que aparecen con el mouse (`.row-actions`, siempre
+  visibles en táctil); filas completas como liga; Flujo con detalle fijo a la derecha; filas de
+  Reportes → Movimientos filtrados (`category_id` / `source_id`, `none` = sin asignar); selector de
+  categoría con teclado (↓/↑/Enter, Esc no cierra el modal de atrás); Categorías, Fuentes y Perfil
+  con el sistema de diseño y en español; Alpine se carga solo desde Vite (se quitó el CDN).
 
 ## Corrección integral (2026-07-16) — ver 02-plan-correccion.md
 

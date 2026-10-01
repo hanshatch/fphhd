@@ -20,13 +20,21 @@ class TransactionController extends Controller
             ->orderBy('position', 'asc')
             ->orderBy('id', 'desc');
 
-        $hasFilter = $request->hasAny(['account_id', 'type', 'from', 'to', 'search']);
+        $hasFilter = $request->hasAny(['account_id', 'type', 'from', 'to', 'search', 'category_id', 'source_id']);
 
         if ($request->filled('account_id')) {
             $query->where('account_id', $request->account_id);
         }
         if ($request->filled('type')) {
             $query->where('type', $request->type);
+        }
+        // Desde Reportes: «none» = movimientos sin categoría / sin fuente
+        foreach (['category_id', 'source_id'] as $field) {
+            if ($request->filled($field)) {
+                $request->input($field) === 'none'
+                    ? $query->whereNull($field)
+                    : $query->where($field, (int) $request->input($field));
+            }
         }
         if ($request->filled('search')) {
             $query->where('description', 'like', '%' . $request->search . '%');
@@ -43,7 +51,18 @@ class TransactionController extends Controller
         $grouped  = $query->get()->groupBy(fn ($tx) => $tx->date->format('Y-m'));
         $accounts = Account::where('is_active', true)->orderBy('name')->get();
 
-        return view('pages.transactions.index', compact('grouped', 'accounts', 'hasFilter'));
+        $filterCategory = match (true) {
+            ! $request->filled('category_id')         => null,
+            $request->input('category_id') === 'none' => 'Sin categoría',
+            default => \App\Models\Category::whereKey((int) $request->input('category_id'))->value('name'),
+        };
+        $filterSource = match (true) {
+            ! $request->filled('source_id')         => null,
+            $request->input('source_id') === 'none' => 'Sin fuente',
+            default => \App\Models\Source::whereKey((int) $request->input('source_id'))->value('name'),
+        };
+
+        return view('pages.transactions.index', compact('grouped', 'accounts', 'hasFilter', 'filterCategory', 'filterSource'));
     }
 
     public function create(Request $request): View

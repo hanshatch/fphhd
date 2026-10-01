@@ -16,19 +16,19 @@
             <div class="p-5 bg-[#373737] rounded-2xl shadow-sm h-full flex flex-col justify-between">
                 <div>
                     <p class="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Patrimonio neto</p>
-                    <p class="text-3xl font-bold text-white leading-none">
-                        ${{ number_format((float)$netWorth, 2) }}
+                    <p class="text-3xl font-bold text-white leading-none tabular-nums">
+                        {{ bccomp((string) $netWorth, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$netWorth), 2) }}
                     </p>
-                    <p class="text-white/30 text-xs mt-1">MXN</p>
+                    <p class="text-white/50 text-xs mt-1">MXN</p>
                 </div>
                 <div class="flex gap-5 mt-4">
                     <div>
-                        <p class="text-white/30 text-[10px] uppercase tracking-wider">Activos</p>
-                        <p class="text-[#76a72b] font-bold text-sm">${{ number_format($assets, 2) }}</p>
+                        <p class="text-white/50 text-[10px] uppercase tracking-wider">Activos</p>
+                        <p class="text-[#76a72b] font-bold text-sm tabular-nums">${{ number_format($assets, 2) }}</p>
                     </div>
                     <div>
-                        <p class="text-white/30 text-[10px] uppercase tracking-wider">Tarjetas</p>
-                        <p class="text-red-400 font-bold text-sm">${{ number_format($debts, 2) }}</p>
+                        <p class="text-white/50 text-[10px] uppercase tracking-wider">Tarjetas</p>
+                        <p class="text-red-400 font-bold text-sm tabular-nums">${{ number_format($debts, 2) }}</p>
                     </div>
                 </div>
             </div>
@@ -45,16 +45,16 @@
                 <div class="grid grid-cols-3 gap-4">
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Ingresos</div>
-                        <div class="text-xl font-bold text-[#76a72b]">${{ number_format((float)$flow['income'], 2) }}</div>
+                        <div class="text-xl font-bold text-[#76a72b] tabular-nums">${{ number_format((float)$flow['income'], 2) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Egresos</div>
-                        <div class="text-xl font-bold text-red-500">${{ number_format((float)$flow['expenses'], 2) }}</div>
+                        <div class="text-xl font-bold text-red-500 tabular-nums">${{ number_format((float)$flow['expenses'], 2) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-xs text-[#ababab] mb-1 uppercase tracking-wider">Neto</div>
-                        <div class="text-xl font-bold {{ (float)$flow['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
-                            {{ (float)$flow['net'] >= 0 ? '+' : '' }}${{ number_format((float)$flow['net'], 2) }}
+                        <div class="text-xl font-bold tabular-nums {{ (float)$flow['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
+                            {{ (float)$flow['net'] >= 0 ? '+' : '−' }}${{ number_format(abs((float)$flow['net']), 2) }}
                         </div>
                     </div>
                 </div>
@@ -69,16 +69,16 @@
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-[#ababab] w-16 text-right">Ingreso</span>
                         <div class="flex-1 h-2 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
-                            <div class="h-full bg-[#76a72b] rounded-full transition-all" style="width: {{ $incPct }}%"></div>
+                            <div class="h-full bg-[#76a72b] rounded-full" style="width: {{ $incPct }}%"></div>
                         </div>
-                        <span class="text-xs text-[#878787] w-8">{{ $incPct }}%</span>
+                        <span class="text-xs text-[#878787] w-8 tabular-nums">{{ $incPct }}%</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-[#ababab] w-16 text-right">Egreso</span>
                         <div class="flex-1 h-2 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
-                            <div class="h-full bg-red-400 rounded-full transition-all" style="width: {{ $expPct }}%"></div>
+                            <div class="h-full bg-red-400 rounded-full" style="width: {{ $expPct }}%"></div>
                         </div>
-                        <span class="text-xs text-[#878787] w-8">{{ $expPct }}%</span>
+                        <span class="text-xs text-[#878787] w-8 tabular-nums">{{ $expPct }}%</span>
                     </div>
                 </div>
             </x-card>
@@ -134,7 +134,7 @@
                 {{-- Barra de utilización --}}
                 @if($tdc['credit_limit'] > 0)
                 <div class="h-1.5 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden mb-3">
-                    <div class="h-full rounded-full transition-all"
+                    <div class="h-full rounded-full"
                          style="width: {{ min($tdc['utilization'], 100) }}%;
                                 background-color: {{ $tdc['utilization'] >= 80 ? '#ef4444' : ($tdc['utilization'] >= 50 ? '#f97316' : '#76a72b') }}">
                     </div>
@@ -207,10 +207,10 @@
                                 </div>
                                 <span class="text-sm text-[#373737] dark:text-white font-medium truncate max-w-[140px]">{{ $cat['name'] }}</span>
                             </div>
-                            <span class="text-sm font-bold text-[#373737] dark:text-white">${{ number_format($cat['total'], 2) }}</span>
+                            <span class="text-sm font-bold text-[#373737] dark:text-white tabular-nums">${{ number_format($cat['total'], 2) }}</span>
                         </div>
                         <div class="h-1.5 bg-[#efeded] dark:bg-white/10 rounded-full overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-500"
+                            <div class="h-full rounded-full"
                                  style="width: {{ $cat['percent'] }}%; background-color: {{ $cat['color'] }}"></div>
                         </div>
                     </div>
@@ -224,7 +224,7 @@
     @php $ind = $indicators; @endphp
     <div class="mb-4">
         <p class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Salud financiera</p>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
 
             {{-- Tasa de ahorro --}}
             <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
@@ -305,8 +305,8 @@
                                 <p class="text-[10px] text-[#ababab] capitalize">{{ $typeLabels[$acc->type] ?? $acc->type }} · {{ $acc->institution }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-sm {{ $acc->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
-                                    ${{ number_format((float)$bal, 2) }}
+                                <p class="font-bold text-sm tabular-nums {{ $acc->isCredit() ? 'text-red-500' : 'text-[#373737] dark:text-white' }}">
+                                    {{ bccomp((string) $bal, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$bal), 2) }}
                                 </p>
                                 @if($acc->isInvestment() && $acc->invest_apr)
                                     <p class="text-[10px] text-[#76a72b]">{{ $acc->invest_apr }}% APR</p>
@@ -348,14 +348,14 @@
                 @else
                     <div class="mb-4 p-3 bg-[#76a72b]/10 rounded-xl text-center">
                         <p class="text-xs text-[#76a72b] font-semibold">Total del mes</p>
-                        <p class="text-xl font-bold text-[#76a72b]">{{ format_currency($interestTotal) }}</p>
+                        <p class="text-xl font-bold text-[#76a72b] tabular-nums">{{ format_currency($interestTotal) }}</p>
                     </div>
                     <div class="space-y-3">
                         @foreach($monthlyInterest as $r)
                         <div class="flex items-center gap-2">
                             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $r['color'] }}"></div>
                             <span class="text-xs text-[#878787] flex-1 truncate">{{ $r['name'] }}</span>
-                            <span class="text-xs font-bold text-[#76a72b]">${{ number_format($r['total'], 2) }}</span>
+                            <span class="text-xs font-bold text-[#76a72b] tabular-nums">${{ number_format($r['total'], 2) }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -386,9 +386,9 @@
             $txCfg = [
                 'income'   => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-[#76a72b]',  'sign' => '+', 'label' => 'Ingreso'],
                 'interest' => ['bg' => 'bg-[#76a72b]/10', 'text' => 'text-[#76a72b]',  'sign' => '+', 'label' => 'Interés'],
-                'expense'  => ['bg' => 'bg-red-50',        'text' => 'text-red-500',      'sign' => '-', 'label' => 'Egreso'],
-                'fee'      => ['bg' => 'bg-red-50',        'text' => 'text-red-500',      'sign' => '-', 'label' => 'Comisión'],
-                'transfer' => ['bg' => 'bg-[#efeded]',     'text' => 'text-[#878787]',   'sign' => '',  'label' => 'Transferencia'],
+                'expense'  => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-red-500',      'sign' => '-', 'label' => 'Egreso'],
+                'fee'      => ['bg' => 'bg-red-50 dark:bg-red-500/10', 'text' => 'text-red-500',      'sign' => '-', 'label' => 'Comisión'],
+                'transfer' => ['bg' => 'bg-[#efeded] dark:bg-white/10', 'text' => 'text-[#878787]',   'sign' => '',  'label' => 'Transferencia'],
             ];
             @endphp
             <div class="divide-y divide-[#efeded] dark:divide-white/10">
@@ -409,7 +409,7 @@
                             @if($tx->category) · {{ $tx->category->name }} @endif
                         </p>
                     </div>
-                    <span class="font-bold text-sm {{ $c['text'] }} flex-shrink-0">
+                    <span class="font-bold text-sm tabular-nums {{ $c['text'] }} flex-shrink-0">
                         {{ $c['sign'] }}${{ number_format((float)$tx->amount, 2) }}
                     </span>
                 </a>
@@ -427,6 +427,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
     const ctx = document.getElementById('flowChart');
+    if (window.Chart) Chart.defaults.font.family = "'Roboto', system-ui, sans-serif";
     if (ctx) {
         new Chart(ctx, {
             type: 'bar',
@@ -452,6 +453,8 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // El panel se abre muchas veces al día: sin animación de entrada
+                animation: false,
                 plugins: {
                     legend: {
                         position: 'bottom',

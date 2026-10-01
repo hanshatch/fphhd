@@ -6,7 +6,7 @@
 <div class="flex gap-1 mb-5 bg-white dark:bg-[#2a2a2a] rounded-xl p-1 border border-[#ababab]/15 shadow-sm">
     @foreach(['annual' => ['Anual', 'M3 3v18h18'], 'categories' => ['Categorías', 'M7 7h.01M7 3H5a2 2 0 00-2 2v2a2 2 0 00.586 1.414l9 9A2 2 0 0014 19l5-5a2 2 0 000-2.828l-9-9A2 2 0 007 3z'], 'sources' => ['Fuentes', 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'], 'yields' => ['Rendimientos', 'M9 8h6m-5 4h4m-6.5 8L12 18l4.5 2V6a2 2 0 00-2-2h-5a2 2 0 00-2 2v14zM9 8l6 8']] as $key => [$label, $iconPath])
     <a href="?type={{ $key }}&year={{ $year }}&month={{ $month }}@if($accountId)&account_id={{ $accountId }}@endif"
-       class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all
+       class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-colors duration-150
            {{ $type === $key ? 'bg-[#76a72b] text-white shadow-sm' : 'text-[#878787] hover:text-[#373737] hover:bg-[#efeded]' }}">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $iconPath }}"/>
@@ -58,10 +58,10 @@
         <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Egresos {{ $year }}</p>
         <p class="text-lg font-bold text-red-500 tabular-nums">${{ number_format($totalExpense, 2) }}</p>
     </div>
-    <div class="rounded-xl p-4 text-center {{ $netBalance >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 border border-red-100' }}">
+    <div class="rounded-xl p-4 text-center {{ $netBalance >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20' }}">
         <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Balance</p>
         <p class="text-lg font-bold tabular-nums {{ $netBalance >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
-            {{ $netBalance >= 0 ? '+' : '' }}${{ number_format($netBalance, 2) }}
+            {{ $netBalance >= 0 ? '+' : '−' }}${{ number_format(abs($netBalance), 2) }}
         </p>
     </div>
 </div>
@@ -86,7 +86,7 @@
                 <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Acumulado</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-[#ababab]/08">
+        <tbody class="divide-y divide-[#ababab]/10">
             @foreach($rows as $row)
             @php $hasData = $row['income'] > 0 || $row['expense'] > 0; @endphp
             <tr class="{{ $hasData ? '' : 'opacity-40' }} hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
@@ -98,10 +98,10 @@
                     {{ $row['expense'] > 0 ? '-$'.number_format($row['expense'], 2) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums font-bold {{ $row['net'] >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
-                    {{ $row['net'] != 0 ? ($row['net'] > 0 ? '+' : '').'$'.number_format($row['net'], 2) : '—' }}
+                    {{ $row['net'] != 0 ? ($row['net'] > 0 ? '+' : '−').'$'.number_format(abs($row['net']), 2) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787] hidden sm:table-cell">
-                    ${{ number_format($row['cumulative'], 2) }}
+                    {{ $row['cumulative'] < 0 ? '−' : '' }}${{ number_format(abs($row['cumulative']), 2) }}
                 </td>
             </tr>
             @endforeach
@@ -171,22 +171,30 @@
                 <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-[#ababab]/08">
+        <tbody class="divide-y divide-[#ababab]/10">
             @foreach($byCategory as $cat)
-            @php $pct = $totalExpense > 0 ? ($cat['total'] / $totalExpense * 100) : 0; @endphp
-            <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
+            @php
+                $pct = $totalExpense > 0 ? ($cat['total'] / $totalExpense * 100) : 0;
+                // Clic en la fila: movimientos de esa categoría en el mes
+                $drill = route('transactions.index', array_filter([
+                    'category_id' => $cat['id'] ?? 'none', 'type' => 'expense', 'account_id' => $accountId,
+                    'from' => $monthCarbon->copy()->startOfMonth()->toDateString(),
+                    'to'   => $monthCarbon->copy()->endOfMonth()->toDateString(),
+                ]));
+            @endphp
+            <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors cursor-pointer" onclick="window.location='{{ $drill }}'">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
                         <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                              style="background-color:{{ $cat['color'] }}">
                             <x-category-icon :name="$cat['icon'] ?? 'tag'" class="w-3.5 h-3.5" />
                         </div>
-                        <span class="font-semibold text-[#373737] dark:text-white">{{ $cat['name'] }}</span>
+                        <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-[#76a72b] transition-colors">{{ $cat['name'] }}</a>
                     </div>
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums font-bold text-red-500">-${{ number_format($cat['total'], 2) }}</td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">{{ number_format($pct, 1) }}%</td>
-                <td class="px-4 py-3 text-right text-[#ababab] hidden sm:table-cell">{{ $cat['count'] }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-[#ababab] hidden sm:table-cell">{{ $cat['count'] }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -261,7 +269,7 @@
                 <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Última captura</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-[#ababab]/08">
+        <tbody class="divide-y divide-[#ababab]/10">
             @foreach($yieldRows as $row)
             @php
                 $nominal = (float) ($row['apr_nominal'] ?? 0);
@@ -347,17 +355,24 @@
                 <th class="px-4 py-3 text-right text-[10px] font-bold text-[#ababab] uppercase tracking-wider hidden sm:table-cell">Movs.</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-[#ababab]/08">
+        <tbody class="divide-y divide-[#ababab]/10">
             @foreach($bySource as $src)
-            @php $pct = $totalIncome > 0 ? ($src['total'] / $totalIncome * 100) : 0; @endphp
-            <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors">
+            @php
+                $pct = $totalIncome > 0 ? ($src['total'] / $totalIncome * 100) : 0;
+                $drill = route('transactions.index', array_filter([
+                    'source_id' => $src['id'] ?? 'none', 'type' => 'income', 'account_id' => $accountId,
+                    'from' => $monthCarbon->copy()->startOfMonth()->toDateString(),
+                    'to'   => $monthCarbon->copy()->endOfMonth()->toDateString(),
+                ]));
+            @endphp
+            <tr class="hover:bg-[#fafafa] dark:hover:bg-white/5 transition-colors cursor-pointer" onclick="window.location='{{ $drill }}'">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                         <div class="w-7 h-7 rounded-lg bg-[#76a72b]/15 flex items-center justify-center flex-shrink-0">
                             <span class="text-xs font-bold text-[#76a72b]">{{ mb_strtoupper(mb_substr($src['name'], 0, 1)) }}</span>
                         </div>
                         <div>
-                            <p class="font-semibold text-[#373737] dark:text-white">{{ $src['name'] }}</p>
+                            <a href="{{ $drill }}" class="font-semibold text-[#373737] dark:text-white hover:text-[#76a72b] transition-colors">{{ $src['name'] }}</a>
                             <div class="h-1 bg-[#efeded] dark:bg-white/10 rounded-full mt-1 w-24 overflow-hidden">
                                 <div class="h-full rounded-full bg-[#76a72b]" style="width:{{ number_format($pct, 1) }}%"></div>
                             </div>
@@ -366,7 +381,7 @@
                 </td>
                 <td class="px-4 py-3 text-right tabular-nums font-bold text-[#76a72b]">+${{ number_format($src['total'], 2) }}</td>
                 <td class="px-4 py-3 text-right tabular-nums text-[#878787]">{{ number_format($pct, 1) }}%</td>
-                <td class="px-4 py-3 text-right text-[#ababab] hidden sm:table-cell">{{ $src['count'] }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-[#ababab] hidden sm:table-cell">{{ $src['count'] }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -381,6 +396,9 @@
 <script>
 Chart.defaults.font.family = "'Roboto', system-ui, sans-serif";
 Chart.defaults.color = '#878787';
+// Animación corta y con salida rápida: el reporte se consulta, no se contempla
+Chart.defaults.animation.duration = 300;
+Chart.defaults.animation.easing = 'easeOutQuart';
 
 @if($type === 'annual')
 new Chart(document.getElementById('annualChart'), {

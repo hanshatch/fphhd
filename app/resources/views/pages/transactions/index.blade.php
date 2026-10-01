@@ -30,16 +30,17 @@ $now = now();
     </div>
 
     {{-- Filtros secundarios (colapsables en mobile) --}}
+    {{-- En móvil se colapsan; en escritorio siempre a la vista (lg:!grid / lg:!flex) --}}
     <div x-data="{ open: {{ request()->hasAny(['account_id','type','from','to']) ? 'true' : 'false' }} }">
-        <button type="button" x-on:click="open = !open"
-                class="flex items-center gap-1.5 text-xs font-semibold text-[#878787] hover:text-[#76a72b] transition-colors mb-2">
+        <button type="button" data-no-spinner="true" x-on:click="open = !open"
+                class="lg:hidden flex items-center gap-1.5 text-xs font-semibold text-[#878787] hover:text-[#76a72b] transition-colors mb-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
             </svg>
             <span x-text="open ? 'Ocultar filtros' : 'Filtros'"></span>
         </button>
 
-        <div x-show="open" x-cloak class="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-2">
+        <div x-show="open" x-cloak class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:!grid lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-center mb-2">
             <select name="account_id"
                 class="rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-3 py-2 text-sm text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
                 <option value="">Todas las cuentas</option>
@@ -63,13 +64,28 @@ $now = now();
                 class="rounded-xl border border-[#ababab]/40 bg-white dark:bg-white/5 px-3 py-2 text-sm text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
         </div>
 
-        <div x-show="open" x-cloak class="flex gap-2">
-            <x-btn type="submit" class="text-xs py-1.5 px-4">Filtrar</x-btn>
-            @if($hasFilter)
-            <x-btn variant="secondary" href="{{ route('transactions.index') }}" class="text-xs py-1.5 px-4">Limpiar</x-btn>
-            @endif
+            <div class="col-span-2 sm:col-span-4 lg:col-span-1 flex gap-2">
+                <x-btn type="submit" class="text-xs py-2 px-4">Filtrar</x-btn>
+                @if($hasFilter)
+                <x-btn variant="secondary" href="{{ route('transactions.index') }}" class="text-xs py-2 px-4">Limpiar</x-btn>
+                @endif
+            </div>
         </div>
     </div>
+
+    {{-- Filtro que llega desde Reportes (categoría o fuente) --}}
+    @foreach(['category_id' => $filterCategory ?? null, 'source_id' => $filterSource ?? null] as $field => $label)
+    @if($label)
+    <input type="hidden" name="{{ $field }}" value="{{ request($field) }}">
+    <div class="inline-flex items-center gap-2 mt-1 mr-2 pl-3 pr-1 py-1 rounded-full bg-[#76a72b]/10 text-xs font-semibold text-[#4a7018] dark:text-[#76a72b]">
+        {{ $field === 'category_id' ? 'Categoría' : 'Fuente' }}: {{ $label }}
+        <a href="{{ request()->fullUrlWithoutQuery([$field]) }}" title="Quitar filtro"
+           class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#76a72b]/15 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+        </a>
+    </div>
+    @endif
+    @endforeach
 </form>
 
 {{-- ── Lista agrupada por mes ───────────────────────────────────── --}}
@@ -103,10 +119,10 @@ $now = now();
     <h2 class="text-xs font-bold text-[#878787] uppercase tracking-wider">{{ $monthLabel }}</h2>
     <div class="flex items-center gap-3 text-xs font-semibold">
         @if($inSum > 0)
-        <span class="text-[#76a72b]">+${{ number_format($inSum, 2) }}</span>
+        <span class="text-[#76a72b] tabular-nums">+${{ number_format($inSum, 2) }}</span>
         @endif
         @if($outSum > 0)
-        <span class="text-red-500">-${{ number_format($outSum, 2) }}</span>
+        <span class="text-red-500 tabular-nums">-${{ number_format($outSum, 2) }}</span>
         @endif
     </div>
 </div>
@@ -125,7 +141,10 @@ $now = now();
             $iconLabel = $tx->type === 'transfer' ? '⇄' : $cfg['sign'];
         }
     @endphp
-    <div class="flex items-center gap-3 px-4 py-3 {{ !$loop->last ? 'border-b border-[#ababab]/10' : '' }} hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group">
+    <div class="relative flex items-center gap-3 px-4 py-3 {{ !$loop->last ? 'border-b border-[#ababab]/10' : '' }} hover:bg-[#f9f9f9] dark:hover:bg-white/5 transition-colors group">
+
+        {{-- Toda la fila abre la edición; las acciones quedan por encima (z-10) --}}
+        <a href="{{ route('transactions.edit', $tx) }}" class="absolute inset-0" aria-label="Editar {{ $tx->description ?: $cfg['label'] }}"></a>
 
         {{-- Ícono de categoría --}}
         <div class="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 text-white font-bold text-sm select-none"
@@ -165,8 +184,8 @@ $now = now();
             </p>
         </div>
 
-        {{-- Acciones (visibles en hover desktop) --}}
-        <div class="flex items-center gap-0.5 flex-shrink-0">
+        {{-- Acciones: con mouse aparecen al pasar por la fila (ver .row-actions) --}}
+        <div class="row-actions relative z-10 flex items-center gap-0.5 flex-shrink-0">
             {{-- Editar --}}
             <a href="{{ route('transactions.edit', $tx) }}"
                class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors"

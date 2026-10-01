@@ -34,7 +34,7 @@
                         <input type="radio" name="frequency" value="{{ $val }}" x-model="freq" class="sr-only"
                             {{ old('frequency', $plan->frequency ?? 'biweekly') === $val ? 'checked' : '' }}>
                         <div :class="freq === '{{ $val }}' ? 'border-[#76a72b] bg-[#76a72b]/10' : 'border-[#ababab]/30'"
-                             class="border-2 rounded-xl p-3 text-center transition-all cursor-pointer">
+                             class="border-2 rounded-xl p-3 text-center transition-colors duration-150 cursor-pointer">
                             <div class="text-xl mb-1">{{ $emoji }}</div>
                             <div class="text-xs font-bold text-[#373737] dark:text-white">{{ $label }}</div>
                             <div class="text-[10px] text-[#ababab] mt-0.5">{{ $sub }}</div>

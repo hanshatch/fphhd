@@ -14,7 +14,7 @@
         <div>
             <p class="font-semibold text-[#373737] dark:text-white text-sm">{{ $account->name }}</p>
             <p class="text-xs text-[#878787] mt-0.5">
-                Saldo actual: <span class="font-bold tabular-nums text-[#373737] dark:text-white">${{ number_format((float)$balance, 2) }}</span>
+                Saldo actual: <span class="font-bold tabular-nums text-[#373737] dark:text-white">{{ bccomp((string) $balance, '0', 2) < 0 ? '−' : '' }}${{ number_format(abs((float)$balance), 2) }}</span>
             </p>
         </div>
     </div>
@@ -34,7 +34,7 @@
                 </label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
-                    <input type="text" name="target_balance" data-money inputmode="decimal" required
+                    <input type="text" name="target_balance" data-money inputmode="decimal" required autofocus
                         value="{{ old('target_balance', number_format((float)$balance, 2, '.', '')) }}"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                     <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
@@ -55,8 +55,11 @@
             {{-- Descripción --}}
             <div>
                 <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">Descripción</label>
+                {{-- Vacío a propósito: si no escribes nada, FP pone la descripción que
+                     corresponde (en efectivo, «Efectivo sin registrar (cuadre)») --}}
                 <input type="text" name="description" maxlength="255"
-                    value="{{ old('description', 'Ajuste de saldo') }}"
+                    value="{{ old('description') }}"
+                    placeholder="{{ $account->type === 'cash' ? 'Efectivo sin registrar (cuadre)' : 'Ajuste de saldo' }}"
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
             </div>
 

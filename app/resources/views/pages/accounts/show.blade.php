@@ -104,7 +104,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
     {{-- Acciones rápidas --}}
     <div class="grid grid-cols-3 gap-2" x-data>
         <button type="button" data-no-spinner="true" x-on:click="$dispatch('new-tx')"
-            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-[#76a72b]/60 hover:shadow transition-all active:scale-[0.98]">
+            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-[#76a72b]/60 hover:shadow transition-[border-color,box-shadow,transform] duration-150 ease-snappy active:scale-[0.97]">
             <span class="w-9 h-9 rounded-full bg-[#76a72b]/10 text-[#76a72b] flex items-center justify-center group-hover:bg-[#76a72b] group-hover:text-white transition-colors">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
             </span>
@@ -112,7 +112,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
         </button>
 
         <a href="{{ route('accounts.adjust.show', $account) }}"
-           class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-amber-400/60 hover:shadow transition-all active:scale-[0.98]">
+           class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-amber-400/60 hover:shadow transition-[border-color,box-shadow,transform] duration-150 ease-snappy active:scale-[0.97]">
             <span class="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
             </span>
@@ -121,7 +121,7 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
 
         {{-- Importar capturas: abre el modal para juntar varias imágenes --}}
         <button type="button" data-no-spinner="true" x-on:click="$dispatch('open-import')"
-            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow transition-all active:scale-[0.98]">
+            class="group flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-2 py-3 rounded-2xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/20 dark:border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow transition-[border-color,box-shadow,transform] duration-150 ease-snappy active:scale-[0.97]">
             <span class="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             </span>
@@ -135,14 +135,12 @@ $usedPct     = ($card && (float) $card->credit_limit > 0)
      x-on:open-import.window="open = true"
      x-on:keydown.escape.window="if (open && !busy) close()"
      x-on:paste.window="if (open && !busy) onPaste($event)"
-     x-show="open" x-cloak
+     x-show="open" x-cloak x-transition:leave="transition duration-150"
      class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
-    <div class="absolute inset-0 bg-black/50" x-on:click="if (!busy) close()"></div>
+    <div class="absolute inset-0 bg-black/50" x-on:click="if (!busy) close()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
     <div class="relative w-full sm:max-w-lg bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
-         x-transition:enter-end="translate-y-0 opacity-100">
+         x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
 
         <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
             <div>
@@ -297,7 +295,8 @@ function importCaptures(url) {
         create() {
             return this.load('/transactions/create-modal?account_id={{ $account->id }}&redirect_to=' + this.back + '{{ $prefill }}', 'Nuevo movimiento');
         },
-        close() { this.open = false; this.html = ''; }
+        // El formulario se vacía al terminar la salida, no a media animación
+        close() { this.open = false; setTimeout(() => { if (!this.open) this.html = ''; }, 160); }
      }"
      x-on:edit-tx.window="edit($event.detail)"
      x-on:new-tx.window="create()"
@@ -305,13 +304,11 @@ function importCaptures(url) {
      x-on:keydown.escape.window="close()"
      x-init="@if(request()->filled('edit')) edit({{ (int) request('edit') }}) @elseif(request()->boolean('new')) create() @endif">
 
-    <div x-show="open" x-cloak class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" x-on:click="close()"></div>
+    <div x-show="open" x-cloak x-transition:leave="transition duration-150" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" x-on:click="close()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
         <div class="relative w-full sm:max-w-md bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
-             x-transition:enter-end="translate-y-0 opacity-100">
+             x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
 
             <div class="flex items-center justify-between px-5 py-4 border-b border-[#ababab]/15">
                 <h2 class="text-base font-bold text-[#373737] dark:text-white" x-text="title"></h2>
@@ -322,11 +319,15 @@ function importCaptures(url) {
             </div>
 
             <div class="p-5 overflow-y-auto">
-                <div x-show="loading" class="py-10 flex justify-center">
-                    <svg class="w-6 h-6 animate-spin text-[#76a72b]" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
+                {{-- Esqueleto con la forma del formulario: el modal no brinca de alto al cargar --}}
+                <div x-show="loading" class="space-y-4 animate-pulse" aria-hidden="true">
+                    <div class="grid grid-cols-4 gap-2">
+                        <template x-for="i in 4"><div class="h-9 rounded-xl bg-[#efeded] dark:bg-white/10"></div></template>
+                    </div>
+                    <template x-for="h in ['h-[58px]', 'h-12', 'h-12', 'h-12']">
+                        <div><div class="h-3.5 w-20 rounded bg-[#efeded] dark:bg-white/10 mb-2"></div><div class="rounded-xl bg-[#efeded] dark:bg-white/10" x-bind:class="h"></div></div>
+                    </template>
+                    <div class="flex gap-3 pt-1"><div class="flex-1 h-11 rounded-xl bg-[#efeded] dark:bg-white/10"></div><div class="flex-1 h-11 rounded-xl bg-[#efeded] dark:bg-white/10"></div></div>
                 </div>
                 <div x-html="html"></div>
             </div>
@@ -363,8 +364,8 @@ function importCaptures(url) {
         <span class="text-[#ababab] font-medium tabular-nums">
             {{ $txs->count() }} {{ $txs->count() === 1 ? 'movimiento' : 'movimientos' }}
         </span>
-        @if($inSum > 0)<span class="text-[#76a72b]">+${{ number_format($inSum, 2) }}</span>@endif
-        @if($outSum > 0)<span class="text-red-500">-${{ number_format($outSum, 2) }}</span>@endif
+        @if($inSum > 0)<span class="text-[#76a72b] tabular-nums">+${{ number_format($inSum, 2) }}</span>@endif
+        @if($outSum > 0)<span class="text-red-500 tabular-nums">-${{ number_format($outSum, 2) }}</span>@endif
     </div>
 </div>
 
@@ -456,9 +457,9 @@ function importCaptures(url) {
             @endif
         </div>
 
-        {{-- Siempre visibles: en táctil (incluido iPad, que es pantalla ancha)
-             no hay hover, así que ocultarlas las volvía inalcanzables --}}
-        <div class="flex items-center gap-0.5 flex-shrink-0" x-data>
+        {{-- Con mouse aparecen al pasar por la fila; en táctil (iPad incluido)
+             siguen siempre visibles, ver .row-actions en app.css --}}
+        <div class="row-actions flex items-center gap-0.5 flex-shrink-0" x-data>
             <button type="button" data-no-spinner="true"
                x-on:click="$dispatch('edit-tx', {{ $tx->id }})"
                class="w-7 h-7 flex items-center justify-center text-[#ababab] hover:text-[#76a72b] hover:bg-[#76a72b]/10 rounded-lg transition-colors" title="Editar">
@@ -498,6 +499,11 @@ function importCaptures(url) {
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    try {
+        const y = sessionStorage.getItem('fp-scroll');
+        if (y !== null) { sessionStorage.removeItem('fp-scroll'); window.scrollTo(0, Number(y)); }
+    } catch (e) {}
+
     if (!window.Sortable) return;
 
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -528,7 +534,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         console.error('[fp] no se pudo guardar el orden', res.status);
                         return;
                     }
-                    // El saldo corrido depende del orden: recargar para recalcularlo
+                    // El saldo corrido depende del orden: recargar para recalcularlo,
+                    // volviendo a la misma altura de la página
+                    try { sessionStorage.setItem('fp-scroll', String(window.scrollY)); } catch (e) {}
                     window.location.reload();
                 });
             },

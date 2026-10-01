@@ -42,7 +42,7 @@
             <label class="cursor-pointer">
                 <input type="radio" name="type" value="{{ $val }}" x-model="type" class="sr-only"
                     {{ $initType === $val ? 'checked' : '' }}>
-                <div class="text-center py-2.5 rounded-xl text-xs font-bold transition-all duration-150 border-2 select-none"
+                <div class="text-center py-2.5 rounded-xl text-xs font-bold transition-colors duration-150 border-2 select-none"
                      :class="type === '{{ $val }}' ? 'border-transparent text-white' : 'border-[#ababab]/30 text-[#878787]'"
                      :style="type === '{{ $val }}' ? `background:${accent}` : ''">
                     {{ $label }}
@@ -59,7 +59,9 @@
             <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
                 <input type="text" name="amount" data-money inputmode="decimal" required
-                    value="{{ $transaction->amount }}" placeholder="0.00" @if(! $exists) autofocus @endif
+                    value="{{ $transaction->amount }}" placeholder="0.00"
+                    {{-- autofocus no aplica a HTML inyectado: se enfoca al montarse --}}
+                    @if(! $exists) x-init="$nextTick(() => $el.focus())" @endif
                     class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[#ababab] text-xs font-semibold uppercase tracking-wider">MXN</span>
             </div>
@@ -152,7 +154,7 @@
                 Cancelar
             </button>
             <button type="submit"
-                class="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors"
+                class="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-[filter,transform] duration-150 ease-snappy hover:brightness-95 active:scale-[0.97]"
                 :style="`background:${accent}`">
                 {{ $exists ? 'Guardar cambios' : 'Registrar' }}
             </button>

@@ -291,13 +291,13 @@ input.tx-row-value::placeholder { color: #ababab; }
             @csrf
             @if($transaction->exists) @method('PATCH') @endif
 
-            {{-- Tipo --}}
+            {{-- Tipo (en escritorio cabe la palabra completa) --}}
             <div class="grid grid-cols-4 gap-2">
-                @foreach($typeLabels as $val => $label)
+                @foreach(array_merge($typeLabels, ['transfer' => 'Transferencia']) as $val => $label)
                 <label class="cursor-pointer">
                     <input type="radio" name="type" value="{{ $val }}" x-model="type" class="sr-only"
                         {{ $initType === $val ? 'checked' : '' }}>
-                    <div class="text-center py-2.5 rounded-xl text-xs font-bold transition-all duration-150 border-2 select-none"
+                    <div class="text-center py-2.5 rounded-xl text-xs font-bold transition-colors duration-150 border-2 select-none"
                          :class="type === '{{ $val }}' ? 'border-transparent text-white' : 'border-[#ababab]/30 text-[#878787]'"
                          :style="type === '{{ $val }}' ? `background:${accentColor}` : ''">
                         {{ $label }}
@@ -314,6 +314,7 @@ input.tx-row-value::placeholder { color: #ababab; }
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#878787] font-semibold text-lg">$</span>
                     <input type="text" name="amount" data-money inputmode="decimal" required
+                        @unless($transaction->exists) autofocus @endunless
                         value="{{ old('amount', $transaction->amount) }}"
                         placeholder="0.00"
                         class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 pl-9 pr-16 py-3 text-2xl font-bold text-[#373737] dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">

@@ -49,7 +49,7 @@
                 @foreach($items as $item)
                 @php $active = request()->routeIs($item['match']); @endphp
                 <a href="{{ route($item['route']) }}"
-                   class="{{ $active ? 'bg-[#76a72b] text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }} group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+                   class="{{ $active ? 'bg-[#76a72b] text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }} group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150">
                     @include('layouts._icon', ['name' => $item['icon'], 'class' => 'w-5 h-5 flex-shrink-0'])
                     {{ $item['label'] }}
                 </a>
@@ -61,14 +61,14 @@
         <div class="p-3 border-t border-white/10 space-y-0.5">
             @php $settingsActive = request()->routeIs('settings') || request()->routeIs('categories.*') || request()->routeIs('sources.*') || request()->routeIs('profile.*'); @endphp
             <a href="{{ route('settings') }}"
-               class="{{ $settingsActive ? 'bg-[#76a72b] text-white' : 'text-white/50 hover:text-white hover:bg-white/10' }} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150">
+               class="{{ $settingsActive ? 'bg-[#76a72b] text-white' : 'text-white/50 hover:text-white hover:bg-white/10' }} flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150">
                 @include('layouts._icon', ['name' => 'settings', 'class' => 'w-5 h-5 flex-shrink-0'])
                 Configuración
             </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit"
-                    class="w-full flex items-center gap-3 px-3 py-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-all duration-150">
+                    class="w-full flex items-center gap-3 px-3 py-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors duration-150">
                     @include('layouts._icon', ['name' => 'logout', 'class' => 'w-4 h-4'])
                     Cerrar sesión
                 </button>
@@ -89,34 +89,42 @@
             </a>
         </header>
 
-        {{-- Flash --}}
-        @if(session('status'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
-             x-transition:leave="transition ease-in duration-300" x-transition:leave-end="opacity-0 -translate-y-2"
-             class="mx-4 mt-4 flex items-center gap-3 p-3 bg-[#76a72b]/10 border border-[#76a72b]/30 rounded-xl text-sm text-[#4a7018] dark:text-[#76a72b]">
-            <svg class="w-4 h-4 text-[#76a72b] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            {{ session('status') }}
-        </div>
-        @endif
-
-        @if($errors->any())
-        <div class="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-            <ul class="list-disc list-inside space-y-0.5">
-                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-            </ul>
-        </div>
-        @endif
-
-        {{-- Contenido --}}
+        {{-- Contenido: ancho máximo para que en monitores grandes no se estire --}}
         <main class="flex-1 p-4 lg:p-8 pb-24 lg:pb-8">
+          <div class="max-w-6xl mx-auto w-full">
+
+            {{-- Flash: alineado con el contenido; se va solo o con la ✕ --}}
+            @if(session('status'))
+            <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+                 x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-end="opacity-0"
+                 role="status"
+                 class="mb-4 flex items-center gap-3 p-3 bg-[#76a72b]/10 border border-[#76a72b]/30 rounded-xl text-sm text-[#4a7018] dark:text-[#76a72b]">
+                <svg class="w-4 h-4 text-[#76a72b] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span class="flex-1">{{ session('status') }}</span>
+                <button type="button" data-no-spinner="true" x-on:click="show = false" title="Cerrar"
+                    class="w-7 h-7 -my-1 -mr-1 flex items-center justify-center rounded-lg text-[#76a72b]/70 hover:text-[#76a72b] hover:bg-[#76a72b]/10 transition-colors flex-shrink-0">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            @endif
+
+            @if($errors->any())
+            <div class="mb-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-400">
+                <ul class="list-disc list-inside space-y-0.5">
+                    @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
             {{ $slot }}
+          </div>
         </main>
     </div>
 </div>
 
 {{-- FAB móvil --}}
 <a href="{{ route('transactions.create') }}"
-   class="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 bg-[#76a72b] hover:bg-[#659220] text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95">
+   class="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 bg-[#76a72b] hover:bg-[#659220] text-white rounded-full shadow-xl flex items-center justify-center transition-[background-color,transform] duration-150 ease-snappy active:scale-[0.94]">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
 </a>
 
@@ -147,8 +155,6 @@
 </nav>
 
 <x-confirm-modal />
-
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <script>
 /**
@@ -186,8 +192,16 @@ document.addEventListener('submit', function (e) {
 (function () {
     const SPINNER_SVG = `<svg class="inline-block animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14 6.373 14 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
     </svg>`;
+
+    // Botones de solo ícono (sin texto visible): el texto «Procesando…» no
+    // cabe y empuja la fila; ahí basta el spinner en el mismo lugar del ícono.
+    function spinnerHtml(btn) {
+        return btn.textContent.trim() === ''
+            ? SPINNER_SVG
+            : `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
+    }
 
     document.addEventListener('submit', function (e) {
         // e.submitter = botón exacto que activó el submit
@@ -207,7 +221,7 @@ document.addEventListener('submit', function (e) {
 
         btn.disabled = true;
         btn.dataset.originalHtml = btn.innerHTML;
-        btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
+        btn.innerHTML = spinnerHtml(btn);
 
         // Safeguard: re-habilitar tras 15s si la página no navega
         setTimeout(() => {
@@ -228,7 +242,7 @@ document.addEventListener('submit', function (e) {
 
         btn.disabled = true;
         btn.dataset.originalHtml = btn.innerHTML;
-        btn.innerHTML = `${SPINNER_SVG}<span class="ml-1.5">Procesando…</span>`;
+        btn.innerHTML = spinnerHtml(btn);
     });
     // Inputs de dinero [data-money]: al salir del campo, formatear con
     // comas de miles y 2 decimales. El backend re-parsea con parse_money.

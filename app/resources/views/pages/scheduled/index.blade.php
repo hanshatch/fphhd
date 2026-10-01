@@ -23,13 +23,18 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Egresos</p>
         <p class="text-base font-bold text-red-500 tabular-nums">${{ number_format($totalOut, 2) }}</p>
     </div>
-    <div class="rounded-xl p-3 text-center {{ ($totalIn - $totalOut) >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 border border-red-100' }}">
+    <div class="rounded-xl p-3 text-center {{ ($totalIn - $totalOut) >= 0 ? 'bg-[#76a72b]/10 border border-[#76a72b]/20' : 'bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20' }}">
         <p class="text-[10px] text-[#ababab] uppercase tracking-wider mb-1">Neto</p>
         <p class="text-base font-bold tabular-nums {{ ($totalIn - $totalOut) >= 0 ? 'text-[#76a72b]' : 'text-red-500' }}">
-            ${{ number_format($totalIn - $totalOut, 2) }}
+            {{ ($totalIn - $totalOut) < 0 ? '−' : '' }}${{ number_format(abs($totalIn - $totalOut), 2) }}
         </p>
     </div>
 </div>
+
+{{-- En escritorio: calendario a la izquierda y detalle fijo a la derecha,
+     así un clic en un día no manda al fondo de la página --}}
+<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start">
+<div>
 
 {{-- ── Navegación de mes ─────────────────────────────────────────── --}}
 <div class="flex items-center justify-between mb-4">
@@ -66,7 +71,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     <div class="grid grid-cols-7">
         {{-- Celdas vacías al inicio --}}
         @for($i = 0; $i < $firstDow; $i++)
-        <div class="border-b border-r border-[#ababab]/08 min-h-[52px] lg:min-h-[72px]"></div>
+        <div class="border-b border-r border-[#ababab]/10 min-h-[52px] lg:min-h-[72px]"></div>
         @endfor
 
         {{-- Días del mes --}}
@@ -81,7 +86,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
             $isSun = $col === 0;
         @endphp
         <a href="#day-{{ $d }}"
-           class="border-b border-r border-[#ababab]/08 min-h-[52px] lg:min-h-[72px] p-1.5 flex flex-col
+           class="border-b border-r border-[#ababab]/10 min-h-[52px] lg:min-h-[72px] p-1.5 flex flex-col
                {{ count($items) ? 'cursor-pointer hover:bg-[#76a72b]/5 transition-colors' : '' }}
                {{ ($isSun || $isSat) ? 'bg-[#fafafa] dark:bg-white/[0.02]' : '' }}">
 
@@ -115,13 +120,16 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
         @php $lastCol = ($firstDow + $daysInMonth - 1) % 7; @endphp
         @if($lastCol < 6)
         @for($i = $lastCol + 1; $i <= 6; $i++)
-        <div class="border-b border-r border-[#ababab]/08 min-h-[52px] lg:min-h-[72px]"></div>
+        <div class="border-b border-r border-[#ababab]/10 min-h-[52px] lg:min-h-[72px]"></div>
         @endfor
         @endif
     </div>
 </div>
 
+</div>{{-- /calendario --}}
+
 {{-- ── Detalle por día ───────────────────────────────────────────── --}}
+<div class="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-1">
 @if(empty($dayMap))
 <x-card class="text-center py-12">
     <svg class="mx-auto w-10 h-10 text-[#ababab] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +153,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     $dayCharge = collect($items)->where('type','charge')->sum('amount');
 @endphp
 
-<div id="day-{{ $day }}" class="scroll-mt-4">
+<div id="day-{{ $day }}" class="scroll-mt-4 rounded-2xl target:ring-2 target:ring-[#76a72b]/50 target:ring-offset-4 target:ring-offset-[#efeded] dark:target:ring-offset-[#1a1a1a]">
     {{-- Header del día --}}
     <div class="flex items-center gap-3 mb-2">
         <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
@@ -161,8 +169,8 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
             @endif
         </div>
         <div class="flex items-center gap-2 text-xs font-semibold">
-            @if($dayIncome > 0)<span class="text-[#76a72b]">+${{ number_format($dayIncome, 2) }}</span>@endif
-            @if($dayCharge > 0)<span class="text-red-500">-${{ number_format($dayCharge, 2) }}</span>@endif
+            @if($dayIncome > 0)<span class="text-[#76a72b] tabular-nums">+${{ number_format($dayIncome, 2) }}</span>@endif
+            @if($dayCharge > 0)<span class="text-red-500 tabular-nums">-${{ number_format($dayCharge, 2) }}</span>@endif
         </div>
     </div>
 
@@ -217,5 +225,7 @@ $days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 @endforeach
 </div>
 @endif
+</div>{{-- /detalle --}}
+</div>
 
 </x-app-layout>

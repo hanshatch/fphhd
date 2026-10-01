@@ -1,4 +1,6 @@
 <x-app-layout title="Importar movimientos">
+  {{-- Mismo ancho que la barra fija de abajo para que queden alineadas --}}
+  <div class="max-w-3xl mx-auto">
     <x-page-header title="Importar a {{ $account->name }}" :back="route('accounts.show', $account)" />
 
     @php
@@ -189,7 +191,7 @@
 
         {{-- Barra fija inferior --}}
         <div class="fixed bottom-20 lg:bottom-4 left-0 lg:left-60 right-0 px-4 z-40 pointer-events-none">
-            <div class="max-w-2xl mx-auto flex gap-2 pointer-events-auto">
+            <div class="max-w-3xl mx-auto flex gap-2 pointer-events-auto">
                 <x-btn href="{{ route('accounts.show', $account) }}" variant="secondary" class="flex-1 text-center">Cancelar</x-btn>
                 <x-btn type="submit" class="flex-[2] text-center">
                     Registrar seleccionados
@@ -198,4 +200,5 @@
         </div>
     </form>
     @endif
+  </div>
 </x-app-layout>

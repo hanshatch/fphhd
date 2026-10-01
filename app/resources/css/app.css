@@ -22,6 +22,10 @@
   --color-hh-gray:  #878787;  /* Pantone 422 C */
   --color-hh-mid:   #ababab;  /* Pantone Cool Gray 8C */
   --color-hh-light: #efeded;  /* Pantone 663 C */
+
+  /* Curvas de movimiento: las de CSS por defecto son demasiado blandas */
+  --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);   /* entradas / salidas */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);  /* hojas que suben en móvil */
 }
 
 /* ── Base ────────────────────────────────────────────────────────── */
@@ -40,3 +44,21 @@ body {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #ababab; border-radius: 9999px; }
+
+/* ── Acciones de fila ────────────────────────────────────────────
+   Con mouse se muestran al pasar o enfocar la fila; en táctil (iPad
+   incluido) siguen siempre visibles porque ahí no existe el hover. */
+@media (hover: hover) and (pointer: fine) {
+  .row-actions { opacity: 0; transition: opacity 150ms var(--ease-snappy); }
+  .group:hover .row-actions,
+  .group:focus-within .row-actions { opacity: 1; }
+}
+
+/* ── Movimiento reducido: sin desplazamientos ni escalas ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-property: opacity, color, background-color, border-color !important;
+    animation-duration: 0.01ms !important;
+  }
+  .animate-spin { animation-duration: 1s !important; }
+}

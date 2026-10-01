@@ -31,18 +31,14 @@
      }"
      x-on:confirm-modal.window="show($event.detail)"
      x-on:keydown.escape.window="if (open) close()"
-     x-show="open" x-cloak
+     x-show="open" x-cloak x-transition:leave="transition duration-150"
      class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
      role="dialog" aria-modal="true">
 
-    <div class="absolute inset-0 bg-black/50" x-on:click="close()"
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+    <div class="absolute inset-0 bg-black/50" x-on:click="close()" x-show="open" x-transition:enter="transition-opacity ease-snappy duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-snappy duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
     <div class="relative w-full sm:max-w-sm bg-white dark:bg-[#2a2a2a] rounded-t-2xl sm:rounded-2xl shadow-2xl p-5"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
-         x-transition:enter-end="translate-y-0 opacity-100">
+         x-show="open" x-transition:enter="transition ease-snappy duration-200" x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-[0.96] sm:opacity-0" x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave="transition ease-snappy duration-150" x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-0 sm:scale-[0.98] sm:opacity-0">
 
         <div class="flex items-start gap-3">
             <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500">

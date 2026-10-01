@@ -278,7 +278,7 @@
                                 <input type="color" name="color"
                                     value="{{ old('color', $account->color ?? '#76a72b') }}"
                                     x-ref="colorPicker"
-                                    class="h-9 w-14 rounded-lg border border-[#ababab]/40 cursor-pointer p-1 bg-white flex-shrink-0 transition-all"
+                                    class="h-9 w-14 rounded-lg border border-[#ababab]/40 cursor-pointer p-1 bg-white flex-shrink-0 transition-colors"
                                     :style="extracted ? 'box-shadow:0 0 0 3px #76a72b44' : ''">
                                 <div>
                                     <p class="text-xs text-[#373737] dark:text-white font-medium" x-text="extracted ? '✓ Color extraído del logo' : 'Color identificador'"></p>
