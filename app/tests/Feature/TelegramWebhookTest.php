@@ -138,6 +138,84 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame('Uber aeropuerto', $tx->description);
     }
 
+    public function test_concept_can_be_replaced_before_registering(): void
+    {
+        $account  = $this->account();
+        $category = $this->category('Transporte');
+
+        $this->postUpdate($this->textMessage('1,234.56 uber aeropuerto'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        // En la pregunta de categoría: editar concepto y escribir el nuevo
+        $this->postUpdate($this->callbackUpdate('pdesc:1'))->assertNoContent();
+        $this->postUpdate($this->textMessage('Uber al aeropuerto viaje Monterrey'))->assertNoContent();
+
+        // El texto NO se tomó como gasto nuevo: sigue el mismo pendiente
+        $this->assertSame(0, Transaction::count());
+
+        $this->postUpdate($this->callbackUpdate('cat:' . $category->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('Uber al aeropuerto viaje Monterrey', $tx->description);
+        $this->assertSame('1234.56', $tx->amount);
+        $this->assertSame($category->id, $tx->category_id);
+    }
+
+    public function test_concept_can_be_complemented_with_plus_after_registering(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->postUpdate($this->textMessage('250 comida tacos'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+
+        $this->postUpdate($this->callbackUpdate('ed:desc:' . $tx->id))->assertNoContent();
+        $this->postUpdate($this->textMessage('+ con Vale'))->assertNoContent();
+
+        $this->assertSame(1, Transaction::count());
+        $this->assertSame('Comida tacos con Vale', $tx->fresh()->description);
+    }
+
+    public function test_cancel_keeps_concept_unchanged(): void
+    {
+        $account = $this->account();
+        $this->category('Comida');
+
+        $this->postUpdate($this->textMessage('250 comida tacos'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $tx = Transaction::sole();
+
+        $this->postUpdate($this->callbackUpdate('ed:desc:' . $tx->id))->assertNoContent();
+        $this->postUpdate($this->textMessage('cancelar'))->assertNoContent();
+
+        $this->assertSame('Comida tacos', $tx->fresh()->description);
+        $this->assertSame(1, Transaction::count());
+    }
+
+    public function test_category_can_be_changed_after_registering_including_subcategory(): void
+    {
+        $account     = $this->account();
+        $comida      = $this->category('Comida');
+        $alimentacion = $this->category('Alimentación');
+        $restaurantes = Category::create(['name' => 'Restaurantes', 'kind' => 'expense', 'parent_id' => $alimentacion->id]);
+
+        $this->postUpdate($this->textMessage('250 comida tacos'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame($comida->id, $tx->category_id);
+
+        // Cambiar categoría → abrir grupo → elegir subcategoría
+        $this->postUpdate($this->callbackUpdate('ed:cat:' . $tx->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate("ed:catg:{$tx->id}:{$alimentacion->id}"))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate("ed:set:{$tx->id}:{$restaurantes->id}"))->assertNoContent();
+
+        $this->assertSame($restaurantes->id, $tx->fresh()->category_id);
+        $this->assertSame(1, Transaction::count());
+    }
+
     public function test_expense_with_relative_date_is_registered_yesterday(): void
     {
         $account = $this->account();

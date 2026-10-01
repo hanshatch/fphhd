@@ -407,6 +407,8 @@ class TelegramExpenseService
         ], [
             ['text' => '📈 Interés', 'callback_data' => 'typ:interest'],
             ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+        ], [
+            ['text' => '✏️ Editar concepto', 'callback_data' => 'pdesc:1'],
         ]];
     }
 
@@ -423,6 +425,10 @@ class TelegramExpenseService
     {
         $chatId = $message['chat']['id'];
         $text   = trim($message['text']);
+
+        if ($text !== '' && ! str_starts_with($text, '/') && $this->consumeDescriptionEdit($chatId, $text)) {
+            return;
+        }
 
         if ($text === '' || str_starts_with($text, '/') || in_array(mb_strtolower($text), ['ayuda', 'help'])) {
             $this->telegram->sendMessage($chatId, $this->helpText());
@@ -470,6 +476,13 @@ class TelegramExpenseService
             return;
         }
 
+        // Corregir un movimiento ya registrado: categoría o concepto
+        if (str_starts_with($callback['data'] ?? '', 'ed:')) {
+            $this->handleEditCallback($chatId, $messageId, $callback['data']);
+
+            return;
+        }
+
         // Botones de correos bancarios (transferencia / deshacer / omitir)
         if (str_starts_with($callback['data'] ?? '', 'mail:')) {
             $this->handleMailCallback($chatId, $messageId, $callback['data']);
@@ -486,6 +499,14 @@ class TelegramExpenseService
         }
 
         [$action, $id] = array_pad(explode(':', $data, 2), 2, null);
+
+        // Editar / complementar el concepto antes de registrar
+        if ($action === 'pdesc') {
+            Cache::put($this->editKey($chatId), ['tx_id' => null], now()->addMinutes(self::PENDING_TTL_MINUTES));
+            $this->telegram->sendMessage($chatId, $this->descriptionPrompt($pending['description'] ?? ''));
+
+            return;
+        }
 
         // No registrar el movimiento actual (en cualquier paso)
         if ($action === 'skp') {
@@ -610,21 +631,7 @@ class TelegramExpenseService
             app(\App\Services\Mail\BankEmailImportService::class)->markRegistered((int) $pending['bank_email_id'], $transaction);
         }
 
-        $transaction->load(['account', 'category']);
-
-        $this->telegram->editMessageText(
-            $chatId,
-            $messageId,
-            '✅ ' . match ($type) {
-                Transaction::TYPE_INCOME   => 'Abono',
-                Transaction::TYPE_INTEREST => 'Interés',
-                default                    => 'Gasto',
-            } . " registrado\n"
-                . format_currency($transaction->amount) . ' · ' . $transaction->description . "\n"
-                . $transaction->account->name
-                . ($transaction->category ? ' · ' . $transaction->category->name : '')
-                . ' · ' . $transaction->date->translatedFormat('j M Y')
-        );
+        $this->telegram->editMessageText($chatId, $messageId, $this->transactionSummary($transaction), $this->correctionKeyboard($transaction));
 
         // Si venían más movimientos del screenshot, seguir con el siguiente
         if (! empty($pending['queue'])) {
@@ -834,7 +841,10 @@ class TelegramExpenseService
             ]);
 
         $rows   = array_chunk($buttons->all(), 2);
-        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+        $rows[] = [
+            ['text' => '✏️ Editar concepto', 'callback_data' => 'pdesc:1'],
+            ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+        ];
 
         return $rows;
     }
@@ -844,12 +854,14 @@ class TelegramExpenseService
      * Los grupos con hijas abren submenú (catg:); las raíces sin hijas
      * se eligen directo (cat:).
      */
-    private function categoryRootKeyboard(string $type = 'expense', ?int $suggestedId = null): array
+    private function categoryRootKeyboard(string $type = 'expense', ?int $suggestedId = null, ?int $editTx = null): array
     {
+        $cb   = $this->categoryCallbacks($editTx);
         $rows = [];
 
         if ($suggestedId !== null && ($suggested = Category::active()->find($suggestedId))) {
-            $rows[] = [['text' => '⭐ Sugerida: ' . $suggested->name, 'callback_data' => 'cat:' . $suggested->id]];
+            $label = $editTx ? '✓ Actual: ' : '⭐ Sugerida: ';
+            $rows[] = [['text' => $label . $suggested->name, 'callback_data' => $cb['cat']($suggested->id)]];
         }
 
         $roots = Category::active()
@@ -860,35 +872,251 @@ class TelegramExpenseService
             ->get();
 
         $buttons = $roots->map(fn (Category $root) => $root->children_count > 0
-            ? ['text' => $root->name . ' ▸', 'callback_data' => 'catg:' . $root->id]
-            : ['text' => $root->name, 'callback_data' => 'cat:' . $root->id]);
+            ? ['text' => $root->name . ' ▸', 'callback_data' => $cb['catg']($root->id)]
+            : ['text' => $root->name, 'callback_data' => $cb['cat']($root->id)]);
 
         $rows   = array_merge($rows, array_chunk($buttons->all(), 2));
-        $rows[] = [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']];
+        $rows[] = $cb['footer'];
 
         return $rows;
     }
 
     /** Nivel 2: subcategorías de un grupo + usar el grupo general + volver */
-    private function categoryChildrenKeyboard(Category $root): array
+    private function categoryChildrenKeyboard(Category $root, ?int $editTx = null): array
     {
+        $cb = $this->categoryCallbacks($editTx);
+
         $buttons = $root->children()
             ->where('is_archived', false)
             ->orderBy('name')
             ->get()
             ->map(fn (Category $child) => [
                 'text'          => $child->name,
-                'callback_data' => 'cat:' . $child->id,
+                'callback_data' => $cb['cat']($child->id),
             ]);
 
         $rows   = array_chunk($buttons->all(), 2);
-        $rows[] = [['text' => '📁 ' . $root->name . ' (general)', 'callback_data' => 'cat:' . $root->id]];
-        $rows[] = [
-            ['text' => '◀️ Volver', 'callback_data' => 'catb:1'],
-            ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
-        ];
+        $rows[] = [['text' => '📁 ' . $root->name . ' (general)', 'callback_data' => $cb['cat']($root->id)]];
+        $rows[] = array_merge([['text' => '◀️ Volver', 'callback_data' => $cb['back']]], $editTx ? [] : [['text' => '⏭ No registrar', 'callback_data' => 'skp:1']]);
+
+        if ($editTx) {
+            $rows[] = $cb['footer'];
+        }
 
         return $rows;
+    }
+
+    /**
+     * Callbacks del selector de categorías. Al registrar (pendiente) usan
+     * cat:/catg:/catb:; al corregir un movimiento ya guardado, ed:…:<tx>.
+     */
+    private function categoryCallbacks(?int $editTx): array
+    {
+        if ($editTx) {
+            return [
+                'cat'    => fn (int $id) => "ed:set:{$editTx}:{$id}",
+                'catg'   => fn (int $id) => "ed:catg:{$editTx}:{$id}",
+                'back'   => "ed:catb:{$editTx}",
+                'footer' => [['text' => '✖️ Dejar como está', 'callback_data' => "ed:x:{$editTx}"]],
+            ];
+        }
+
+        return [
+            'cat'    => fn (int $id) => 'cat:' . $id,
+            'catg'   => fn (int $id) => 'catg:' . $id,
+            'back'   => 'catb:1',
+            'footer' => [
+                ['text' => '✏️ Editar concepto', 'callback_data' => 'pdesc:1'],
+                ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+            ],
+        ];
+    }
+
+    // ── Corrección de concepto y categoría ───────────────────────────
+
+    /** Texto de confirmación de un movimiento registrado */
+    public function transactionSummary(Transaction $tx, string $title = ''): string
+    {
+        $tx->loadMissing(['account', 'category']);
+
+        $title = $title ?: '✅ ' . match ($tx->type) {
+            Transaction::TYPE_INCOME   => 'Abono',
+            Transaction::TYPE_INTEREST => 'Interés',
+            default                    => 'Gasto',
+        } . ' registrado';
+
+        return $title . "\n"
+            . format_currency($tx->amount) . ' · ' . $tx->description . "\n"
+            . $tx->account->name
+            . ($tx->category ? ' · ' . $tx->category->name : '')
+            . ' · ' . $tx->date->translatedFormat('j M Y');
+    }
+
+    /** Botones para corregir un movimiento ya registrado */
+    public function correctionKeyboard(Transaction $tx, array $extraRow = []): array
+    {
+        $row = [];
+
+        if (in_array($tx->type, [Transaction::TYPE_EXPENSE, Transaction::TYPE_INCOME], true)) {
+            $row[] = ['text' => '🏷 Cambiar categoría', 'callback_data' => 'ed:cat:' . $tx->id];
+        }
+
+        $row[] = ['text' => '✏️ Editar concepto', 'callback_data' => 'ed:desc:' . $tx->id];
+
+        return array_values(array_filter([$row, $extraRow]));
+    }
+
+    /**
+     * ed:cat:<tx>           → selector de categorías para corregir
+     * ed:catg:<tx>:<root>   → subcategorías de un grupo
+     * ed:catb:<tx>          → volver a grupos
+     * ed:set:<tx>:<cat>     → guardar la categoría nueva
+     * ed:desc:<tx>          → esperar el nuevo concepto por texto
+     * ed:x:<tx>             → cancelar y dejar el resumen
+     */
+    private function handleEditCallback(int|string $chatId, int $messageId, string $data): void
+    {
+        [, $action, $txId, $id] = array_pad(explode(':', $data, 4), 4, null);
+
+        $tx = ctype_digit((string) $txId) ? Transaction::with(['account', 'category'])->find((int) $txId) : null;
+
+        if ($tx === null) {
+            $this->telegram->editMessageText($chatId, $messageId, 'ℹ️ Ese movimiento ya no existe.');
+
+            return;
+        }
+
+        $type = $tx->type === Transaction::TYPE_INCOME ? 'income' : 'expense';
+
+        switch ($action) {
+            case 'cat':
+            case 'catb':
+                $this->telegram->editMessageText($chatId, $messageId, $this->transactionSummary($tx, '🏷 Cambiar categoría') . "\n¿Qué categoría?",
+                    $this->categoryRootKeyboard($type, $tx->category_id, $tx->id));
+                break;
+
+            case 'catg':
+                $root = ctype_digit((string) $id) ? Category::active()->find((int) $id) : null;
+                if ($root) {
+                    $this->telegram->editMessageText($chatId, $messageId, '¿Qué categoría? · ' . $root->name, $this->categoryChildrenKeyboard($root, $tx->id));
+                }
+                break;
+
+            case 'set':
+                $category = ctype_digit((string) $id) ? Category::active()->find((int) $id) : null;
+                if ($category) {
+                    $tx->update(['category_id' => $category->id]);
+                    AuditLog::record('telegram_edit_category', ['transaction_id' => $tx->id, 'category_id' => $category->id]);
+                    $tx->setRelation('category', $category);
+                }
+                $this->telegram->editMessageText($chatId, $messageId, $this->transactionSummary($tx, '✅ Categoría actualizada'), $this->correctionKeyboard($tx));
+                break;
+
+            case 'desc':
+                Cache::put($this->editKey($chatId), ['tx_id' => $tx->id], now()->addMinutes(self::PENDING_TTL_MINUTES));
+                $this->telegram->sendMessage($chatId, $this->descriptionPrompt($tx->description ?? ''));
+                break;
+
+            default: // x
+                $this->telegram->editMessageText($chatId, $messageId, $this->transactionSummary($tx), $this->correctionKeyboard($tx));
+        }
+    }
+
+    private function descriptionPrompt(string $current): string
+    {
+        return "✏️ Escribe el concepto.\nActual: «" . $current . "»\n\n"
+            . "Empieza con + para agregarlo al final (ej. «+ uniforme Vale»). Escribe «cancelar» para dejarlo igual.";
+    }
+
+    /**
+     * Si hay una edición de concepto esperando, el texto recibido es el
+     * concepto nuevo (o complemento con «+»). Devuelve true si lo consumió.
+     */
+    private function consumeDescriptionEdit(int|string $chatId, string $text): bool
+    {
+        $edit = Cache::get($this->editKey($chatId));
+
+        if ($edit === null) {
+            return false;
+        }
+
+        Cache::forget($this->editKey($chatId));
+
+        if (in_array(mb_strtolower($text), ['cancelar', 'cancel'], true)) {
+            $this->telegram->sendMessage($chatId, 'Ok, el concepto se queda igual.');
+
+            return true;
+        }
+
+        $compose = function (string $current) use ($text): string {
+            $new = str_starts_with($text, '+') ? trim($current . ' ' . trim(mb_substr($text, 1))) : $text;
+
+            return Str::limit($new, 500, '');
+        };
+
+        // Movimiento ya registrado
+        if (! empty($edit['tx_id'])) {
+            $tx = Transaction::with(['account', 'category'])->find((int) $edit['tx_id']);
+
+            if ($tx === null) {
+                $this->telegram->sendMessage($chatId, 'ℹ️ Ese movimiento ya no existe.');
+
+                return true;
+            }
+
+            $tx->update(['description' => $compose((string) $tx->description)]);
+            AuditLog::record('telegram_edit_description', ['transaction_id' => $tx->id]);
+
+            $this->telegram->sendMessage($chatId, $this->transactionSummary($tx, '✅ Concepto actualizado'), $this->correctionKeyboard($tx));
+
+            return true;
+        }
+
+        // Movimiento pendiente: actualizar y volver a preguntar el paso en curso
+        $pending = Cache::get($this->pendingKey($chatId));
+
+        if ($pending === null) {
+            $this->telegram->sendMessage($chatId, '⏰ Ese registro expiró. Mándame el gasto de nuevo.');
+
+            return true;
+        }
+
+        $pending['description'] = $compose((string) ($pending['description'] ?? ''));
+        Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+        $this->reaskPending($chatId, $pending);
+
+        return true;
+    }
+
+    /** Repite la pregunta del paso en que va el pendiente, con el resumen actualizado */
+    private function reaskPending(int|string $chatId, array $pending): void
+    {
+        $summary = $this->pendingSummary($pending);
+
+        if (! empty($pending['ask_type'])) {
+            $this->telegram->sendMessage($chatId, $summary . "\n¿Qué es este movimiento?", $this->typeKeyboard());
+
+            return;
+        }
+
+        if (empty($pending['account_id'])) {
+            $this->telegram->sendMessage($chatId, $summary . "\n" . $this->accountQuestion($pending['type'] ?? 'expense'), $this->accountKeyboard());
+
+            return;
+        }
+
+        $type = $pending['type'] ?? 'expense';
+        $pending['category_suggested'] = $this->memory()->suggest($pending['description'], $type)
+            ?? ($pending['category_suggested'] ?? null);
+        Cache::put($this->pendingKey($chatId), $pending, now()->addMinutes(self::PENDING_TTL_MINUTES));
+
+        $this->telegram->sendMessage($chatId, $summary . "\n¿Qué categoría?", $this->categoryRootKeyboard($type, $pending['category_suggested']));
+    }
+
+    private function editKey(int|string $chatId): string
+    {
+        return 'telegram:edit:' . $chatId;
     }
 
     private function normalize(string $value): string

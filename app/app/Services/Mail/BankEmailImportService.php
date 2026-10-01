@@ -214,13 +214,9 @@ class BankEmailImportService
             $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $transaction->id]);
             AuditLog::record('bank_email_autoregister', ['transaction_id' => $transaction->id, 'bank_email_id' => $email->id]);
 
-            $transaction->load('category');
-
             $this->notify(
-                '✅ Registrado desde correo de ' . ucfirst($email->bank) . "\n"
-                    . format_currency($transaction->amount) . ' · ' . $transaction->description . "\n"
-                    . $account->name . ' · ' . $transaction->category->name . ' · ' . $transaction->date->translatedFormat('j M Y'),
-                [[['text' => '↩️ Deshacer', 'callback_data' => 'mail:undo:' . $email->id]]]
+                $this->telegramFlow->transactionSummary($transaction, '✅ Registrado desde correo de ' . ucfirst($email->bank)),
+                $this->telegramFlow->correctionKeyboard($transaction, [['text' => '↩️ Deshacer', 'callback_data' => 'mail:undo:' . $email->id]])
             );
 
             return;
