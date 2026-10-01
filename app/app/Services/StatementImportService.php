@@ -198,6 +198,11 @@ class StatementImportService
                 $charge = RecurringCharge::find((int) $row['recurring_id']);
 
                 if ($charge && $charge->account_id === $account->id && $charge->is_active && $charge->type === $type) {
+                    // Aprende cómo lo escribe el banco para reconocerlo solo la próxima vez
+                    if (blank($charge->statement_text) && ($key = $this->memory->key($description))) {
+                        $charge->update(['statement_text' => $key]);
+                    }
+
                     $tx = $this->charges->applyCharge($charge, $amount, $date);
 
                     if ($categoryId && (int) $tx->category_id !== (int) $categoryId) {

@@ -43,6 +43,8 @@ class VisionExpenseService
             . 'Reglas: "amount" string decimal positivo con 2 decimales, sin símbolo ni comas. '
             . '"description" texto corto capitalizado (comercio o concepto). '
             . '"date" fecha del movimiento YYYY-MM-DD o null si no es visible; hoy es ' . now()->toDateString() . '. '
+            . 'Si la fecha no trae año (ej. "24-sep." o "24 Sep"), usa el año actual, o el anterior si así quedaría en el futuro; '
+            . 'nunca uses la fecha de hoy en lugar de la fecha impresa. '
             . '"type": "expense" si es cargo/compra/descuento, "income" si es abono/depósito/pago recibido. '
             . 'Para gastos, "category" debe ser exactamente uno de: ' . implode(', ', $expenseCategories) . '; '
             . 'para abonos, uno de: ' . implode(', ', $incomeCategories) . '; o null si ninguno aplica. '

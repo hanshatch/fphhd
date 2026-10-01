@@ -154,6 +154,21 @@
                                     class="!py-2 !px-3 !rounded-lg text-xs min-h-[38px]" />
                             </div>
 
+                            @if(! $rec && $recurrings->isNotEmpty())
+                            <div class="col-span-2 min-w-0 flex items-center gap-2" x-show="!isTransfer">
+                                <span class="text-xs text-[#878787] flex-shrink-0">↻ Recurrente</span>
+                                <select name="rows[{{ $i }}][recurring_id]" x-bind:disabled="isTransfer"
+                                    class="w-full min-w-0 rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
+                                    <option value="">No es un cargo recurrente</option>
+                                    @foreach($recurrings as $charge)
+                                    <option value="{{ $charge->id }}" x-show="type === '{{ $charge->type }}'">
+                                        {{ $charge->name }} · {{ format_currency($charge->amount) }} · vence {{ $charge->next_application_date->translatedFormat('j M') }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
+
                             <div class="min-w-0 flex items-center gap-2" x-show="isTransfer" x-cloak>
                                 <span class="text-xs text-[#878787] flex-shrink-0" x-text="type === 'transfer_out' ? 'Hacia' : 'Desde'"></span>
                                 <select name="rows[{{ $i }}][counterparty_account_id]" x-model="counterparty"

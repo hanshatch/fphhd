@@ -395,6 +395,64 @@ class StatementImportTest extends TestCase
         $this->assertArrayNotHasKey('recurring', $rows[0]);
     }
 
+    public function test_exact_amount_matches_recurring_even_if_bank_uses_another_name(): void
+    {
+        $account = $this->account();
+        $icloud  = \App\Models\RecurringCharge::create([
+            'name' => 'Servicio iCloud', 'account_id' => $account->id, 'type' => 'expense', 'amount' => '179.00',
+            'day_of_month' => 24, 'start_date' => '2026-01-01', 'next_application_date' => '2026-09-24', 'is_active' => true,
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '179.00', 'description' => 'APPLE.COM/BILL CUPERTINO', 'date' => '2026-09-24', 'type' => 'expense', 'category' => null],
+            ['amount' => '178.00', 'description' => 'OTRA COSA', 'date' => '2026-09-24', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $token = basename($this->upload($account)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$account->id}:{$token}");
+
+        $this->assertSame($icloud->id, $rows[0]['recurring']['id']);
+        // Monto distinto y sin nombre en común: no se liga solo
+        $this->assertArrayNotHasKey('recurring', $rows[1]);
+    }
+
+    public function test_manual_link_applies_recurring_and_learns_statement_text(): void
+    {
+        $account = $this->account();
+        $gym     = \App\Models\RecurringCharge::create([
+            'name' => 'Gimnasio', 'account_id' => $account->id, 'type' => 'expense', 'amount' => '500.00',
+            'day_of_month' => 20, 'start_date' => '2026-01-01', 'next_application_date' => '2026-09-20', 'is_active' => true,
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '520.00', 'description' => 'SPORT CITY SATELITE 22', 'date' => '2026-09-20', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+        $token    = basename($location);
+
+        // Sin empate automático: la revisión ofrece ligarlo a mano
+        $this->get($location)->assertOk()
+            ->assertSee('No es un cargo recurrente')
+            ->assertSee('Gimnasio · $500.00');
+
+        $this->post(route('accounts.import.store', [$account, $token]), ['rows' => [[
+            'include' => 1, 'date' => '2026-09-20', 'description' => 'SPORT CITY SATELITE 22',
+            'amount' => '520.00', 'type' => 'expense', 'recurring_id' => $gym->id,
+        ]]])->assertSessionHas('status', '1 cargo recurrente aplicado con el monto real.');
+
+        $gym->refresh();
+        $this->assertSame('sport city satelite', $gym->statement_text);
+        $this->assertSame('2026-10-20', $gym->next_application_date->toDateString());
+        $this->assertSame('520.00', Transaction::sole()->amount);
+
+        // El mes siguiente lo reconoce solo por el texto aprendido, aunque el monto cambie un poco
+        $match = app(\App\Services\RecurringMatchService::class)->assign($account, [0 => [
+            'type' => 'expense', 'amount' => '510.00', 'date' => '2026-10-21', 'description' => 'SPORT CITY SATELITE 22',
+        ]]);
+        $this->assertSame($gym->id, $match[0]['charge']->id ?? null);
+    }
+
     public function test_upload_without_vision_key_redirects_with_message(): void
     {
         config(['services.openai.api_key' => null]);

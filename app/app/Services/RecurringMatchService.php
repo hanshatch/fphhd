@@ -48,15 +48,25 @@ class RecurringMatchService
             $date = Carbon::parse($row['date']);
 
             foreach ($charges as $charge) {
-                if ($charge->type !== $row['type'] || ! $this->nameMatches($charge, $row['description'])) {
+                if ($charge->type !== $row['type']) {
                     continue;
                 }
 
+                // El banco casi nunca usa tu nombre del cargo ("APPLE.COM/BILL" vs "Servicio iCloud"):
+                // un monto idéntico en la misma cuenta y fecha basta aunque el nombre no coincida
+                $nameOk = $this->nameMatches($charge, $row['description']);
+                $exact  = bccomp((string) $charge->amount, $row['amount'], 2) === 0;
+
                 // Pendiente: aplicar con el monto real
                 if ($charge->is_active
+                    && ($nameOk || $exact)
                     && abs($charge->next_application_date->diffInDays($date, false)) <= self::DAYS
                     && ($score = $this->score($charge, (string) $charge->amount, $row['amount'])) !== null) {
                     $pairs[] = [$score, $key, 'c' . $charge->id, 'apply', $charge, null];
+                }
+
+                if (! $nameOk) {
+                    continue;
                 }
 
                 // Ya aplicado con el estimado: ajustar ese movimiento
@@ -129,7 +139,9 @@ class RecurringMatchService
         $haystack = $this->normalize($description);
 
         if (filled($charge->statement_text)) {
-            return str_contains($haystack, $this->normalize($charge->statement_text));
+            // También solo letras: "apple com bill" empata "APPLE.COM/BILL CUPERTINO"
+            return str_contains($haystack, $this->normalize($charge->statement_text))
+                || str_contains($this->letters($description), $this->letters($charge->statement_text));
         }
 
         $words = array_intersect($this->words($charge->name), $this->words($description));
@@ -145,6 +157,11 @@ class RecurringMatchService
         preg_match_all('/[a-z]{4,}/', $this->normalize($text), $m);
 
         return array_values(array_diff(array_unique($m[0]), $noise));
+    }
+
+    private function letters(string $text): string
+    {
+        return trim(preg_replace('/[^a-z]+/', ' ', Str::ascii(mb_strtolower($text))));
     }
 
     private function normalize(string $text): string

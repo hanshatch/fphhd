@@ -52,6 +52,8 @@ class StatementImportController extends Controller
             'token'      => $token,
             'rows'       => $rows,
             'categories' => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
+            'recurrings' => \App\Models\RecurringCharge::active()->where('account_id', $account->id)
+                ->orderBy('next_application_date')->get(),
             'others'     => Account::where('is_active', true)->where('id', '<>', $account->id)->get()
                 ->sortBy(fn (Account $a) => mb_strtolower($a->displayLabel()))->values(),
         ]);
