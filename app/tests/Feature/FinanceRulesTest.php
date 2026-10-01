@@ -78,6 +78,23 @@ class FinanceRulesTest extends TestCase
         $this->assertSame('3500.00', $service->balance($debit)); // 5000 - 1500
     }
 
+    public function test_transfer_out_of_credit_card_raises_debt_in_every_balance_view(): void
+    {
+        $tdc   = $this->creditAccount();
+        $debit = $this->debitAccount();
+
+        // Disposición: de la tarjeta a la cuenta de débito
+        $this->tx($tdc, 'transfer', '200.00', ['counterparty_account_id' => $debit->id]);
+
+        $svc = app(\App\Services\AccountService::class);
+
+        $this->assertSame('200.00', bcadd($svc->balance($tdc), '0', 2));
+        $this->assertSame('200.00', bcadd($svc->balances(collect([$tdc]))[$tdc->id], '0', 2));
+
+        [, $running] = $svc->runningBalances($tdc);
+        $this->assertSame('200.00', bcadd(end($running), '0', 2));
+    }
+
     public function test_credit_balance_refunds_lower_debt(): void
     {
         $tdc = $this->creditAccount();

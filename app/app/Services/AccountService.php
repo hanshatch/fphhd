@@ -25,13 +25,16 @@ class AccountService
         $balance = (string) $account->initial_balance;
 
         if ($account->isCredit()) {
-            // TDC: la deuda crece con gastos/comisiones y baja con pagos
+            // TDC: la deuda crece con gastos/comisiones y con transferencias que
+            // SALEN de la tarjeta (disposiciones a otra cuenta), y baja con pagos
             // (transfers entrantes) y reembolsos/bonificaciones (income/interest)
             $expenses = (string) ($query()->whereIn('type', ['expense', 'fee'])->sum('amount') ?: 0);
+            $drawn    = (string) ($query()->where('type', 'transfer')->sum('amount') ?: 0);
             $payments = (string) ($transferIn()->where('type', 'transfer')->sum('amount') ?: 0);
             $refunds  = (string) ($query()->whereIn('type', ['income', 'interest'])->sum('amount') ?: 0);
 
             $balance = bcadd($balance, $expenses, 2);
+            $balance = bcadd($balance, $drawn, 2);
             $balance = bcsub($balance, $payments, 2);
             $balance = bcsub($balance, $refunds, 2);
         } else {
@@ -80,7 +83,7 @@ class AccountService
             $balance = (string) $account->initial_balance;
 
             if ($account->isCredit()) {
-                $balance = bcadd($balance, $sumOf(['expense', 'fee']), 2);
+                $balance = bcadd($balance, $sumOf(['expense', 'fee', 'transfer']), 2);
                 $balance = bcsub($balance, $transIn, 2);
                 $balance = bcsub($balance, $sumOf(['income', 'interest']), 2);
             } else {
@@ -169,10 +172,11 @@ class AccountService
             $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
 
             if ($account->isCredit()) {
-                // Deuda: sube con gastos/comisiones, baja con pagos y reembolsos
+                // Deuda: sube con gastos/comisiones y disposiciones, baja con pagos y reembolsos
                 $running = match (true) {
                     in_array($tx->type, ['expense', 'fee'])      => bcadd($running, $amount, 2),
                     $isIncoming                                  => bcsub($running, $amount, 2),
+                    $tx->type === 'transfer'                     => bcadd($running, $amount, 2),
                     in_array($tx->type, ['income', 'interest'])  => bcsub($running, $amount, 2),
                     default                                      => $running,
                 };
