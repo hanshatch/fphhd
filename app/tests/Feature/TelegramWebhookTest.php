@@ -216,6 +216,57 @@ class TelegramWebhookTest extends TestCase
         $this->assertSame(1, Transaction::count());
     }
 
+    private function openBank(): Account
+    {
+        return Account::create([
+            'name' => 'OpenBank', 'type' => 'debit', 'institution' => 'other',
+            'initial_balance' => '0.00', 'color' => '#000000',
+        ]);
+    }
+
+    public function test_category_question_can_register_a_transfer_to_own_account(): void
+    {
+        $account  = $this->account();
+        $openbank = $this->openBank();
+        $this->category('Transporte');
+
+        $this->postUpdate($this->textMessage('4,000 traspaso'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+
+        $this->postUpdate($this->callbackUpdate('xfr:1'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('xto:' . $openbank->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame('4000.00', $tx->amount);
+        $this->assertSame($account->id, $tx->account_id);
+        $this->assertSame($openbank->id, $tx->counterparty_account_id);
+        $this->assertNull($tx->category_id);
+    }
+
+    public function test_transfer_links_existing_loose_deposit_instead_of_duplicating(): void
+    {
+        $account  = $this->account();
+        $openbank = $this->openBank();
+        $this->category('Transporte');
+
+        $deposit = Transaction::create([
+            'date' => now()->toDateString(), 'type' => 'income', 'amount' => '4000.00',
+            'account_id' => $openbank->id, 'description' => 'SPEI recibido',
+        ]);
+
+        $this->postUpdate($this->textMessage('4,000 traspaso'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('acc:' . $account->id))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('xfr:1'))->assertNoContent();
+        $this->postUpdate($this->callbackUpdate('xto:' . $openbank->id))->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame($deposit->id, $tx->id);
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($account->id, $tx->account_id);
+        $this->assertSame($openbank->id, $tx->counterparty_account_id);
+    }
+
     public function test_expense_with_relative_date_is_registered_yesterday(): void
     {
         $account = $this->account();

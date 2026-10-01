@@ -251,6 +251,28 @@ class BankEmailImportTest extends TestCase
         $this->assertCount(0, $this->sent);
     }
 
+    public function test_banamex_generic_withdrawal_can_be_registered_as_transfer_from_category_question(): void
+    {
+        $cheques  = $this->account('Cheques', 'banamex', '379');
+        $openbank = $this->account('OpenBank', 'other');
+
+        $this->inbox = [$this->mail('t1', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
+        app(BankEmailImportService::class)->sync();
+
+        $last     = end($this->sent);
+        $keyboard = json_decode($last['reply_markup'] ?? '{}', true)['inline_keyboard'] ?? [];
+        $this->assertSame('🔁 Transferencia a mis cuentas', $keyboard[0][0]['text'] ?? null);
+
+        $this->tgCallback('xfr:1')->assertNoContent();
+        $this->tgCallback('xto:' . $openbank->id)->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame($openbank->id, $tx->counterparty_account_id);
+        $this->assertSame(BankEmail::STATUS_REGISTERED, BankEmail::sole()->status);
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

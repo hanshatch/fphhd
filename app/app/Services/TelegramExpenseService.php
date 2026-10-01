@@ -511,6 +511,30 @@ class TelegramExpenseService
 
         [$action, $id] = array_pad(explode(':', $data, 2), 2, null);
 
+        // Es transferencia entre cuentas propias: elegir la otra cuenta
+        if ($action === 'xfr' && ! empty($pending['account_id'])) {
+            $incoming = ($pending['type'] ?? 'expense') === 'income';
+            $buttons  = Account::where('is_active', true)->where('id', '<>', $pending['account_id'])->get()
+                ->sortBy(fn (Account $a) => mb_strtolower($a->displayLabel()))->values()
+                ->map(fn (Account $a) => ['text' => $a->displayLabel(), 'callback_data' => 'xto:' . $a->id])
+                ->all();
+
+            $this->telegram->editMessageText($chatId, $messageId,
+                $this->pendingSummary($pending) . "\n🔁 " . ($incoming ? '¿De qué cuenta tuya vino?' : '¿A qué cuenta tuya fue?'),
+                array_merge(array_chunk($buttons, 2), [[
+                    ['text' => '◀️ Volver', 'callback_data' => 'catb:1'],
+                    ['text' => '⏭ No registrar', 'callback_data' => 'skp:1'],
+                ]]));
+
+            return;
+        }
+
+        if ($action === 'xto' && ctype_digit((string) $id) && ! empty($pending['account_id'])) {
+            $this->storeTransfer($chatId, $messageId, $pending, (int) $id);
+
+            return;
+        }
+
         // Editar / complementar el concepto antes de registrar
         if ($action === 'pdesc') {
             Cache::put($this->editKey($chatId), ['tx_id' => null], now()->addMinutes(self::PENDING_TTL_MINUTES));
@@ -645,6 +669,61 @@ class TelegramExpenseService
         $this->telegram->editMessageText($chatId, $messageId, $this->transactionSummary($transaction), $this->correctionKeyboard($transaction));
 
         // Si venían más movimientos del screenshot, seguir con el siguiente
+        if (! empty($pending['queue'])) {
+            $this->startPending($chatId, $pending['queue'], $pending['total'] ?? count($pending['queue']) + 1);
+        }
+    }
+
+    /**
+     * Registra el pendiente como transferencia entre cuentas propias. Si en la
+     * otra cuenta ya existe el abono/cargo suelto (mismo monto, ±3 días), lo
+     * convierte en la transferencia en vez de duplicarlo.
+     */
+    private function storeTransfer(int|string $chatId, int $messageId, array $pending, int $otherId): void
+    {
+        $account = Account::find($pending['account_id']);
+        $other   = Account::find($otherId);
+
+        if (! $account || ! $other || $other->id === $account->id) {
+            return;
+        }
+
+        $incoming    = ($pending['type'] ?? 'expense') === 'income';
+        [$from, $to] = $incoming ? [$other, $account] : [$account, $other];
+        $date        = \Illuminate\Support\Carbon::parse($pending['date'] ?? now());
+
+        $twin = Transaction::where('account_id', $other->id)
+            ->where('type', $incoming ? Transaction::TYPE_EXPENSE : Transaction::TYPE_INCOME)
+            ->where('amount', $pending['amount'])
+            ->whereDate('date', '>=', $date->copy()->subDays(3)->toDateString())
+            ->whereDate('date', '<=', $date->copy()->addDays(3)->toDateString())
+            ->orderByDesc('id')
+            ->first();
+
+        $transaction = $twin
+            ? app(TransactionMatchService::class)->convertToTransfer($twin, $from, $to)
+            : Transaction::create([
+                'date'                    => $date->toDateString(),
+                'type'                    => Transaction::TYPE_TRANSFER,
+                'amount'                  => $pending['amount'],
+                'account_id'              => $from->id,
+                'counterparty_account_id' => $to->id,
+                'description'             => 'Transferencia ' . $from->displayLabel() . ' → ' . $to->displayLabel(),
+            ]);
+
+        Cache::forget($this->pendingKey($chatId));
+        AuditLog::record('telegram_transfer', ['transaction_id' => $transaction->id, 'linked_existing' => (bool) $twin]);
+
+        if (! empty($pending['bank_email_id'])) {
+            app(\App\Services\Mail\BankEmailImportService::class)->markRegistered((int) $pending['bank_email_id'], $transaction);
+        }
+
+        $title = '🔁 Transferencia registrada' . ($twin ? ' (ligada al movimiento que ya tenías en ' . $other->name . ')' : '');
+
+        $this->telegram->editMessageText($chatId, $messageId,
+            $title . "\n" . format_currency($transaction->amount) . ' · ' . $transaction->description . ' · ' . $transaction->date->translatedFormat('j M Y'),
+            $this->correctionKeyboard($transaction));
+
         if (! empty($pending['queue'])) {
             $this->startPending($chatId, $pending['queue'], $pending['total'] ?? count($pending['queue']) + 1);
         }
@@ -869,6 +948,11 @@ class TelegramExpenseService
     {
         $cb   = $this->categoryCallbacks($editTx);
         $rows = [];
+
+        // Un retiro/depósito sin comercio suele ser un movimiento entre tus cuentas
+        if (! $editTx) {
+            $rows[] = [['text' => $type === 'income' ? '🔁 Viene de otra cuenta mía' : '🔁 Transferencia a mis cuentas', 'callback_data' => 'xfr:1']];
+        }
 
         if ($suggestedId !== null && ($suggested = Category::active()->find($suggestedId))) {
             $label = $editTx ? '✓ Actual: ' : '⭐ Sugerida: ';
