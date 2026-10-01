@@ -70,7 +70,7 @@ class StatementImportService
         $analyzed = false;
 
         $context = 'La cuenta es «' . $account->name . '» (' . $account->institutionLabel() . ', ' . $account->type . '). '
-            . (self::INSTITUTION_HINTS[$account->institution] ?? '');
+            . $this->accountHint($account);
 
         /** @var UploadedFile $image */
         foreach ($images as $image) {
@@ -90,7 +90,13 @@ class StatementImportService
             $analyzed = true;
 
             foreach ($items as $item) {
-                $rows[] = $this->buildRow($account, $item);
+                $pocket = $this->pocketRule($account, $item);
+
+                if ($pocket === false) {
+                    continue; // movimiento de otra subcuenta (débito u otra cajita)
+                }
+
+                $rows[] = $this->buildRow($account, $item, $pocket);
             }
         }
 
@@ -258,10 +264,28 @@ class StatementImportService
 
     // ── Helpers ───────────────────────────────────────────────────────
 
-    private function buildRow(Account $account, array $item): array
+    private function buildRow(Account $account, array $item, ?array $pocket = null): array
     {
         $date = $this->sanitizeDate($item['date']);
         $type = $item['type'];
+
+        // Movimiento entre la cuenta y una cajita del mismo banco: es transferencia
+        if ($pocket !== null) {
+            $description = Str::limit(Str::ucfirst($item['description']), 500, '');
+            $existing    = $this->matcher->existing($account, $pocket['type'] === 'transfer_in' ? 'in' : 'out', $item['amount'], $date);
+
+            return [
+                'date'                    => $date,
+                'description'             => $description,
+                'amount'                  => $item['amount'],
+                'type'                    => $pocket['type'],
+                'category_id'             => null,
+                'category_source'         => null,
+                'duplicate'               => $existing ? $this->matcher->describe($existing, $account) : null,
+                'counterparty_account_id' => $pocket['other']?->id,
+                'twin'                    => null,
+            ];
+        }
 
         $description = Str::limit(Str::ucfirst($item['description']), 500, '');
 
@@ -300,6 +324,87 @@ class StatementImportService
             'counterparty_account_id' => $twin?->account_id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
+    }
+
+    // ── Subcuentas (cajitas de Nu) ────────────────────────────────────
+
+    private const POCKET_IN  = '/agregaste dinero a tu cajita/';
+    private const POCKET_OUT = '/retiraste dinero de tu cajita/';
+
+    /** Pista para el lector según la institución y si la cuenta es la de débito o una cajita */
+    private function accountHint(Account $account): string
+    {
+        if ($account->institution !== 'nu') {
+            return self::INSTITUTION_HINTS[$account->institution] ?? '';
+        }
+
+        $format = 'En esos renglones la description debe ser exactamente "Agregaste dinero a tu Cajita · <subtítulo>" '
+            . 'o "Retiraste dinero de tu Cajita · <subtítulo>", donde el subtítulo es el nombre de la cajita sin emoji (ej. "Cajita Turbo"). ';
+
+        if ($this->isPocket($account)) {
+            return 'App Nu: las capturas mezclan la cuenta de débito y las cajitas. Esta cuenta es la cajita «' . $account->name . '». '
+                . 'Extrae SOLO los renglones "Agregaste dinero a tu Cajita" y "Retiraste dinero de tu Cajita" (y rendimientos de la cajita si aparecen). '
+                . 'Ignora compras, recargas, transferencias enviadas o recibidas y compensaciones SPEI: son de la cuenta de débito. ' . $format;
+        }
+
+        return 'App Nu (cuenta de débito): compras, recargas y "Transferencia enviada" son cargos; "Transferencia recibida", '
+            . '"Compensación de retraso SPEI" y depósitos son abonos. "Agregaste dinero a tu Cajita" es dinero que SALE hacia la cajita '
+            . 'y "Retiraste dinero de tu Cajita" es dinero que ENTRA, aunque la app muestre ambos con "+". ' . $format;
+    }
+
+    /**
+     * Reglas para cajitas de Nu:
+     *  - null:  renglón normal
+     *  - false: no pertenece a esta cuenta (descartar)
+     *  - ['type' => transfer_in|transfer_out, 'other' => ?Account]: transferencia débito ↔ cajita
+     */
+    private function pocketRule(Account $account, array $item): array|false|null
+    {
+        if ($account->institution !== 'nu') {
+            return null;
+        }
+
+        $desc  = Str::ascii(mb_strtolower((string) $item['description']));
+        $isIn  = (bool) preg_match(self::POCKET_IN, $desc);   // a la cajita
+        $isOut = (bool) preg_match(self::POCKET_OUT, $desc);  // de la cajita
+
+        $siblings = Account::where('is_active', true)->where('institution', 'nu')->get();
+        $pockets  = $siblings->filter(fn (Account $a) => $this->isPocket($a));
+        $debits   = $siblings->where('type', Account::TYPE_DEBIT);
+        $named    = $pockets->first(fn (Account $p) => $this->mentions($desc, $p->name));
+
+        if ($this->isPocket($account)) {
+            if (! $isIn && ! $isOut) {
+                // Los rendimientos de la cajita sí son de aquí; lo demás es de la cuenta de débito
+                return preg_match('/rendimiento|interes/', $desc) ? null : false;
+            }
+
+            if ($named && $named->id !== $account->id) {
+                return false; // es de otra cajita
+            }
+
+            return ['type' => $isIn ? 'transfer_in' : 'transfer_out', 'other' => $debits->count() === 1 ? $debits->first() : null];
+        }
+
+        if (! $isIn && ! $isOut) {
+            return null;
+        }
+
+        $target = $named ?? ($pockets->count() === 1 ? $pockets->first() : null);
+
+        return ['type' => $isIn ? 'transfer_out' : 'transfer_in', 'other' => $target];
+    }
+
+    private function isPocket(Account $account): bool
+    {
+        return in_array($account->type, [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT], true);
+    }
+
+    private function mentions(string $haystack, string $name): bool
+    {
+        $letters = fn (string $t) => trim(preg_replace('/[^a-z]+/', ' ', Str::ascii(mb_strtolower($t))));
+
+        return $letters($name) !== '' && str_contains(' ' . $letters($haystack) . ' ', ' ' . $letters($name) . ' ');
     }
 
     /** Marca los renglones que corresponden a un cargo recurrente (pendiente o ya aplicado) */

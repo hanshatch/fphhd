@@ -477,6 +477,82 @@ class StatementImportTest extends TestCase
         $this->upload($account, 7)->assertSessionHasErrors('images');
     }
 
+    /** Nu débito + dos cajitas, y la captura mezclada que muestra la app de Nu */
+    private function nuSetup(): array
+    {
+        $debit = Account::create(['name' => 'Nu', 'type' => 'debit', 'institution' => 'nu', 'initial_balance' => '0.00', 'color' => '#820ad1']);
+        $turbo = Account::create(['name' => 'Cajita Turbo', 'type' => 'investment', 'institution' => 'nu', 'initial_balance' => '0.00', 'color' => '#820ad1']);
+        $gen   = Account::create(['name' => 'General', 'type' => 'investment', 'institution' => 'nu', 'initial_balance' => '0.00', 'color' => '#820ad1']);
+
+        $this->fakeVision([
+            ['amount' => '3903.30', 'description' => 'Agregaste dinero a tu Cajita · Cajita Turbo', 'date' => '2026-09-30', 'type' => 'income', 'category' => null],
+            ['amount' => '4000.00', 'description' => 'transfer nu', 'date' => '2026-09-30', 'type' => 'income', 'category' => null],
+            ['amount' => '200.00',  'description' => 'Telcel Amigo Sin Límite', 'date' => '2026-09-24', 'type' => 'expense', 'category' => null],
+            ['amount' => '120.00',  'description' => 'Retiraste dinero de tu Cajita · Cajita Turbo', 'date' => '2026-09-24', 'type' => 'income', 'category' => null],
+            ['amount' => '500.00',  'description' => 'Agregaste dinero a tu Cajita · General', 'date' => '2026-09-20', 'type' => 'income', 'category' => null],
+        ]);
+
+        return [$debit, $turbo, $gen];
+    }
+
+    public function test_nu_capture_uploaded_to_a_pocket_keeps_only_that_pockets_moves_as_transfers(): void
+    {
+        [$debit, $turbo] = $this->nuSetup();
+
+        $token = basename($this->upload($turbo)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$turbo->id}:{$token}");
+
+        // Solo los dos movimientos de Cajita Turbo; débito y la cajita General quedan fuera
+        $this->assertCount(2, $rows);
+        $this->assertSame(['3903.30', '120.00'], array_column($rows, 'amount'));
+        $this->assertSame('transfer_in', $rows[0]['type']);   // agregaste → entra a la cajita
+        $this->assertSame('transfer_out', $rows[1]['type']);  // retiraste → sale de la cajita
+        $this->assertSame($debit->id, $rows[0]['counterparty_account_id']);
+
+        $this->post(route('accounts.import.store', [$turbo, $token]), ['rows' => array_map(fn ($r) => [
+            'include' => 1, 'date' => $r['date'], 'description' => $r['description'], 'amount' => $r['amount'],
+            'type' => $r['type'], 'counterparty_account_id' => $r['counterparty_account_id'],
+        ], $rows)])->assertRedirect(route('accounts.show', $turbo));
+
+        $in  = Transaction::where('amount', '3903.30')->sole();
+        $out = Transaction::where('amount', '120.00')->sole();
+        $this->assertSame([$debit->id, $turbo->id], [$in->account_id, $in->counterparty_account_id]);
+        $this->assertSame([$turbo->id, $debit->id], [$out->account_id, $out->counterparty_account_id]);
+    }
+
+    public function test_nu_capture_uploaded_to_debit_turns_pocket_moves_into_transfers_to_the_right_pocket(): void
+    {
+        [$debit, $turbo, $gen] = $this->nuSetup();
+
+        $token = basename($this->upload($debit)->headers->get('Location'));
+        $rows  = collect(\Illuminate\Support\Facades\Cache::get("statement_import:{$debit->id}:{$token}"))->keyBy('amount');
+
+        $this->assertCount(5, $rows);
+        $this->assertSame('transfer_out', $rows['3903.30']['type']);
+        $this->assertSame($turbo->id, $rows['3903.30']['counterparty_account_id']);
+        $this->assertSame('transfer_in', $rows['120.00']['type']);
+        $this->assertSame('transfer_out', $rows['500.00']['type']);
+        $this->assertSame($gen->id, $rows['500.00']['counterparty_account_id']);
+        $this->assertSame('expense', $rows['200.00']['type']);
+        $this->assertSame('income', $rows['4000.00']['type']);
+    }
+
+    public function test_pocket_move_already_registered_is_flagged_duplicate(): void
+    {
+        [$debit, $turbo] = $this->nuSetup();
+
+        Transaction::create([
+            'date' => '2026-09-30', 'type' => 'transfer', 'amount' => '3903.30',
+            'account_id' => $debit->id, 'counterparty_account_id' => $turbo->id, 'description' => 'Agregaste dinero a tu Cajita',
+        ]);
+
+        $token = basename($this->upload($turbo)->headers->get('Location'));
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$turbo->id}:{$token}");
+
+        $this->assertNotNull($rows[0]['duplicate']);
+        $this->assertNull($rows[1]['duplicate']);
+    }
+
     public function test_upload_without_vision_key_redirects_with_message(): void
     {
         config(['services.openai.api_key' => null]);
