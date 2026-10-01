@@ -273,6 +273,27 @@ class BankEmailImportTest extends TestCase
         $this->assertSame(BankEmail::STATUS_REGISTERED, BankEmail::sole()->status);
     }
 
+    public function test_openbank_move_to_apartados_is_registered_as_transfer_with_undo(): void
+    {
+        // En SQLite la institución "openbank" no pasa el CHECK; se empata por terminación
+        $cheques  = $this->account('Cheques OpenBank', 'other', '9617');
+        $apartado = Account::create(['name' => 'Apartado', 'type' => 'investment', 'institution' => 'other', 'initial_balance' => '0.00', 'color' => '#000000']);
+
+        $this->inbox = [$this->mail('o1', 'noreply@openbank.mx', 'Abono exitoso ✅', BankEmailParserTest::OPENBANK_ABONO, '2026-07-24 07:43')];
+        app(BankEmailImportService::class)->sync();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame($apartado->id, $tx->counterparty_account_id);
+        $this->assertSame('24400.00', $tx->amount);
+        $this->assertStringContainsString('Registrado desde correo de Openbank', $this->lastText());
+
+        $email = BankEmail::sole();
+        $this->tgCallback("mail:undo:{$email->id}")->assertNoContent();
+        $this->assertSame(0, Transaction::count());
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

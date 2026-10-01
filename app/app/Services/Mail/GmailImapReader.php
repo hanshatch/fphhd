@@ -150,6 +150,12 @@ class GmailImapReader implements MailboxReader
             }
         }
 
+        // Algunos bancos (OpenBank) mandan HTML completo en la parte text/plain
+        if ($plain !== null && preg_match('/<(!DOCTYPE|html|body|table)\b/i', $plain)) {
+            $html  = $plain;
+            $plain = null;
+        }
+
         return $plain !== null && trim($plain) !== ''
             ? self::normalizeText($plain)
             : self::htmlToText((string) $html);
@@ -157,6 +163,7 @@ class GmailImapReader implements MailboxReader
 
     public static function htmlToText(string $html): string
     {
+        $html = preg_replace('/<head\b.*?<\/head>/is', ' ', $html);
         $html = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
         $html = preg_replace('/<br\s*\/?>|<\/(p|div|tr|li|h[1-6]|table)>/i', "\n", $html);
         $html = preg_replace('/<\/t[dh]>/i', ' ', $html);

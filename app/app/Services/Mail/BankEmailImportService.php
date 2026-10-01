@@ -133,6 +133,18 @@ class BankEmailImportService
             return;
         }
 
+        // Movimiento interno cuenta → apartado/ahorro del mismo banco: es transferencia
+        if ($p['kind'] === 'to_savings' && $account) {
+            $savings = Account::where('is_active', true)->where('institution', $account->institution)
+                ->whereIn('type', [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT])->get();
+
+            if ($savings->count() === 1) {
+                $this->registerInternalMove($email, $account, $savings->first());
+
+                return;
+            }
+        }
+
         $type = $p['kind'] === 'income' ? 'income' : 'expense';
 
         // 2) Duplicado por número de autorización
@@ -288,6 +300,40 @@ class BankEmailImportService
     {
         $type = ($email->parsed['kind'] ?? 'expense') === 'income' ? 'income' : 'expense';
         $this->telegramFlow->enqueueFromEmail($this->pendingFor($email, $email->account, $type));
+    }
+
+    /**
+     * Cuenta → apartado del mismo banco. Si ya estaba registrada se cierra el
+     * correo; si no, se registra y se avisa con «Deshacer».
+     */
+    private function registerInternalMove(BankEmail $email, Account $from, Account $to): void
+    {
+        $p   = $email->parsed;
+        $dup = $this->matcher->existing($from, 'out', $p['amount'], $p['date'], 1);
+
+        if ($dup && $dup->type === Transaction::TYPE_TRANSFER) {
+            $email->update(['status' => BankEmail::STATUS_DUPLICATE, 'transaction_id' => $dup->id]);
+
+            return;
+        }
+
+        $tx = Transaction::create([
+            'date'                    => $p['date'],
+            'type'                    => Transaction::TYPE_TRANSFER,
+            'amount'                  => $p['amount'],
+            'account_id'              => $from->id,
+            'counterparty_account_id' => $to->id,
+            'description'             => 'Transferencia ' . $from->displayLabel() . ' → ' . $to->displayLabel(),
+        ]);
+
+        $email->update(['status' => BankEmail::STATUS_REGISTERED, 'transaction_id' => $tx->id]);
+        AuditLog::record('bank_email_internal_move', ['transaction_id' => $tx->id, 'bank_email_id' => $email->id]);
+
+        $this->notify(
+            '🔁 Registrado desde correo de ' . ucfirst($email->bank) . "\n"
+                . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y'),
+            [[['text' => '↩️ Deshacer', 'callback_data' => 'mail:undo:' . $email->id]]]
+        );
     }
 
     /** Registra la transferencia entre esta cuenta y otra cuenta propia elegida en Telegram */

@@ -37,6 +37,7 @@ class BankEmailParser
         'nubank.com.br'    => 'nu',
         'mercadopago.com'  => 'mercadopago',
         'mercadopago.com.mx' => 'mercadopago',
+        'openbank.mx'      => 'openbank',
     ];
 
     private const MONTHS = [
@@ -73,6 +74,7 @@ class BankEmailParser
             'banamex' => $this->parseBanamex($subject, $text, $receivedAt),
             'revolut' => $this->parseRevolut($subject, $text, $receivedAt),
             'nu'      => $this->parseNu($subject, $text, $receivedAt),
+            'openbank' => $this->parseOpenbank($subject, $text, $receivedAt),
             default   => null,
         };
 
@@ -254,6 +256,55 @@ class BankEmailParser
                 'description' => trim($c[1]) . ($phone ? ' · ' . $phone : ''),
                 'generic'     => false,
             ]);
+        }
+
+        return null;
+    }
+
+    // ── OpenBank ──────────────────────────────────────────────────────
+
+    /**
+     * - "Recarga exitosa": "Tu recarga de tiempo aire al teléfono 5543589391 por $200.00 se confirmó"
+     * - "Abono exitoso":   "Abonaste $ 24,400.00 desde tu cuenta ****9617 a tus Apartados Open el 24/07/2026"
+     *   (movimiento interno: de la cuenta a los Apartados)
+     * Códigos, límites, tarjeta y estado de cuenta son informativos.
+     */
+    private function parseOpenbank(string $subject, string $text, Carbon $receivedAt): ?array
+    {
+        if (preg_match('/recarga de tiempo aire al tel[eé]fono\s+(\d{6,})\s+por\s+\$\s*([\d.,]+)/iu', $text, $m)) {
+            $amount = parse_money($m[2]);
+
+            return $amount === null ? null : [
+                'kind'        => 'expense',
+                'amount'      => $amount,
+                'currency'    => 'MXN',
+                'date'        => $receivedAt->toDateString(),
+                'last4'       => null,
+                'auth'        => null,
+                'description' => 'Recarga tiempo aire · ' . $m[1],
+                'generic'     => false,
+            ];
+        }
+
+        if (preg_match('/Abonaste\s+\$\s*([\d.,]+)\s+desde tu cuenta\s+\*+\s*(\d{3,4})\s+a tus Apartados[^\n]*?el\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/iu', $text, $m)) {
+            $amount = parse_money($m[1]);
+            $date   = checkdate((int) $m[4], (int) $m[3], (int) $m[5]) ? sprintf('%04d-%02d-%02d', $m[5], $m[4], $m[3]) : $receivedAt->toDateString();
+
+            return $amount === null ? null : [
+                'kind'        => 'to_savings',
+                'amount'      => $amount,
+                'currency'    => 'MXN',
+                'date'        => $date,
+                'last4'       => $m[2],
+                'auth'        => null,
+                'description' => 'Abono a Apartados Open',
+                'generic'     => true,
+            ];
+        }
+
+        // Sin monto: aviso informativo (códigos, límites, tarjeta, estado de cuenta)
+        if (! preg_match('/\$\s*[\d.,]+/', $text)) {
+            return ['kind' => 'info', 'description' => $subject];
         }
 
         return null;

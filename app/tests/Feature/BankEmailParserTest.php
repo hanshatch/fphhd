@@ -277,6 +277,42 @@ TXT;
         $this->assertSame('info', $r['kind']);
     }
 
+    public const OPENBANK_ABONO = "Abonaste dinero a tus Apartados Open\nAbonaste $ 24,400.00 desde tu cuenta ****9617 a tus Apartados Open el 24/07/2026 a las 07:43:48.\n¿No reconoces esta operación? Llama a la Línea Open: 55 7005 5755.";
+
+    public function test_openbank_top_up_and_move_to_apartados(): void
+    {
+        $r = $this->parser()->parse('noreply@openbank.mx', 'Recarga exitosa ✅',
+            "Tu recarga está lista\n¡Hola, Hans Hatch Dorantes!\nTu recarga de tiempo aire al teléfono 5543589391 por $200.00 se confirmó correctamente.", Carbon::parse('2026-10-01 06:43'));
+
+        $this->assertSame('openbank', $r['bank']);
+        $this->assertSame('expense', $r['kind']);
+        $this->assertSame('200.00', $r['amount']);
+        $this->assertSame('2026-10-01', $r['date']);
+        $this->assertSame('Recarga tiempo aire · 5543589391', $r['description']);
+
+        $a = $this->parser()->parse('noreply@openbank.mx', 'Abono exitoso ✅', self::OPENBANK_ABONO, Carbon::parse('2026-07-24 07:44'));
+
+        $this->assertSame('to_savings', $a['kind']);
+        $this->assertSame('24400.00', $a['amount']);
+        $this->assertSame('2026-07-24', $a['date']);
+        $this->assertSame('9617', $a['last4']);
+
+        $info = $this->parser()->parse('noreply@openbank.mx', 'Aquí está tu código 🔐', 'Tu código es 123456. No lo compartas.', now());
+        $this->assertSame('info', $info['kind']);
+    }
+
+    public function test_html_sent_as_plain_text_is_converted(): void
+    {
+        $html = '<!DOCTYPE html><html><head><title>Recarga exitosa</title><style>p{color:red}</style></head>'
+            . '<body><table><tr><td>Tu recarga de tiempo aire al tel&eacute;fono 5512420504 por $10.00 se confirm&oacute;.</td></tr></table></body></html>';
+
+        $text = GmailImapReader::htmlToText($html);
+
+        $this->assertStringNotContainsString('Recarga exitosa', $text); // el <title> del <head> no se cuela
+        $this->assertStringNotContainsString('color:red', $text);
+        $this->assertStringContainsString('Tu recarga de tiempo aire al teléfono 5512420504 por $10.00', $text);
+    }
+
     public function test_unknown_subject_returns_null(): void
     {
         $this->assertNull($this->parser()->parse('notificaciones@banamex.com', 'Tu estado de cuenta ya está disponible', 'Hola', now()));
