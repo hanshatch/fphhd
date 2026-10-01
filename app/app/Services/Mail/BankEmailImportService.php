@@ -133,13 +133,15 @@ class BankEmailImportService
             return;
         }
 
-        // Movimiento interno cuenta → apartado/ahorro del mismo banco: es transferencia
-        if ($p['kind'] === 'to_savings' && $account) {
+        // Movimiento interno entre la cuenta y su apartado/inversión del mismo banco
+        if (in_array($p['kind'], ['to_savings', 'from_savings'], true) && $account) {
             $savings = Account::where('is_active', true)->where('institution', $account->institution)
                 ->whereIn('type', [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT])->get();
 
             if ($savings->count() === 1) {
-                $this->registerInternalMove($email, $account, $savings->first());
+                $p['kind'] === 'to_savings'
+                    ? $this->registerInternalMove($email, $account, $savings->first())
+                    : $this->registerInternalMove($email, $savings->first(), $account);
 
                 return;
             }
@@ -190,6 +192,15 @@ class BankEmailImportService
                     ['text' => '⏭ No registrar', 'callback_data' => 'mail:skip:' . $email->id],
                 ]]
             );
+
+            return;
+        }
+
+        // 4a) El correo trae banco + terminación de una cuenta tuya: transferencia sin preguntar
+        if ($account && ($own = $this->ownAccountByClabe($p['counterparty_bank'] ?? null, $p['counterparty_last4'] ?? null, $account))) {
+            $type === 'income'
+                ? $this->registerInternalMove($email, $own, $account)
+                : $this->registerInternalMove($email, $account, $own);
 
             return;
         }
@@ -311,7 +322,7 @@ class BankEmailImportService
         $p   = $email->parsed;
         $dup = $this->matcher->existing($from, 'out', $p['amount'], $p['date'], 1);
 
-        if ($dup && $dup->type === Transaction::TYPE_TRANSFER) {
+        if ($dup && $dup->type === Transaction::TYPE_TRANSFER && $dup->counterparty_account_id === $to->id) {
             $email->update(['status' => BankEmail::STATUS_DUPLICATE, 'transaction_id' => $dup->id]);
 
             return;
@@ -485,6 +496,37 @@ class BankEmailImportService
         }
 
         return null;
+    }
+
+    /**
+     * Cuenta propia a partir del banco y la terminación de CLABE del correo.
+     * La CLABE termina en un dígito verificador: "3793" es la cuenta "…379".
+     */
+    private function ownAccountByClabe(?string $bank, ?string $last4, Account $exclude): ?Account
+    {
+        if (! $last4) {
+            return null;
+        }
+
+        $bankWords = $bank ? $this->nameWords($bank) : [];
+        $body      = substr($last4, 0, -1);
+
+        $matches = Account::where('is_active', true)->where('id', '<>', $exclude->id)->whereNotNull('bank_last4')->get()
+            ->filter(function (Account $a) use ($last4, $body, $bankWords) {
+                if ($bankWords !== [] && array_intersect($this->nameWords($a->institutionLabel()), $bankWords) === []) {
+                    return false;
+                }
+
+                foreach (preg_split('/[\s,;]+/', (string) $a->bank_last4, -1, PREG_SPLIT_NO_EMPTY) as $digits) {
+                    if (str_ends_with($last4, $digits) || ($body !== '' && str_ends_with($body, $digits))) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     /** ¿El nombre de la contraparte es el del dueño? ("HANS,HATCH/DORANTES", "Hans Revolut") */

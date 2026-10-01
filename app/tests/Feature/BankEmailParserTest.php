@@ -313,6 +313,44 @@ TXT;
         $this->assertStringContainsString('Tu recarga de tiempo aire al teléfono 5512420504 por $10.00', $text);
     }
 
+    public const KLAR_RECIBIDA = "Recibiste una transferencia\n \nHola, Hans.\n \nRecibiste una transferencia hoy,\n06:40 01-10-2026, a tu cuenta de débito.\nAquí los detalles:\n \nMonto: $2,200.00\npesos\nBanco:\nBANAMEX\nCuenta terminación: **************3793\nReferencia: 11026\nClave de rastreo:\n085901648790327460\n";
+
+    public const KLAR_ENVIADA = "Realizaste una transferencia\n \nHola, Hans.\n \nRecibimos tu solicitud para realizar\nuna transferencia hoy, 13:11 01-07-2026.\nAquí los detalles:\n \nMonto: $1,199.40\npesos\nBanco receptor:\nBBVA MEXICO\nCuenta terminación:\n**************7727\nReferencia:\n8659742\nClave de rastreo: 49IZdP717wyXTeHQNqFdB0\n";
+
+    public const KLAR_INVERSION = "Retiraste una parte de tu inversión\nHola, Hans.\nEl retiro de tu inversión por $23,000.00 MXN se realizó exitosamente y se encuentra disponible en tu Cuenta.\nTodavía tienes un balance de $0.00 MXN";
+
+    public function test_klar_formats(): void
+    {
+        $in = $this->parser()->parse('contacto@klar.mx', 'Recibiste una transferencia', self::KLAR_RECIBIDA, Carbon::parse('2026-10-01 06:41'));
+        $this->assertSame('klar', $in['bank']);
+        $this->assertSame('income', $in['kind']);
+        $this->assertSame('2200.00', $in['amount']);
+        $this->assertSame('2026-10-01', $in['date']);
+        $this->assertSame('BANAMEX', $in['counterparty_bank']);
+        $this->assertSame('3793', $in['counterparty_last4']);
+        $this->assertSame('085901648790327460', $in['auth']);
+
+        $out = $this->parser()->parse('contacto@klar.mx', 'Realizaste una transferencia', self::KLAR_ENVIADA, Carbon::parse('2026-07-01 13:12'));
+        $this->assertSame('transfer_out', $out['kind']);
+        $this->assertSame('1199.40', $out['amount']);
+        $this->assertSame('2026-07-01', $out['date']);
+        $this->assertSame('Transferencia a Bbva Mexico ****7727', $out['description']);
+
+        $svc = $this->parser()->parse('contacto@klar.mx', 'Tu pago de servicio está en proceso',
+            "El pago de servicio a Telcel\nque hiciste hoy, 08:48 01-07-2026, con\ncargo a tu cuenta de\ndébito está en proceso.\nMonto: $200.00\nReferencia: 5543589391\nDescripción: Telcel: Pago realizado exitosamente Auth: 817419", now());
+        $this->assertSame('expense', $svc['kind']);
+        $this->assertSame('Telcel · 5543589391', $svc['description']);
+        $this->assertSame('817419', $svc['auth']);
+        $this->assertSame('2026-07-01', $svc['date']);
+
+        $inv = $this->parser()->parse('contacto@klar.mx', 'Hans, retiraste una parte de tu Inversión', self::KLAR_INVERSION, Carbon::parse('2026-07-11 08:34'));
+        $this->assertSame('from_savings', $inv['kind']);
+        $this->assertSame('23000.00', $inv['amount']);
+
+        $promo = $this->parser()->parse('contacto@klar.mx', 'Felicidades, ya puedes comprar a MSI con tu nueva tarjeta de crédito de $13,000', 'Tienes una línea de $13,000 MXN.', now());
+        $this->assertSame('info', $promo['kind']);
+    }
+
     public function test_unknown_subject_returns_null(): void
     {
         $this->assertNull($this->parser()->parse('notificaciones@banamex.com', 'Tu estado de cuenta ya está disponible', 'Hola', now()));

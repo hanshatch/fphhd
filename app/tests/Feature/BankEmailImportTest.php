@@ -294,6 +294,64 @@ class BankEmailImportTest extends TestCase
         $this->assertSame(0, Transaction::count());
     }
 
+    /** El CHECK viejo de SQLite no incluye "klar"; en MySQL sí existe */
+    private function klarAccounts(): array
+    {
+        \Illuminate\Support\Facades\DB::statement('PRAGMA ignore_check_constraints = ON');
+
+        return [
+            Account::create(['name' => 'Klar', 'type' => 'debit', 'institution' => 'klar', 'initial_balance' => '0.00', 'color' => '#000000']),
+            Account::create(['name' => 'Inversion', 'type' => 'investment', 'institution' => 'klar', 'initial_balance' => '0.00', 'color' => '#000000']),
+        ];
+    }
+
+    public function test_klar_deposit_from_own_banamex_clabe_is_registered_as_transfer_without_asking(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        [$klar]  = $this->klarAccounts();
+
+        $this->inbox = [$this->mail('k1', 'contacto@klar.mx', 'Recibiste una transferencia', BankEmailParserTest::KLAR_RECIBIDA, '2026-10-01 06:40')];
+        app(BankEmailImportService::class)->sync();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame($klar->id, $tx->counterparty_account_id);
+        $this->assertSame('2200.00', $tx->amount);
+        $this->assertStringContainsString('Registrado desde correo de Klar', $this->lastText());
+    }
+
+    public function test_klar_deposit_already_registered_from_banamex_side_closes_itself(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379, 894');
+        [$klar]  = $this->klarAccounts();
+
+        Transaction::create([
+            'date' => '2026-10-01', 'type' => 'transfer', 'amount' => '2200.00',
+            'account_id' => $cheques->id, 'counterparty_account_id' => $klar->id, 'description' => 'A Klar',
+        ]);
+
+        $this->inbox = [$this->mail('k2', 'contacto@klar.mx', 'Recibiste una transferencia', BankEmailParserTest::KLAR_RECIBIDA, '2026-10-01 06:40')];
+        app(BankEmailImportService::class)->sync();
+
+        $this->assertSame(1, Transaction::count());
+        $this->assertSame(BankEmail::STATUS_DUPLICATE, BankEmail::sole()->status);
+    }
+
+    public function test_klar_investment_withdrawal_is_transfer_from_inversion_to_debit(): void
+    {
+        [$klar, $inversion] = $this->klarAccounts();
+
+        $this->inbox = [$this->mail('k3', 'contacto@klar.mx', 'Hans, retiraste una parte de tu Inversión', BankEmailParserTest::KLAR_INVERSION, '2026-07-11 08:34')];
+        app(BankEmailImportService::class)->sync();
+
+        $tx = Transaction::sole();
+        $this->assertSame('transfer', $tx->type);
+        $this->assertSame($inversion->id, $tx->account_id);
+        $this->assertSame($klar->id, $tx->counterparty_account_id);
+        $this->assertSame('23000.00', $tx->amount);
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

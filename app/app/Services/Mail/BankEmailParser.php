@@ -38,6 +38,7 @@ class BankEmailParser
         'mercadopago.com'  => 'mercadopago',
         'mercadopago.com.mx' => 'mercadopago',
         'openbank.mx'      => 'openbank',
+        'klar.mx'          => 'klar',
     ];
 
     private const MONTHS = [
@@ -75,6 +76,7 @@ class BankEmailParser
             'revolut' => $this->parseRevolut($subject, $text, $receivedAt),
             'nu'      => $this->parseNu($subject, $text, $receivedAt),
             'openbank' => $this->parseOpenbank($subject, $text, $receivedAt),
+            'klar'     => $this->parseKlar($subject, $text, $receivedAt),
             default   => null,
         };
 
@@ -308,6 +310,81 @@ class BankEmailParser
         }
 
         return null;
+    }
+
+    // ── Klar ──────────────────────────────────────────────────────────
+
+    /**
+     * - "Recibiste una transferencia": Monto, Banco (origen), Cuenta terminación (CLABE), Clave de rastreo
+     * - "Realizaste una transferencia": Monto, Banco receptor, Cuenta terminación, Clave de rastreo
+     * - "Tu pago de servicio está en proceso": "El pago de servicio a Telcel …", Monto, Referencia, Auth
+     * - "Hans, retiraste una parte de tu Inversión": "El retiro de tu inversión por $23,000.00 MXN … disponible en tu Cuenta"
+     * Promociones y avisos (con montos de marketing) se ignoran.
+     */
+    private function parseKlar(string $subject, string $text, Carbon $receivedAt): ?array
+    {
+        $text = preg_replace('/[\x{200C}\x{00AD}\x{034F}]+/u', '', $text);
+        $s    = Str::ascii(mb_strtolower($subject));
+
+        $date = preg_match('/\d{1,2}:\d{2}\s+(\d{1,2})-(\d{1,2})-(\d{4})/u', $text, $d) && checkdate((int) $d[2], (int) $d[1], (int) $d[3])
+            ? sprintf('%04d-%02d-%02d', $d[3], $d[2], $d[1])
+            : $receivedAt->toDateString();
+
+        $amount = preg_match('/Monto:\s*\$\s*([\d.,]+)/iu', $text, $m) ? parse_money($m[1]) : null;
+        $base   = ['amount' => $amount, 'currency' => 'MXN', 'date' => $date, 'last4' => null];
+
+        if (str_contains($s, 'recibiste una transferencia') && $amount) {
+            $bank  = preg_match('/Banco:\s*\n?\s*([^\n]+)/iu', $text, $b) ? trim($b[1]) : null;
+            $clabe = preg_match('/Cuenta terminaci[oó]n:\s*\n?\s*\**\s*(\d{3,})/iu', $text, $c) ? substr($c[1], -4) : null;
+
+            return $base + [
+                'kind'               => 'income',
+                'auth'               => preg_match('/Clave de rastreo:\s*\n?\s*([A-Za-z0-9]{6,40})/iu', $text, $r) ? $r[1] : null,
+                'counterparty_bank'  => $bank,
+                'counterparty_last4' => $clabe,
+                'description'        => 'Transferencia de ' . ($bank ? Str::title(mb_strtolower($bank)) : 'otra cuenta') . ($clabe ? ' ****' . $clabe : ''),
+                'generic'            => true,
+            ];
+        }
+
+        if (str_contains($s, 'realizaste una transferencia') && $amount) {
+            $bank  = preg_match('/Banco receptor:\s*\n?\s*([^\n]+)/iu', $text, $b) ? trim($b[1]) : null;
+            $clabe = preg_match('/Cuenta terminaci[oó]n:\s*\n?\s*\**\s*(\d{3,})/iu', $text, $c) ? substr($c[1], -4) : null;
+
+            return $base + [
+                'kind'               => 'transfer_out',
+                'auth'               => preg_match('/Clave de rastreo:\s*\n?\s*([A-Za-z0-9]{6,40})/iu', $text, $r) ? $r[1] : null,
+                'counterparty_bank'  => $bank,
+                'counterparty_last4' => $clabe,
+                'description'        => 'Transferencia a ' . ($bank ? Str::title(mb_strtolower($bank)) : 'otra cuenta') . ($clabe ? ' ****' . $clabe : ''),
+                'generic'            => true,
+            ];
+        }
+
+        if (str_contains($s, 'pago de servicio') && $amount) {
+            $who = preg_match('/pago de servicio a\s+([^\n]+?)\s*(?:\n|que hiciste)/iu', $text, $w) ? trim($w[1]) : 'Pago de servicio';
+            $ref = preg_match('/Referencia:\s*\n?\s*(\S+)/iu', $text, $r) ? $r[1] : null;
+
+            return $base + [
+                'kind'        => 'expense',
+                'auth'        => preg_match('/Auth:\s*(\d+)/iu', $text, $a) ? $a[1] : null,
+                'description' => $who . ($ref ? ' · ' . $ref : ''),
+                'generic'     => false,
+            ];
+        }
+
+        if (preg_match('/retiro de tu inversi[oó]n por\s+\$\s*([\d.,]+)/iu', $text, $m) && ($amt = parse_money($m[1]))) {
+            return array_merge($base, [
+                'amount'      => $amt,
+                'kind'        => 'from_savings',
+                'auth'        => null,
+                'description' => 'Retiro de Inversión Klar',
+                'generic'     => true,
+            ]);
+        }
+
+        // Asuntos de movimiento con formato nuevo: avisar; el resto (promos, encuestas, avisos) se ignora
+        return preg_match('/\b(transferencia|pago|compra|cargo|retiraste|retiro|deposito|abono)\b/', $s) ? null : ['kind' => 'info', 'description' => $subject];
     }
 
     /** "30 SEP 2026", "09/OCT/2025", "07/02/2026" o "6 oct 2025 - 06:19:48" */
