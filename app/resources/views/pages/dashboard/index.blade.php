@@ -224,7 +224,7 @@
     @php $ind = $indicators; @endphp
     <div class="mb-4">
         <h2 class="text-xs font-bold text-[#878787] uppercase tracking-widest mb-2">Salud financiera</h2>
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
             {{-- Tasa de ahorro --}}
             <div class="bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4">
@@ -269,6 +269,25 @@
                     @endif
                 </p>
             </div>
+
+            {{-- Metas de ahorro --}}
+            <a href="{{ route('goals.index') }}"
+               class="block bg-white dark:bg-[#2a2a2a] rounded-2xl border border-[#ababab]/15 shadow-sm p-4 hover:border-[#76a72b]/50 transition-colors">
+                <p class="text-[11px] font-semibold text-[#878787] uppercase tracking-wider mb-2">Metas · aparta este mes</p>
+                @if($goals['count'] > 0)
+                <p class="text-2xl font-bold tabular-nums text-[#373737] dark:text-white">{{ format_currency($goals['month']) }}</p>
+                <p class="text-[11px] mt-1 {{ $goals['behind'] ? 'text-warn font-semibold' : 'text-[#878787]' }}">
+                    @if($goals['behind'])
+                        {{ $goals['behind'] }} {{ $goals['behind'] === 1 ? 'meta atrasada' : 'metas atrasadas' }}
+                    @else
+                        Próxima: {{ $goals['next']->name }} · {{ $goals['next']->target_date->translatedFormat('j M') }}
+                    @endif
+                </p>
+                @else
+                <p class="text-sm text-[#878787]">Planea un viaje o proyecto</p>
+                <p class="text-[11px] text-positive font-semibold mt-1">Crear meta →</p>
+                @endif
+            </a>
 
         </div>
     </div>

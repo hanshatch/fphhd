@@ -253,9 +253,28 @@ class DashboardService
             'yieldPending'      => $this->yieldService->pendingCaptures(),
             'tdcAlerts'         => $this->tdcAlerts($accounts, $balances),
             'indicators'        => $this->financialIndicators(),
+            'goals'             => $this->goalsSnapshot(),
             'recent'            => Transaction::with('account', 'category', 'source')
                                     ->orderBy('date', 'desc')->orderBy('id', 'desc')
                                     ->limit(8)->get(),
+        ];
+    }
+
+    /**
+     * Metas activas para el panel: cuánto apartar este mes, cuántas van
+     * atrasadas y cuál es la siguiente en pagarse.
+     */
+    private function goalsSnapshot(): array
+    {
+        $service = app(GoalService::class);
+        $goals   = \App\Models\Goal::active()->withSum('contributions', 'amount')->orderBy('target_date')->get();
+        $sum     = $goals->map(fn ($g) => $service->summary($g));
+
+        return [
+            'count'  => $goals->count(),
+            'month'  => bcsum($sum->pluck('quota')),
+            'behind' => $sum->whereIn('status', ['behind', 'overdue'])->count(),
+            'next'   => $goals->first(),
         ];
     }
 }

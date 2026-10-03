@@ -7,6 +7,7 @@
             ['route' => 'scheduled.index',    'icon' => 'calendar',    'label' => 'Flujo',        'desc' => 'Próximos cargos e ingresos'],
             ['route' => 'recurring.index',    'icon' => 'repeat',      'label' => 'Recurrentes',  'desc' => 'Suscripciones y compras a MSI'],
             ['route' => 'income-plans.index', 'icon' => 'trending-up', 'label' => 'Ingresos',     'desc' => 'Planeación de ingresos variables'],
+            ['route' => 'goals.index',        'icon' => 'flag',        'label' => 'Metas',        'desc' => 'Viajes, proyectos y compras: cuánto apartar al mes'],
         ],
         'Análisis' => [
             ['route' => 'reports.index', 'icon' => 'chart', 'label' => 'Reportes', 'desc' => 'Anual, categorías, fuentes y rendimientos'],

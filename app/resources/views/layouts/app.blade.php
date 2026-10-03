@@ -56,6 +56,7 @@
                     ['route' => 'scheduled.index',    'match' => 'scheduled.*',     'icon' => 'calendar',    'label' => 'Flujo'],
                     ['route' => 'recurring.index',    'match' => 'recurring.*',     'icon' => 'repeat',      'label' => 'Recurrentes'],
                     ['route' => 'income-plans.index', 'match' => 'income-plans.*',  'icon' => 'trending-up', 'label' => 'Ingresos'],
+                    ['route' => 'goals.index',        'match' => 'goals.*',         'icon' => 'flag',        'label' => 'Metas'],
                 ],
             ];
             @endphp

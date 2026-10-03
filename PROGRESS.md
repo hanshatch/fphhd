@@ -50,6 +50,12 @@
   teclado, «Saltar al contenido», `aria-current` y etiquetas en botones de solo ícono; cursor de
   mano en botones (Tailwind v4 lo quita); botón «Nuevo movimiento» en la barra lateral con atajo N;
   los modales piden confirmación antes de descartar lo capturado; contraseña con Mostrar/Ocultar.
+- [x] Metas de ahorro (2026-10-03): viajes, proyectos y compras con fecha, desglose de costos
+  (`goal_items`) y apartados (`goal_contributions`, no son transacciones ni mueven saldos).
+  `GoalService`: la meta debe estar completa al inicio de su mes; lo que falta se reparte entre el
+  mes actual y el anterior a la meta (redondeo hacia arriba al centavo). Plan mes a mes con
+  aportación, apartado esperado al cierre y pagos; estado al corriente / atrasada / vencida;
+  «Dónde está lo apartado» compara lo comprometido contra el saldo de la cuenta. Tarjeta en el Panel.
 
 ## Corrección integral (2026-07-16) — ver docs/planes/02-plan-correccion.md
 
