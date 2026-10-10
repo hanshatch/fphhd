@@ -143,10 +143,19 @@
                         <div class="grid grid-cols-[auto_1fr] gap-2 mt-2">
                             <select name="rows[{{ $i }}][type]" x-model="type"
                                 class="rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
+                                {{-- En tarjeta de crédito, «abono» es el pago que recibe la tarjeta:
+                                     nombrarlo así evita registrarlo como salida --}}
+                                @if($account->isCredit())
+                                <option value="expense">Cargo / compra</option>
+                                <option value="income">Bonificación / reembolso</option>
+                                <option value="transfer_in">Pago a la tarjeta (abono)</option>
+                                <option value="transfer_out">Disposición hacia otra cuenta</option>
+                                @else
                                 <option value="expense">Cargo</option>
                                 <option value="income">Abono</option>
                                 <option value="transfer_out">Transferencia enviada</option>
                                 <option value="transfer_in">Transferencia recibida</option>
+                                @endif
                             </select>
 
                             <div class="min-w-0" x-show="!isTransfer">
@@ -172,7 +181,7 @@
                             @endif
 
                             <div class="min-w-0 flex items-center gap-2" x-show="isTransfer" x-cloak>
-                                <span class="text-xs text-[#878787] flex-shrink-0" x-text="type === 'transfer_out' ? 'Hacia' : 'Desde'"></span>
+                                <span class="text-xs text-[#878787] flex-shrink-0" x-text="type === 'transfer_out' ? 'Hacia' : '{{ $account->isCredit() ? 'Pagado desde' : 'Desde' }}'"></span>
                                 <select name="rows[{{ $i }}][counterparty_account_id]" x-model="counterparty"
                                     x-bind:disabled="!isTransfer" x-bind:required="on && isTransfer"
                                     class="w-full min-w-0 rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">

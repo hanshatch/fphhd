@@ -254,6 +254,29 @@ class StatementImportTest extends TestCase
         $this->get($this->upload($revolut)->headers->get('Location'))->assertOk()->assertSee('parecen ya registrados');
     }
 
+    public function test_card_payment_already_registered_is_duplicate_and_labels_speak_card_language(): void
+    {
+        // Pago a la tarjeta hecho desde cheques y ya registrado (incidente 2026-10-10)
+        $card    = $this->account();
+        $cheques = $this->revolut();
+
+        Transaction::create([
+            'date' => '2026-10-06', 'type' => 'transfer', 'amount' => '28000.00',
+            'account_id' => $cheques->id, 'counterparty_account_id' => $card->id,
+            'description' => 'Pago a la tarjeta',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '28000.00', 'description' => 'Su Abono..Gracias', 'date' => '2026-10-06', 'type' => 'income', 'category' => null],
+        ]);
+
+        $this->get($this->upload($card)->headers->get('Location'))->assertOk()
+            ->assertSee('parecen ya registrados')
+            ->assertSee('Pago a la tarjeta (abono)')
+            ->assertSee('Disposición hacia otra cuenta')
+            ->assertDontSee('Transferencia enviada');
+    }
+
     public function test_new_incoming_transfer_without_twin_is_created_in_right_direction(): void
     {
         $revolut = $this->revolut();

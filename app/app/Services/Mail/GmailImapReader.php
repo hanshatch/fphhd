@@ -63,7 +63,11 @@ class GmailImapReader implements MailboxReader
                     'uid'     => (string) $uid,
                     'from'    => $from,
                     'subject' => $this->decodeHeader($header->subject ?? ''),
-                    'date'    => isset($header->udate) ? Carbon::createFromTimestamp($header->udate) : now(),
+                    // udate es UTC: sin pasarlo a la zona de la app, un correo de las
+                    // 7 pm (CDMX) quedaba fechado al día siguiente
+                    'date'    => isset($header->udate)
+                        ? Carbon::createFromTimestamp($header->udate)->setTimezone(config('app.timezone'))
+                        : now(),
                     'text'    => $this->bodyText($stream, $uid),
                 ];
             }
