@@ -22,6 +22,11 @@ class StatementImportService
     private const MAX_ITEMS_PER_IMAGE = 40;
     private const TTL_MINUTES         = 60;
 
+    // Mismo monto a más de 3 días: se avisa como «posible duplicado». Sin fecha
+    // legible se revisan las últimas semanas, que es de donde suele venir el renglón.
+    private const POSSIBLE_DAYS = 20;
+    private const UNDATED_DAYS  = 45;
+
     /**
      * Pistas por institución para el modelo de visión. Cada banco pinta
      * distinto su lista; aquí se describe lo que hay que leer y lo que
@@ -157,8 +162,13 @@ class StatementImportService
                 continue;
             }
 
-            $type        = $row['type'] ?? 'expense';
-            $date        = $this->sanitizeDate($row['date'] ?? null);
+            $type = $row['type'] ?? 'expense';
+            $date = $this->readDate($row['date'] ?? null);
+
+            if ($date === null) {
+                continue; // sin fecha no se registra: la de hoy escondería un duplicado
+            }
+
             $description = Str::limit(trim((string) ($row['description'] ?? '')), 500, '');
 
             if (in_array($type, self::TYPES_TRANSFER, true)) {
@@ -266,22 +276,22 @@ class StatementImportService
 
     private function buildRow(Account $account, array $item, ?array $pocket = null): array
     {
-        $date = $this->sanitizeDate($item['date']);
+        $date = $this->readDate($item['date']);
         $type = $item['type'];
 
         // Movimiento entre la cuenta y una cajita del mismo banco: es transferencia
         if ($pocket !== null) {
             $description = Str::limit(Str::ucfirst($item['description']), 500, '');
-            $existing    = $this->matcher->existing($account, $pocket['type'] === 'transfer_in' ? 'in' : 'out', $item['amount'], $date);
 
             return [
-                'date'                    => $date,
+                'date'                    => $date ?? '',
+                'undated'                 => $date === null,
                 'description'             => $description,
                 'amount'                  => $item['amount'],
                 'type'                    => $pocket['type'],
                 'category_id'             => null,
                 'category_source'         => null,
-                'duplicate'               => $existing ? $this->matcher->describe($existing, $account) : null,
+                'duplicate'               => $this->duplicate($account, $pocket['type'] === 'transfer_in' ? 'in' : 'out', $item['amount'], $date),
                 'counterparty_account_id' => $pocket['other']?->id,
                 'twin'                    => null,
             ];
@@ -302,10 +312,10 @@ class StatementImportService
         }
 
         $direction = $type === 'income' ? 'in' : 'out';
-        $existing  = $this->matcher->existing($account, $direction, $item['amount'], $date);
+        $duplicate = $this->duplicate($account, $direction, $item['amount'], $date);
 
         // ¿La otra mitad ya está en otra cuenta tuya? Entonces es transferencia interna
-        $twin = $existing ? null : $this->matcher->transferTwin($account, $direction, $item['amount'], $date);
+        $twin = $duplicate || $date === null ? null : $this->matcher->transferTwin($account, $direction, $item['amount'], $date);
 
         if ($twin) {
             $type       = $direction === 'out' ? 'transfer_out' : 'transfer_in';
@@ -314,13 +324,14 @@ class StatementImportService
         }
 
         return [
-            'date'                    => $date,
+            'date'                    => $date ?? '',
+            'undated'                 => $date === null,
             'description'             => $description,
             'amount'                  => $item['amount'],
             'type'                    => $type,
             'category_id'             => $categoryId,
             'category_source'         => $source,
-            'duplicate'               => $existing ? $this->matcher->describe($existing, $account) : null,
+            'duplicate'               => $duplicate,
             'counterparty_account_id' => $twin?->account_id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
@@ -424,7 +435,7 @@ class StatementImportService
     private function attachRecurring(Account $account, array $rows): array
     {
         $candidates = collect($rows)
-            ->filter(fn ($r) => ! $r['duplicate'] && in_array($r['type'], ['expense', 'income'], true))
+            ->filter(fn ($r) => ! $r['duplicate'] && ! $r['undated'] && in_array($r['type'], ['expense', 'income'], true))
             ->map(fn ($r) => ['type' => $r['type'], 'amount' => $r['amount'], 'date' => $r['date'], 'description' => $r['description']])
             ->all();
 
@@ -450,20 +461,38 @@ class StatementImportService
         return $rows;
     }
 
-    private function sanitizeDate(?string $date): string
+    /**
+     * Movimiento ya registrado con el mismo monto: a ±3 días es «ya existe»;
+     * más lejos, o si no se leyó la fecha, es «posible duplicado». Ambos
+     * llegan desmarcados a la revisión.
+     */
+    private function duplicate(Account $account, string $direction, string $amount, ?string $date): ?array
+    {
+        $sure = $date ? $this->matcher->existing($account, $direction, $amount, $date) : null;
+        $tx   = $sure ?? $this->matcher->existing(
+            $account, $direction, $amount,
+            $date ?? now()->toDateString(),
+            $date ? self::POSSIBLE_DAYS : self::UNDATED_DAYS,
+        );
+
+        return $tx ? $this->matcher->describe($tx, $account) + ['possible' => $sure === null] : null;
+    }
+
+    /** Fecha válida (ni futura ni de hace más de 2 años) o null; nunca se inventa la de hoy */
+    private function readDate(?string $date): ?string
     {
         if (! $date) {
-            return now()->toDateString();
+            return null;
         }
 
         try {
             $parsed = Carbon::parse($date);
         } catch (\Throwable) {
-            return now()->toDateString();
+            return null;
         }
 
         if ($parsed->isFuture() || $parsed->lt(now()->subYears(2))) {
-            return now()->toDateString();
+            return null;
         }
 
         return $parsed->toDateString();

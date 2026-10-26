@@ -187,6 +187,18 @@ TXT;
         $this->assertFalse($r['generic']);
     }
 
+    public function test_banamex_additional_card_takes_digits_without_asterisks(): void
+    {
+        $text = "Oct 24, 2026 03:05:53 PM\nSe realizó la siguiente operación: Retiro / Compra\nHANS HATCH\nCONQUISTA BANAMEX\nAdicional\n716\n"
+            . "Detalle de la operación\nMonto\n$ 2,550.00\nEstablecimiento\n9328 ZARA TOREO AUC\nFecha y hora\n24 Octubre 2026 / 15:05:53\nEstatus\nExitoso\nNo. Autorización\n080032";
+
+        $r = $this->parser()->parse('notificaciones@banamex.com', 'Retiro/Compra con tarjeta adicional', $text, Carbon::parse('2026-10-24 15:06'));
+
+        $this->assertSame('716', $r['last4']);
+        $this->assertSame('2550.00', $r['amount']);
+        $this->assertSame('2026-10-24', $r['date']);
+    }
+
     public function test_banamex_direct_debit(): void
     {
         $r = $this->parser()->parse('notificaciones@banamex.com', 'Cargo a cuenta para pago a Establecimiento', self::BANAMEX_DOMICILIADO, Carbon::parse('2026-09-29 19:27'));

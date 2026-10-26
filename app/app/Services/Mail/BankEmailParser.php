@@ -129,9 +129,10 @@ class BankEmailParser
             default => null,
         };
 
-        // "***379", "**117" o "Cuenta de cargo 894"
-        if (! preg_match('/\*{2,}\s*(\d{3,4})/u', $text, $l)) {
-            preg_match('/Cuenta de cargo:?\s*\n?\s*(\d{3,4})\b/iu', $text, $l);
+        // "***379", "**117", "Cuenta de cargo 894" o la tarjeta adicional "Adicional\n716"
+        if (! preg_match('/\*{2,}\s*(\d{3,4})/u', $text, $l)
+            && ! preg_match('/Cuenta de cargo:?\s*\n?\s*(\d{3,4})\b/iu', $text, $l)) {
+            preg_match('/(?:^|\n)\s*Adicional\s*\n\s*(\d{3,4})\b/iu', $text, $l);
         }
         preg_match('/No\.?\s*Autorizaci[oó]n\s*:?\s*([A-Z0-9][A-Z0-9 ]{2,40})/iu', $text, $a);
         $auth = isset($a[1]) ? trim(preg_replace('/\s+(Protege|Informaci|Estatus).*$/is', '', $a[1])) : null;

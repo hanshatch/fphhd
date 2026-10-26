@@ -7,6 +7,7 @@
         $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'])->count();
         $twins = collect($rows)->filter(fn ($r) => $r['twin'] ?? null)->count();
         $recs  = collect($rows)->filter(fn ($r) => $r['recurring'] ?? null)->count();
+        $blank = collect($rows)->filter(fn ($r) => $r['undated'] ?? false)->count();
     @endphp
 
     @if($errors->any())
@@ -29,6 +30,10 @@
         @if($dupes)
             <span class="text-amber-600 font-semibold">{{ $dupes }} parecen ya registrados</span> y vienen desmarcados.
         @endif
+        @if($blank)
+            <span class="text-negative font-semibold">{{ $blank }} sin fecha legible</span>:
+            vienen desmarcados; si los registras, escribe su fecha real.
+        @endif
         @if($twins)
             <span class="text-blue-600 font-semibold">{{ $twins }} {{ $twins === 1 ? 'parece transferencia' : 'parecen transferencias' }} entre tus cuentas</span>:
             el otro lado ya está registrado y se convertirá en transferencia, sin duplicar.
@@ -48,10 +53,11 @@
                 $dup  = $row['duplicate'];
                 $twin = $row['twin'] ?? null;
                 $rec  = $row['recurring'] ?? null;
+                $nodt = $row['undated'] ?? false;
             @endphp
             <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : ($twin ? 'border-blue-300 dark:border-blue-500/40' : '') }}"
                     x-data="{
-                        on: {{ $dup ? 'false' : 'true' }},
+                        on: {{ $dup || $nodt ? 'false' : 'true' }},
                         type: '{{ $row['type'] }}',
                         counterparty: '{{ $row['counterparty_account_id'] ?? '' }}',
                         linked: {{ $rec ? 'true' : 'false' }},
@@ -81,8 +87,12 @@
                                 <input type="text" name="rows[{{ $i }}][description]" value="{{ $row['description'] }}" maxlength="500" required
                                     class="w-full rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent focus:bg-[#efeded]/50 dark:focus:bg-white/5 px-2 py-1 -ml-2 text-sm font-semibold text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                                 <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                    <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" required
-                                        class="rounded-lg border border-transparent hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                                    <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" max="{{ now()->toDateString() }}"
+                                        x-bind:required="on" aria-label="Fecha del movimiento"
+                                        class="rounded-lg border {{ $nodt ? 'border-red-400' : 'border-transparent' }} hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                                    @if($nodt)
+                                        <span class="text-[11px] font-bold text-negative">Sin fecha</span>
+                                    @endif
                                     @if($twin)
                                         <span class="text-[11px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full"><svg class="inline-block w-3 h-3 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> Transferencia</span>
                                     @elseif($rec)
@@ -104,7 +114,7 @@
 
                         @if($dup)
                         <p class="mt-1 text-[11px] text-warn">
-                            <svg class="inline-block w-3.5 h-3.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> Ya existe: {{ $dup['description'] }} · {{ $dup['account'] }} · {{ $dup['date'] }}
+                            <svg class="inline-block w-3.5 h-3.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> {{ ($dup['possible'] ?? false) ? 'Posible duplicado de' : 'Ya existe' }}: {{ $dup['description'] }} · {{ $dup['account'] }} · {{ $dup['date'] }}
                         </p>
                         @endif
 

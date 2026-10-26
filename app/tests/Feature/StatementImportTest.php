@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 use Tests\Traits\WithTotpSession;
@@ -152,6 +153,61 @@ class StatementImportTest extends TestCase
             ->assertOk()
             ->assertSee('Apple ya registrado')
             ->assertSee('parecen ya registrados');
+    }
+
+    public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
+    {
+        // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
+        Carbon::setTestNow('2026-10-26 12:00:00');
+        $account = $this->account();
+
+        Transaction::create([
+            'date' => '2026-10-09', 'type' => 'expense', 'amount' => '14651.00',
+            'account_id' => $account->id, 'description' => 'Esc Anne Sullivan',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '14651.00', 'description' => 'Colegiatura Vale', 'date' => null, 'type' => 'expense', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+
+        $this->get($location)
+            ->assertOk()
+            ->assertSee('Sin fecha')
+            ->assertSee('sin fecha legible')
+            ->assertSee('Posible duplicado de: Esc Anne Sullivan', false)
+            ->assertDontSee('value="2026-10-26"', false);
+
+        // Aunque se marque, sin fecha no se registra
+        $this->post(route('accounts.import.store', [$account, basename($location)]), ['rows' => [
+            ['include' => 1, 'date' => '', 'description' => 'Colegiatura Vale', 'amount' => '14651.00', 'type' => 'expense'],
+        ]]);
+
+        $this->assertSame(1, Transaction::count());
+        Carbon::setTestNow();
+    }
+
+    public function test_same_amount_weeks_apart_is_a_possible_duplicate_but_a_month_apart_is_not(): void
+    {
+        Carbon::setTestNow('2026-10-26 12:00:00');
+        $account = $this->account();
+
+        Transaction::create(['date' => '2026-10-14', 'type' => 'expense', 'amount' => '429.00', 'account_id' => $account->id, 'description' => 'Planet Fitness']);
+        Transaction::create(['date' => '2026-09-01', 'type' => 'expense', 'amount' => '599.00', 'account_id' => $account->id, 'description' => 'Telmex']);
+
+        $this->fakeVision([
+            ['amount' => '429.00', 'description' => 'PF Satelite', 'date' => '2026-10-25', 'type' => 'expense', 'category' => null],
+            ['amount' => '599.00', 'description' => 'Telmex',      'date' => '2026-10-01', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $this->get($this->upload($account)->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('Posible duplicado de: Planet Fitness', false)
+            ->assertDontSee('Telmex · ', false)
+            ->assertSee('1 parecen ya registrados', false);
+
+        Carbon::setTestNow();
     }
 
     public function test_overlapping_screenshots_are_deduplicated(): void
