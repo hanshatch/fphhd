@@ -217,12 +217,18 @@ class StatementImportTest extends TestCase
             ->assertSee('Posible duplicado de: Esc Anne Sullivan', false)
             ->assertDontSee('value="2026-10-26"', false);
 
-        // Aunque se marque, sin fecha no se registra
+        // Marcado y sin fecha: se pide la fecha, en español
         $this->post(route('accounts.import.store', [$account, basename($location)]), ['rows' => [
             ['include' => 1, 'date' => '', 'description' => 'Colegiatura Vale', 'amount' => '14651.00', 'type' => 'expense'],
-        ]]);
+        ]])->assertSessionHasErrors(['rows.0.date' => '«Colegiatura Vale»: escribe la fecha del movimiento o desmárcalo.']);
 
-        $this->assertSame(1, Transaction::count());
+        // Desmarcado y sin fecha no estorba: lo demás se registra
+        $this->post(route('accounts.import.store', [$account, basename($location)]), ['rows' => [
+            ['date' => '', 'description' => 'Colegiatura Vale', 'amount' => '14651.00', 'type' => 'expense'],
+            ['include' => 1, 'date' => '2026-10-20', 'description' => 'Farmacia', 'amount' => '120.00', 'type' => 'expense'],
+        ]])->assertSessionHasNoErrors();
+
+        $this->assertSame(2, Transaction::count());
         Carbon::setTestNow();
     }
 

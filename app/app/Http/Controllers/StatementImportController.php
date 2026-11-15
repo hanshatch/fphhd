@@ -70,7 +70,8 @@ class StatementImportController extends Controller
         $data = $request->validate([
             'rows'               => 'required|array',
             'rows.*.include'     => 'nullable|boolean',
-            'rows.*.date'        => 'required|date',
+            // Los renglones sin fecha legible llegan vacíos y desmarcados: solo se exige al registrarlos
+            'rows.*.date'        => 'nullable|date',
             'rows.*.description' => 'required|string|max:500',
             'rows.*.amount'      => 'required|string',
             'rows.*.type'        => 'required|in:expense,income,transfer_out,transfer_in',
@@ -84,6 +85,12 @@ class StatementImportController extends Controller
 
         // Sin la otra cuenta la transferencia queda por conciliar; lo que no vale es esta misma
         foreach ($data['rows'] as $i => $row) {
+            if (! empty($row['include']) && empty($row['date'])) {
+                throw ValidationException::withMessages([
+                    "rows.{$i}.date" => '«' . $row['description'] . '»: escribe la fecha del movimiento o desmárcalo.',
+                ]);
+            }
+
             if (! empty($row['include'])
                 && in_array($row['type'], StatementImportService::TYPES_TRANSFER, true)
                 && (int) ($row['counterparty_account_id'] ?? 0) === $account->id) {

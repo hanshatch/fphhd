@@ -10,12 +10,6 @@
         $blank = collect($rows)->filter(fn ($r) => $r['undated'] ?? false)->count();
     @endphp
 
-    @if($errors->any())
-    <div class="mb-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm text-red-600">
-        @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
-    </div>
-    @endif
-
     @if(empty($rows))
     <x-card class="text-center py-12">
         <p class="text-[#878787] font-medium text-sm">No encontré movimientos legibles en la captura.</p>
