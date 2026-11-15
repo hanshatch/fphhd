@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\RecurringCharge;
+use App\Models\Source;
 use App\Models\Transaction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -283,6 +284,7 @@ class StatementImportService
                 'amount'      => $amount,
                 'account_id'  => $account->id,
                 'category_id' => $categoryId,
+                'source_id'   => $type === 'income' ? (($row['source_id'] ?? null) ?: null) : null,
                 'description' => $description ?: 'Cargo',
             ]);
 
@@ -336,15 +338,17 @@ class StatementImportService
 
         // 1) Lo que Hans ya decidió para este comercio manda; 2) si no, la pista del modelo
         $categoryId = $this->memory->suggest($description, $type);
-        $source     = $categoryId ? 'memory' : null;
+        $categorySource = $categoryId ? 'memory' : null;
 
         if (! $categoryId && $item['category']) {
             $categoryId = Category::active()
                 ->ofKind($type === 'income' ? Category::KIND_INCOME : Category::KIND_EXPENSE)
                 ->where('name', $item['category'])
                 ->value('id');
-            $source = $categoryId ? 'model' : null;
+            $categorySource = $categoryId ? 'model' : null;
         }
+
+        $source = $type === 'income' ? Source::find($this->memory->suggestSource($description)) : null;
 
         $direction = $type === 'income' ? 'in' : 'out';
         $duplicate = $this->duplicate($account, $direction, $item['amount'], $date);
@@ -356,9 +360,9 @@ class StatementImportService
                 ?? $this->matcher->transferTwin($account, $direction, $item['amount'], $date));
 
         if ($twin) {
-            $type       = $direction === 'out' ? 'transfer_out' : 'transfer_in';
-            $categoryId = null;
-            $source     = null;
+            $type           = $direction === 'out' ? 'transfer_out' : 'transfer_in';
+            $categoryId     = null;
+            $categorySource = null;
         }
 
         return [
@@ -368,7 +372,9 @@ class StatementImportService
             'amount'                  => $item['amount'],
             'type'                    => $type,
             'category_id'             => $categoryId,
-            'category_source'         => $source,
+            'category_source'         => $categorySource,
+            'source_id'               => $twin ? null : $source?->id,
+            'source_name'             => $twin ? null : $source?->name,
             'duplicate'               => $duplicate,
             'counterparty_account_id' => $twin?->account_id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,

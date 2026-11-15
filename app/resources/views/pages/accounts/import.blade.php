@@ -149,6 +149,13 @@
                         </p>
                         @endif
 
+                        @if($row['source_id'] ?? null)
+                        <input type="hidden" name="rows[{{ $i }}][source_id]" value="{{ $row['source_id'] }}" x-bind:disabled="type !== 'income'">
+                        <p class="mt-1 text-[11px] text-positive" x-show="type === 'income'">
+                            Fuente: <strong>{{ $row['source_name'] }}</strong> · aprendida de tus ingresos anteriores
+                        </p>
+                        @endif
+
                         @if($rec)
                         @php
                             $diff = bcsub($row['amount'], $rec['expected'], 2);

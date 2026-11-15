@@ -49,13 +49,35 @@ class MerchantMemoryService
             return null;
         }
 
-        $rule = MerchantRule::where('merchant_key', $key)->where('type', $type)->first();
+        $rule = $this->rule($key, $type);
 
         if ($rule) {
             return $rule->category_id;
         }
 
         return $this->fromHistory($key, $type);
+    }
+
+    /** Fuente aprendida para un ingreso con esa descripción (ej. «Abono/Nomina» → Tec), o null */
+    public function suggestSource(?string $description): ?int
+    {
+        $key = $this->key($description);
+
+        return $key === null ? null : $this->rule($key, 'income')?->source_id;
+    }
+
+    /**
+     * Regla exacta o, si no hay, la más larga que sea el inicio de la llave:
+     * «abono nomina» también aplica a «abono nomina quincena».
+     */
+    private function rule(string $key, string $type): ?MerchantRule
+    {
+        return MerchantRule::where('type', $type)
+            ->where('merchant_key', 'like', Str::before($key, ' ') . '%')
+            ->get()
+            ->filter(fn (MerchantRule $r) => $key === $r->merchant_key || str_starts_with($key, $r->merchant_key . ' '))
+            ->sortByDesc(fn (MerchantRule $r) => strlen($r->merchant_key))
+            ->first();
     }
 
     /** Registra (o refuerza) la regla comercio → categoría */
@@ -78,6 +100,8 @@ class MerchantMemoryService
             'sample'       => Str::limit((string) $transaction->description, 200, ''),
             'type'         => $transaction->type,
             'category_id'  => $transaction->category_id,
+            // La fuente solo se pisa con otra fuente: un ingreso sin fuente no borra lo aprendido
+            'source_id'    => $transaction->type === 'income' ? ($transaction->source_id ?: $rule->source_id) : null,
             'hits'         => $rule->exists ? $rule->hits + 1 : 1,
             'last_used_at' => now(),
         ])->save();

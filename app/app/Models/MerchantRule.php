@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MerchantRule extends Model
 {
-    protected $fillable = ['merchant_key', 'sample', 'type', 'category_id', 'hits', 'last_used_at'];
+    protected $fillable = ['merchant_key', 'sample', 'type', 'category_id', 'source_id', 'hits', 'last_used_at'];
 
     protected $casts = [
         'hits'         => 'integer',
@@ -17,5 +17,10 @@ class MerchantRule extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
     }
 }

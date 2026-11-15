@@ -48,6 +48,11 @@ class Transaction extends Model
                 $transaction->transfer_pending = null;
             }
 
+            // Ingreso nuevo sin fuente: la que ya se aprendió para esa descripción (cualquier vía de alta)
+            if (! $transaction->exists && $transaction->type === self::TYPE_INCOME && ! $transaction->source_id) {
+                $transaction->source_id = app(\App\Services\MerchantMemoryService::class)->suggestSource($transaction->description);
+            }
+
             if ($transaction->type === self::TYPE_TRANSFER && blank($transaction->description)) {
                 $transaction->description = 'Transferencia entre cuentas';
             }

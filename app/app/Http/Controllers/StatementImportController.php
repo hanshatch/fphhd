@@ -75,6 +75,7 @@ class StatementImportController extends Controller
             'rows.*.amount'      => 'required|string',
             'rows.*.type'        => 'required|in:expense,income,transfer_out,transfer_in',
             'rows.*.category_id' => 'nullable|exists:categories,id',
+            'rows.*.source_id'   => 'nullable|exists:sources,id',
             'rows.*.counterparty_account_id' => 'nullable|integer|exists:accounts,id',
             'rows.*.twin_id'     => 'nullable|integer',
             'rows.*.recurring_id' => 'nullable|integer',

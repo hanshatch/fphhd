@@ -99,6 +99,44 @@ class StatementImportTest extends TestCase
             ->assertDontSee("value: '" . $otros->id . "'", false);
     }
 
+    public function test_payroll_deposit_is_recognized_as_income_from_its_learned_source(): void
+    {
+        $account = $this->account();
+        $tec     = \App\Models\Source::create(['name' => 'Tec']);
+        $cat     = Category::create(['name' => 'TEC', 'kind' => 'income']);
+
+        // Hans ya registró una nómina del Tec: de ahí se aprende categoría y fuente
+        Transaction::create([
+            'date' => '2026-09-29', 'type' => 'income', 'amount' => '50411.94', 'account_id' => $account->id,
+            'category_id' => $cat->id, 'source_id' => $tec->id, 'description' => 'Abono/Nomina',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '12597.45', 'description' => 'ABONO/NOMINA 0458 QUINCENA', 'date' => '2026-10-15', 'type' => 'income', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+
+        $this->get($location)->assertOk()
+            ->assertSee('Fuente: <strong>Tec</strong>', false)
+            ->assertSee("value: '" . $cat->id . "'", false);
+
+        $this->post(route('accounts.import.store', [$account, basename($location)]), ['rows' => [[
+            'include' => 1, 'date' => '2026-10-15', 'description' => 'ABONO/NOMINA 0458 QUINCENA', 'amount' => '12597.45',
+            'type' => 'income', 'category_id' => $cat->id, 'source_id' => $tec->id,
+        ]]]);
+
+        $tx = Transaction::latest('id')->first();
+        $this->assertSame([$tec->id, $cat->id, 'income'], [$tx->source_id, $tx->category_id, $tx->type]);
+
+        // Por cualquier otra vía (correo, Telegram, captura manual) la fuente también se pone sola
+        $other = Transaction::create(['date' => '2026-10-30', 'type' => 'income', 'amount' => '100.00', 'account_id' => $account->id, 'description' => 'Abono/Nomina']);
+        $this->assertSame($tec->id, $other->source_id);
+
+        // Y un ingreso sin fuente con esa descripción no borra lo aprendido
+        $this->assertSame($tec->id, \App\Models\MerchantRule::where('merchant_key', 'abono nomina')->value('source_id'));
+    }
+
     public function test_store_creates_only_selected_rows_with_chosen_category(): void
     {
         $account = $this->account();
