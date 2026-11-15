@@ -28,7 +28,7 @@
         Detecté <strong class="text-[#373737] dark:text-white">{{ count($rows) }}</strong> movimientos.
         Revisa la categoría de cada uno y desmarca los que no quieras registrar.
         @if($dupes)
-            <span class="text-amber-600 font-semibold">{{ $dupes }} parecen ya registrados</span> y vienen desmarcados.
+            <span class="text-amber-600 font-semibold">{{ $dupes }} parecen ya registrados</span> y están ocultos; usa «Todos» para verlos.
         @endif
         @if($blank)
             <span class="text-negative font-semibold">{{ $blank }} sin fecha legible</span>:
@@ -44,8 +44,31 @@
         @endif
     </p>
 
-    <form method="POST" action="{{ route('accounts.import.store', [$account, $token]) }}">
+    <form method="POST" action="{{ route('accounts.import.store', [$account, $token]) }}" x-data="{ showAll: {{ $dupes ? 'false' : 'true' }} }">
         @csrf
+
+        {{-- Los ya registrados estorban al revisar: se ocultan hasta que se pidan --}}
+        @if($dupes)
+        <div class="flex items-center gap-1 p-1 mb-3 rounded-xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/30 w-full sm:w-fit" role="group" aria-label="Qué movimientos mostrar">
+            <button type="button" x-on:click="showAll = false" x-bind:aria-pressed="!showAll"
+                class="flex-1 sm:flex-none min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#76a72b]"
+                x-bind:class="!showAll ? 'bg-[#76a72b] text-white' : 'text-[#878787] hover:text-[#373737] dark:hover:text-white'">
+                Por registrar <span class="tabular-nums opacity-80">{{ count($rows) - $dupes }}</span>
+            </button>
+            <button type="button" x-on:click="showAll = true" x-bind:aria-pressed="showAll"
+                class="flex-1 sm:flex-none min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#76a72b]"
+                x-bind:class="showAll ? 'bg-[#76a72b] text-white' : 'text-[#878787] hover:text-[#373737] dark:hover:text-white'">
+                Todos <span class="tabular-nums opacity-80">{{ count($rows) }}</span>
+            </button>
+        </div>
+
+        @if(count($rows) === $dupes)
+        <x-card class="text-center py-10 px-6 mb-3" x-show="!showAll">
+            <p class="text-sm font-semibold text-[#373737] dark:text-white">Todo lo de esta captura ya está registrado.</p>
+            <x-btn type="button" variant="secondary" class="mt-3 text-sm" x-on:click="showAll = true">Ver los {{ $dupes }} movimientos</x-btn>
+        </x-card>
+        @endif
+        @endif
 
         <div class="space-y-2 mb-24">
             @foreach($rows as $i => $row)
@@ -65,7 +88,8 @@
                         get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
                         get amountClass() { return this.isIn ? 'text-positive' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-negative'); },
                     }"
-                    x-bind:class="on ? '' : 'opacity-50'">
+                    x-bind:class="on ? '' : 'opacity-50'"
+                    x-show="{{ $dup ? 'showAll || on' : 'true' }}">
                 @if($twin)
                 <input type="hidden" name="rows[{{ $i }}][twin_id]" value="{{ $twin['id'] }}" x-bind:disabled="!isTransfer">
                 @endif
