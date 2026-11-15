@@ -253,6 +253,27 @@ class StatementImportTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_wrong_year_from_the_reader_is_anchored_to_the_latest_matching_day(): void
+    {
+        // Caso real: la app de Banamex muestra "03 Nov" y el lector devolvió 2023-11-03
+        Carbon::setTestNow('2026-11-15 12:00:00');
+        $account = $this->account();
+
+        $this->fakeVision([
+            ['amount' => '52000.00', 'description' => 'Pago De Servicio', 'date' => '2023-11-03', 'type' => 'expense', 'category' => null],
+            ['amount' => '100.00',   'description' => 'Compra diciembre', 'date' => '2026-12-20', 'type' => 'expense', 'category' => null],
+            ['amount' => '200.00',   'description' => 'Compra reciente',  'date' => '2026-10-30', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+        $rows     = collect(app(\App\Services\StatementImportService::class)->draft($account, basename($location)));
+
+        $this->assertSame(['2026-11-03', '2025-12-20', '2026-10-30'], $rows->pluck('date')->all());
+        $this->assertSame([false, false, false], $rows->pluck('undated')->all());
+
+        Carbon::setTestNow();
+    }
+
     public function test_same_amount_weeks_apart_is_a_possible_duplicate_but_a_month_apart_is_not(): void
     {
         Carbon::setTestNow('2026-10-26 12:00:00');

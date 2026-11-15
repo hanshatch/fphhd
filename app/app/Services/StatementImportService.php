@@ -44,7 +44,11 @@ class StatementImportService
         'amex' => 'Estado de cuenta American Express web: renglones con fecha "dd-mmm.", comercio en mayúsculas y monto a la derecha. '
             . 'Todos son cargos salvo que digan "PAGO" o "ABONO". Ignora casillas, etiquetas "SM" y flechas.',
         'nu' => 'App Nu: lista morada/blanca agrupada por fecha; "Compra" o nombre del comercio son cargos, "Depósito"/"Rendimientos" abonos.',
-        'banamex' => 'App o estado de cuenta Banamex: columnas fecha, concepto, retiro y depósito; retiros son cargos y depósitos abonos.',
+        'banamex' => 'App Banamex «Tus movimientos»: cada movimiento ocupa dos líneas: arriba el concepto en mayúsculas y el monto; '
+            . 'abajo su fecha ("03 Nov") y el estatus ("Aprobada", "En proceso"). Todos los renglones tienen fecha. '
+            . 'Monto en verde con "+" es abono; en negro sin signo es cargo. '
+            . 'Ignora el contador ("36 movimientos"), los títulos "Esta semana"/"Anteriores" y los renglones cortados por el borde. '
+            . 'En un estado de cuenta en PDF: columnas fecha, concepto, retiro y depósito; retiros son cargos y depósitos abonos.',
         'mercadopago' => 'App Mercado Pago: "Pagaste" o nombre de comercio con "-" es cargo; "Recibiste", "Rendimientos" o "+" es abono.',
     ];
 
@@ -313,7 +317,7 @@ class StatementImportService
 
     private function buildRow(Account $account, array $item, ?array $pocket = null): array
     {
-        $date = $this->readDate($item['date']);
+        $date = $this->readDate($this->anchorYear($item['date']));
         $type = $item['type'];
 
         // Movimiento entre la cuenta y una cajita del mismo banco: es transferencia
@@ -526,6 +530,28 @@ class StatementImportService
         );
 
         return $tx ? $this->matcher->describe($tx, $account) + ['possible' => $sure === null] : null;
+    }
+
+    /**
+     * Las capturas casi nunca imprimen el año ("03 Nov") y el lector a veces lo
+     * inventa. El día y el mes sí son confiables: si la fecha queda en el futuro
+     * o a más de 11 meses, se toma la ocurrencia más reciente de ese día y mes.
+     */
+    private function anchorYear(?string $date): ?string
+    {
+        try {
+            $parsed = $date ? Carbon::parse($date)->startOfDay() : null;
+        } catch (\Throwable) {
+            return $date;
+        }
+
+        if ($parsed === null || ($parsed->lte(now()) && $parsed->gte(now()->subMonths(11)))) {
+            return $date;
+        }
+
+        $anchored = $parsed->copy()->year(now()->year);
+
+        return ($anchored->isFuture() ? $anchored->subYear() : $anchored)->toDateString();
     }
 
     /** Fecha válida (ni futura ni de hace más de 2 años) o null; nunca se inventa la de hoy */

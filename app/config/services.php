@@ -36,6 +36,9 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model'   => env('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
+        // Estados de cuenta: listas largas con fecha y signo por renglón; el modelo mini
+        // inventa el año y se salta abonos
+        'statement_model' => env('OPENAI_STATEMENT_MODEL', 'gpt-4.1'),
     ],
 
     'gmail' => [
