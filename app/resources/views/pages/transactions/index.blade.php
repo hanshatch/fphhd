@@ -169,7 +169,10 @@ $now = now();
                 <span class="text-[#ababab]/60 text-[11px]">·</span>
                 <span class="text-[11px] text-[#878787]">{{ $tx->category->name }}</span>
                 @endif
-                @if($tx->counterpartyAccount)
+                @if($tx->isPendingTransfer())
+                <span class="text-[#ababab]/60 text-[11px]">·</span>
+                <a href="{{ route('transfers.pending') }}" class="text-[11px] font-bold text-warn hover:underline">{{ $tx->transfer_pending === 'in' ? '←' : '→' }} Por conciliar</a>
+                @elseif($tx->counterpartyAccount)
                 <span class="text-[#ababab]/60 text-[11px]">·</span>
                 <span class="text-[11px] text-[#878787]">→ {{ $tx->counterpartyAccount->name }}</span>
                 @endif

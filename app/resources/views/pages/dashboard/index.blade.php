@@ -8,6 +8,18 @@
         <p class="text-[#878787] text-sm mt-0.5">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</p>
     </div>
 
+    @if($pendingTransfers['count'] > 0)
+    <a href="{{ route('transfers.pending') }}"
+       class="mb-4 flex items-center gap-3 min-h-[44px] px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:border-amber-400 transition-colors">
+        <svg class="w-5 h-5 flex-shrink-0 text-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        <p class="flex-1 text-sm text-amber-700 dark:text-amber-300">
+            <strong>{{ $pendingTransfers['count'] }} {{ $pendingTransfers['count'] === 1 ? 'transferencia' : 'transferencias' }} por conciliar</strong>
+            <span class="tabular-nums">· {{ format_currency($pendingTransfers['total']) }}</span>
+        </p>
+        <span class="text-xs font-semibold text-warn">Revisar →</span>
+    </a>
+    @endif
+
     {{-- ── Fila 1: Patrimonio + Flujo del mes ─────────────────────── --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
 

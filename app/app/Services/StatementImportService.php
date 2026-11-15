@@ -55,6 +55,7 @@ class StatementImportService
         private TransactionMatchService $matcher,
         private RecurringMatchService $recurring,
         private RecurringChargeService $charges,
+        private TransferReconcileService $reconcile,
     ) {}
 
     public function isConfigured(): bool
@@ -142,7 +143,10 @@ class StatementImportService
      * Con recurring_id aplica el cargo recurrente; con adjust_tx_id corrige el
      * movimiento que ya se había aplicado con el monto estimado.
      *
-     * Devuelve ['created', 'linked', 'applied', 'adjusted'].
+     * Una transferencia sin counterparty_account_id queda «por conciliar»: al
+     * final se intenta unir sola con su otro lado si ya está cargado.
+     *
+     * Devuelve ['created', 'linked', 'applied', 'adjusted', 'pending', 'reconciled'].
      */
     public function store(Account $account, string $token, array $input): array
     {
@@ -150,6 +154,7 @@ class StatementImportService
         $linked   = 0;
         $applied  = 0;
         $adjusted = 0;
+        $pending  = 0;
 
         foreach ($input as $row) {
             if (empty($row['include'])) {
@@ -174,7 +179,23 @@ class StatementImportService
             if (in_array($type, self::TYPES_TRANSFER, true)) {
                 $other = Account::find((int) ($row['counterparty_account_id'] ?? 0));
 
-                if ($other === null || $other->id === $account->id) {
+                if ($other?->id === $account->id) {
+                    continue;
+                }
+
+                // No se sabe a cuál cuenta fue: queda por conciliar hasta cargar el otro lado
+                if ($other === null) {
+                    Transaction::create([
+                        'date'             => $date,
+                        'type'             => Transaction::TYPE_TRANSFER,
+                        'amount'           => $amount,
+                        'account_id'       => $account->id,
+                        'transfer_pending' => $type === 'transfer_out' ? Transaction::PENDING_OUT : Transaction::PENDING_IN,
+                        'description'      => $description ?: 'Transferencia por conciliar',
+                    ]);
+
+                    $pending++;
+
                     continue;
                 }
 
@@ -182,15 +203,23 @@ class StatementImportService
 
                 $twin = ! empty($row['twin_id']) ? Transaction::find((int) $row['twin_id']) : null;
 
-                // Solo se convierte si de verdad es el otro lado: otra cuenta, cargo/abono suelto y mismo monto
-                if ($twin
-                    && $twin->account_id === $other->id
-                    && $twin->type === ($type === 'transfer_out' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE)
-                    && bccomp((string) $twin->amount, $amount, 2) === 0) {
-                    $this->matcher->convertToTransfer($twin, $from, $to);
-                    $linked++;
+                // Solo se convierte si de verdad es el otro lado: otra cuenta, mismo monto y
+                // cargo/abono suelto, o la transferencia que esa cuenta dejó por conciliar
+                if ($twin && $twin->account_id === $other->id && bccomp((string) $twin->amount, $amount, 2) === 0) {
+                    if ($twin->isPendingTransfer()
+                        && $twin->transfer_pending === ($type === 'transfer_out' ? Transaction::PENDING_IN : Transaction::PENDING_OUT)) {
+                        $this->reconcile->assign($twin, $account);
+                        $linked++;
 
-                    continue;
+                        continue;
+                    }
+
+                    if ($twin->type === ($type === 'transfer_out' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE)) {
+                        $this->matcher->convertToTransfer($twin, $from, $to);
+                        $linked++;
+
+                        continue;
+                    }
                 }
 
                 Transaction::create([
@@ -262,14 +291,20 @@ class StatementImportService
 
         Cache::forget($this->key($account, $token));
 
-        if ($created + $linked + $applied + $adjusted > 0) {
+        if ($created + $linked + $applied + $adjusted + $pending > 0) {
             AuditLog::record('statement_import', [
                 'account_id' => $account->id, 'created' => $created, 'linked' => $linked,
-                'applied' => $applied, 'adjusted' => $adjusted,
+                'applied' => $applied, 'adjusted' => $adjusted, 'pending' => $pending,
             ]);
         }
 
-        return ['created' => $created, 'linked' => $linked, 'applied' => $applied, 'adjusted' => $adjusted];
+        // Con lo recién cargado puede haberse completado algún par pendiente
+        $reconciled = $this->reconcile->autoMatch();
+
+        return [
+            'created' => $created, 'linked' => $linked, 'applied' => $applied, 'adjusted' => $adjusted,
+            'pending' => max(0, $pending - $reconciled), 'reconciled' => $reconciled,
+        ];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
@@ -315,7 +350,10 @@ class StatementImportService
         $duplicate = $this->duplicate($account, $direction, $item['amount'], $date);
 
         // ¿La otra mitad ya está en otra cuenta tuya? Entonces es transferencia interna
-        $twin = $duplicate || $date === null ? null : $this->matcher->transferTwin($account, $direction, $item['amount'], $date);
+        // (como cargo/abono suelto, o como transferencia que quedó por conciliar)
+        $twin = $duplicate || $date === null ? null
+            : ($this->reconcile->pendingTwin($account, $direction, $item['amount'], $date)
+                ?? $this->matcher->transferTwin($account, $direction, $item['amount'], $date));
 
         if ($twin) {
             $type       = $direction === 'out' ? 'transfer_out' : 'transfer_in';

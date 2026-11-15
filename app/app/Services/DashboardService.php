@@ -254,10 +254,19 @@ class DashboardService
             'tdcAlerts'         => $this->tdcAlerts($accounts, $balances),
             'indicators'        => $this->financialIndicators(),
             'goals'             => $this->goalsSnapshot(),
+            'pendingTransfers'  => $this->pendingTransfers(),
             'recent'            => Transaction::with('account', 'category', 'source')
                                     ->orderBy('date', 'desc')->orderBy('id', 'desc')
                                     ->limit(8)->get(),
         ];
+    }
+
+    /** Transferencias entre cuentas propias que aún esperan su otro lado */
+    private function pendingTransfers(): array
+    {
+        $rows = Transaction::pendingTransfers()->get(['amount']);
+
+        return ['count' => $rows->count(), 'total' => bcsum($rows->pluck('amount'))];
     }
 
     /**

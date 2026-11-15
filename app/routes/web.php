@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\TotpController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\TransferReconcileController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\IncomePlanController;
 use App\Http\Controllers\ProfileController;
@@ -55,6 +56,10 @@ Route::middleware(['auth', 'totp'])->group(function () {
     Route::post('/recurring/{recurring}/toggle',    [RecurringChargeController::class, 'toggleActive'])->name('recurring.toggle');
     Route::post('/recurring/{recurring}/skip',      [RecurringChargeController::class, 'skip'])->name('recurring.skip');
     Route::get('/scheduled', [ScheduledController::class, 'index'])->name('scheduled.index');
+    Route::get('/transfers/pending', [TransferReconcileController::class, 'index'])->name('transfers.pending');
+    Route::post('/transfers/pending/auto', [TransferReconcileController::class, 'auto'])->name('transfers.pending.auto');
+    Route::post('/transfers/pending/{transaction}', [TransferReconcileController::class, 'resolve'])->name('transfers.pending.resolve');
+
     Route::resource('goals', GoalController::class);
     Route::post('/goals/{goal}/contributions', [GoalController::class, 'contribute'])->name('goals.contribute');
     Route::delete('/goals/{goal}/contributions/{contribution}', [GoalController::class, 'destroyContribution'])->name('goals.contributions.destroy');

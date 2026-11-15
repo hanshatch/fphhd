@@ -23,14 +23,18 @@ class TransactionMatchService
     {
         return $this->window(Transaction::with('account', 'counterpartyAccount'), $amount, $date, $days)
             ->where(function ($q) use ($account, $direction) {
+                // Una transferencia pendiente que ENTRÓ a la cuenta cuenta como entrada, no como salida
                 if ($direction === 'out') {
                     $q->where('account_id', $account->id)
-                        ->whereIn('type', [Transaction::TYPE_EXPENSE, Transaction::TYPE_FEE, Transaction::TYPE_TRANSFER]);
+                        ->whereIn('type', [Transaction::TYPE_EXPENSE, Transaction::TYPE_FEE, Transaction::TYPE_TRANSFER])
+                        ->where(fn ($q) => $q->whereNull('transfer_pending')->orWhere('transfer_pending', Transaction::PENDING_OUT));
                 } else {
                     $q->where(fn ($q) => $q->where('account_id', $account->id)
                             ->whereIn('type', [Transaction::TYPE_INCOME, Transaction::TYPE_INTEREST]))
                         ->orWhere(fn ($q) => $q->where('counterparty_account_id', $account->id)
-                            ->where('type', Transaction::TYPE_TRANSFER));
+                            ->where('type', Transaction::TYPE_TRANSFER))
+                        ->orWhere(fn ($q) => $q->where('account_id', $account->id)
+                            ->where('transfer_pending', Transaction::PENDING_IN));
                 }
             })
             ->orderByDesc('id')

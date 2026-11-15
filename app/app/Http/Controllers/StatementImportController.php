@@ -81,11 +81,11 @@ class StatementImportController extends Controller
             'rows.*.adjust_tx_id' => 'nullable|integer',
         ]);
 
-        // Una transferencia marcada necesita la otra cuenta (y que no sea esta misma)
+        // Sin la otra cuenta la transferencia queda por conciliar; lo que no vale es esta misma
         foreach ($data['rows'] as $i => $row) {
             if (! empty($row['include'])
                 && in_array($row['type'], StatementImportService::TYPES_TRANSFER, true)
-                && (empty($row['counterparty_account_id']) || (int) $row['counterparty_account_id'] === $account->id)) {
+                && (int) ($row['counterparty_account_id'] ?? 0) === $account->id) {
                 throw ValidationException::withMessages([
                     "rows.{$i}.counterparty_account_id" => '«' . $row['description'] . '»: elige la otra cuenta de la transferencia.',
                 ]);
@@ -99,6 +99,8 @@ class StatementImportController extends Controller
             $r['applied'] === 1 ? '1 cargo recurrente aplicado con el monto real.' : ($r['applied'] > 1 ? "{$r['applied']} cargos recurrentes aplicados con el monto real." : null),
             $r['adjusted'] === 1 ? '1 cargo recurrente ajustado al monto real.' : ($r['adjusted'] > 1 ? "{$r['adjusted']} cargos recurrentes ajustados al monto real." : null),
             $r['linked'] === 1 ? '1 movimiento que ya existía en otra cuenta quedó como transferencia.' : ($r['linked'] > 1 ? "{$r['linked']} movimientos que ya existían en otra cuenta quedaron como transferencias." : null),
+            $r['reconciled'] === 1 ? '1 transferencia se concilió sola con su otra cuenta.' : ($r['reconciled'] > 1 ? "{$r['reconciled']} transferencias se conciliaron solas con su otra cuenta." : null),
+            $r['pending'] === 1 ? '1 transferencia quedó por conciliar.' : ($r['pending'] > 1 ? "{$r['pending']} transferencias quedaron por conciliar." : null),
         ]);
 
         $msg = $parts === [] ? 'No se registró ningún movimiento.' : implode(' ', $parts);

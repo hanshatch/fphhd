@@ -193,9 +193,9 @@
                             <div class="min-w-0 flex items-center gap-2" x-show="isTransfer" x-cloak>
                                 <span class="text-xs text-[#878787] flex-shrink-0" x-text="type === 'transfer_out' ? 'Hacia' : '{{ $account->isCredit() ? 'Pagado desde' : 'Desde' }}'"></span>
                                 <select name="rows[{{ $i }}][counterparty_account_id]" x-model="counterparty"
-                                    x-bind:disabled="!isTransfer" x-bind:required="on && isTransfer"
+                                    x-bind:disabled="!isTransfer"
                                     class="w-full min-w-0 rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
-                                    <option value="">Elige la otra cuenta…</option>
+                                    <option value="">Por conciliar (no sé cuál cuenta)</option>
                                     @foreach($others as $other)
                                     <option value="{{ $other->id }}">{{ $other->displayLabel() }}</option>
                                     @endforeach

@@ -19,8 +19,15 @@ class AccountService
         $query = fn () => Transaction::where('account_id', $account->id)
             ->when($asOf, fn ($q) => $q->whereDate('date', '<=', $asOf));
 
-        $transferIn = fn () => Transaction::where('counterparty_account_id', $account->id)
+        // Entran: transferencias con esta cuenta como destino y las pendientes
+        // de conciliar que entraron aquí (aún sin saber de qué cuenta salieron)
+        $transferIn = fn () => Transaction::where(fn ($q) => $q
+                ->where('counterparty_account_id', $account->id)
+                ->orWhere(fn ($q2) => $q2->where('account_id', $account->id)->where('transfer_pending', Transaction::PENDING_IN)))
             ->when($asOf, fn ($q) => $q->whereDate('date', '<=', $asOf));
+
+        $notPendingIn = fn ($q) => $q->where(fn ($q2) => $q2
+            ->whereNull('transfer_pending')->orWhere('transfer_pending', '<>', Transaction::PENDING_IN));
 
         $balance = (string) $account->initial_balance;
 
@@ -29,7 +36,7 @@ class AccountService
             // SALEN de la tarjeta (disposiciones a otra cuenta), y baja con pagos
             // (transfers entrantes) y reembolsos/bonificaciones (income/interest)
             $expenses = (string) ($query()->whereIn('type', ['expense', 'fee'])->sum('amount') ?: 0);
-            $drawn    = (string) ($query()->where('type', 'transfer')->sum('amount') ?: 0);
+            $drawn    = (string) ($query()->where('type', 'transfer')->where($notPendingIn)->sum('amount') ?: 0);
             $payments = (string) ($transferIn()->where('type', 'transfer')->sum('amount') ?: 0);
             $refunds  = (string) ($query()->whereIn('type', ['income', 'interest'])->sum('amount') ?: 0);
 
@@ -41,7 +48,7 @@ class AccountService
             // Débito / Ahorro / Inversión / Efectivo
             $income   = (string) ($query()->whereIn('type', ['income', 'interest'])->sum('amount') ?: 0);
             $expenses = (string) ($query()->whereIn('type', ['expense', 'fee'])->sum('amount') ?: 0);
-            $transOut = (string) ($query()->where('type', 'transfer')->sum('amount') ?: 0);
+            $transOut = (string) ($query()->where('type', 'transfer')->where($notPendingIn)->sum('amount') ?: 0);
             $transIn  = (string) ($transferIn()->where('type', 'transfer')->sum('amount') ?: 0);
 
             $balance = bcadd($balance, $income, 2);
@@ -61,9 +68,10 @@ class AccountService
     {
         $ids = $accounts->pluck('id');
 
+        // Una transferencia pendiente que ENTRÓ se agrupa aparte: suma, no resta
         $ownByAccount = Transaction::whereIn('account_id', $ids)
-            ->selectRaw('account_id, type, SUM(amount) as total')
-            ->groupBy('account_id', 'type')
+            ->selectRaw("account_id, CASE WHEN transfer_pending = 'in' THEN 'pending_in' ELSE type END as type, SUM(amount) as total")
+            ->groupBy('account_id', \Illuminate\Support\Facades\DB::raw("CASE WHEN transfer_pending = 'in' THEN 'pending_in' ELSE type END"))
             ->get()
             ->groupBy('account_id');
 
@@ -78,7 +86,7 @@ class AccountService
         foreach ($accounts as $account) {
             $byType = ($ownByAccount[$account->id] ?? collect())->pluck('total', 'type');
             $sumOf  = fn (array $types) => bcsum(array_map(fn ($t) => $byType[$t] ?? '0', $types));
-            $transIn = bcadd((string) ($incoming[$account->id] ?? 0), '0', 2);
+            $transIn = bcadd((string) ($incoming[$account->id] ?? 0), (string) ($byType['pending_in'] ?? '0'), 2);
 
             $balance = (string) $account->initial_balance;
 
@@ -169,7 +177,7 @@ class AccountService
 
         foreach ($transactions as $tx) {
             $amount     = (string) $tx->amount;
-            $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
+            $isIncoming = $tx->entersAccount($account);
 
             if ($account->isCredit()) {
                 // Deuda: sube con gastos/comisiones y disposiciones, baja con pagos y reembolsos

@@ -408,7 +408,7 @@ function importCaptures(url) {
     <div data-day-group data-date="{{ $dayKey }}">
     @foreach($dayTxs as $tx)
     @php
-        $isIncoming = $tx->type === 'transfer' && $tx->counterparty_account_id === $account->id;
+        $isIncoming = $tx->entersAccount($account);
         $cfg = $isIncoming
             ? ['sign' => '+', 'color' => '#878787', 'label' => 'Transferencia recibida']
             : ($typeConfig[$tx->type] ?? $typeConfig['expense']);
@@ -459,7 +459,10 @@ function importCaptures(url) {
                 <span class="text-[#ababab]/60 text-[11px]">·</span>
                 <span class="text-[11px] text-[#878787]">{{ $tx->category->name }}</span>
                 @endif
-                @if($isIncoming)
+                @if($tx->isPendingTransfer())
+                <span class="text-[#ababab]/60 text-[11px]">·</span>
+                <a href="{{ route('transfers.pending') }}" class="text-[11px] font-bold text-warn hover:underline">{{ $isIncoming ? '←' : '→' }} Por conciliar</a>
+                @elseif($isIncoming)
                 <span class="text-[#ababab]/60 text-[11px]">·</span>
                 <span class="text-[11px] text-[#878787]">← {{ $tx->account->name }}</span>
                 @elseif($tx->counterpartyAccount)

@@ -355,7 +355,7 @@ class StatementImportTest extends TestCase
         $this->assertSame($revolut->id, $tx->counterparty_account_id);
     }
 
-    public function test_transfer_without_counterparty_is_rejected(): void
+    public function test_transfer_to_the_same_account_is_rejected(): void
     {
         $cheques = $this->account();
 
@@ -367,7 +367,7 @@ class StatementImportTest extends TestCase
 
         $this->post(route('accounts.import.store', [$cheques, $token]), ['rows' => [[
             'include' => 1, 'date' => '2026-09-20', 'description' => 'Traspaso',
-            'amount' => '500.00', 'type' => 'transfer_out',
+            'amount' => '500.00', 'type' => 'transfer_out', 'counterparty_account_id' => $cheques->id,
         ]]])->assertSessionHasErrors('rows.0.counterparty_account_id');
 
         $this->assertSame(0, Transaction::count());

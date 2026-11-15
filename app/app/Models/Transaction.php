@@ -11,7 +11,7 @@ class Transaction extends Model
 {
     protected $fillable = [
         'date', 'position', 'type', 'amount', 'account_id', 'category_id',
-        'source_id', 'counterparty_account_id', 'description', 'tags',
+        'source_id', 'counterparty_account_id', 'transfer_pending', 'description', 'tags',
     ];
 
     protected $casts = [
@@ -26,6 +26,10 @@ class Transaction extends Model
     const TYPE_INTEREST = 'interest';
     const TYPE_FEE      = 'fee';
 
+    // Transferencia sin conciliar: salió de la cuenta / entró a la cuenta
+    const PENDING_OUT = 'out';
+    const PENDING_IN  = 'in';
+
     /**
      * Una transferencia sin descripción se etiqueta sola, para que la lista
      * no muestre filas en blanco. Vale desde cualquier vía de alta.
@@ -33,6 +37,17 @@ class Transaction extends Model
     protected static function booted(): void
     {
         static::saving(function (self $transaction) {
+            // Al saberse la otra cuenta deja de estar pendiente. Si el dinero
+            // ENTRÓ a esta cuenta, la otra es el origen: se voltea a origen → destino.
+            if ($transaction->transfer_pending && ($transaction->type !== self::TYPE_TRANSFER || $transaction->counterparty_account_id)) {
+                if ($transaction->type === self::TYPE_TRANSFER && $transaction->transfer_pending === self::PENDING_IN) {
+                    [$transaction->account_id, $transaction->counterparty_account_id]
+                        = [$transaction->counterparty_account_id, $transaction->account_id];
+                }
+
+                $transaction->transfer_pending = null;
+            }
+
             if ($transaction->type === self::TYPE_TRANSFER && blank($transaction->description)) {
                 $transaction->description = 'Transferencia entre cuentas';
             }
@@ -80,6 +95,24 @@ class Transaction extends Model
     public function isTransfer(): bool
     {
         return $this->type === self::TYPE_TRANSFER;
+    }
+
+    public function isPendingTransfer(): bool
+    {
+        return $this->type === self::TYPE_TRANSFER && $this->transfer_pending !== null;
+    }
+
+    /** ¿Esta transferencia mete dinero a la cuenta? (destino, o pendiente que entró) */
+    public function entersAccount(Account $account): bool
+    {
+        return $this->type === self::TYPE_TRANSFER
+            && ($this->counterparty_account_id === $account->id
+                || ($this->transfer_pending === self::PENDING_IN && $this->account_id === $account->id));
+    }
+
+    public function scopePendingTransfers(Builder $query): Builder
+    {
+        return $query->where('type', self::TYPE_TRANSFER)->whereNotNull('transfer_pending');
     }
 
     public function isIncome(): bool
