@@ -479,7 +479,7 @@ class StatementImportService
     private function attachRecurring(Account $account, array $rows): array
     {
         $candidates = collect($rows)
-            ->filter(fn ($r) => ! $r['duplicate'] && ! $r['undated'] && in_array($r['type'], ['expense', 'income'], true))
+            ->filter(fn ($r) => ! $r['duplicate'] && in_array($r['type'], ['expense', 'income'], true))
             ->map(fn ($r) => ['type' => $r['type'], 'amount' => $r['amount'], 'date' => $r['date'], 'description' => $r['description']])
             ->all();
 
@@ -495,6 +495,12 @@ class StatementImportService
                 'due'            => ($tx ? $tx->date : $charge->next_application_date)->translatedFormat('j M Y'),
                 'transaction_id' => $tx?->id,
             ];
+
+            // El renglón no traía fecha: toma la del vencimiento del cargo (editable en la revisión)
+            if ($rows[$i]['undated']) {
+                $rows[$i]['date']    = min($charge->next_application_date->toDateString(), now()->toDateString());
+                $rows[$i]['undated'] = false;
+            }
 
             if ($charge->category_id) {
                 $rows[$i]['category_id']     = $charge->category_id;

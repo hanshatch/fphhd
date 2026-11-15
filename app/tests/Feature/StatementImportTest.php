@@ -226,6 +226,33 @@ class StatementImportTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_undated_row_takes_the_due_date_of_its_pending_recurring_charge(): void
+    {
+        Carbon::setTestNow('2026-11-15 12:00:00');
+        $account = $this->account();
+        $cat     = Category::create(['name' => 'Seguros', 'kind' => 'expense']);
+
+        \App\Models\RecurringCharge::create([
+            'name' => 'Seguros Monterrey Retiro - 2', 'account_id' => $account->id, 'category_id' => $cat->id,
+            'type' => 'expense', 'amount' => '10499.37', 'amount_tolerance_pct' => '5', 'day_of_month' => 28,
+            'start_date' => '2026-01-01', 'next_application_date' => '2026-10-28', 'is_active' => true,
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '10578.62', 'description' => 'DOMI 0009359491 SEGUROS MONTERREY NE', 'date' => null, 'type' => 'expense', 'category' => null],
+            ['amount' => '43000.00', 'description' => 'Pago a Terceros 371328', 'date' => null, 'type' => 'expense', 'category' => null],
+        ]);
+
+        $this->get($this->upload($account)->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('Seguros Monterrey Retiro - 2')
+            ->assertSee('value="2026-10-28"', false)
+            ->assertSee('1 sin fecha legible', false)
+            ->assertSee('Falta la fecha');
+
+        Carbon::setTestNow();
+    }
+
     public function test_same_amount_weeks_apart_is_a_possible_duplicate_but_a_month_apart_is_not(): void
     {
         Carbon::setTestNow('2026-10-26 12:00:00');

@@ -32,7 +32,7 @@
         @endif
         @if($blank)
             <span class="text-negative font-semibold">{{ $blank }} sin fecha legible</span>:
-            vienen desmarcados; si los registras, escribe su fecha real.
+            escribe la fecha real de los que quieras registrar y se marcan solos.
         @endif
         @if($twins)
             <span class="text-blue-600 font-semibold">{{ $twins }} {{ $twins === 1 ? 'parece transferencia' : 'parecen transferencias' }} entre tus cuentas</span>:
@@ -81,6 +81,7 @@
             <x-card class="p-3 {{ $dup ? 'border-amber-300 dark:border-amber-500/40' : ($twin ? 'border-blue-300 dark:border-blue-500/40' : '') }}"
                     x-data="{
                         on: {{ $dup || $nodt ? 'false' : 'true' }},
+                        needsDate: {{ $nodt && ! $dup ? 'true' : 'false' }},
                         type: '{{ $row['type'] }}',
                         counterparty: '{{ $row['counterparty_account_id'] ?? '' }}',
                         linked: {{ $rec ? 'true' : 'false' }},
@@ -88,7 +89,7 @@
                         get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
                         get amountClass() { return this.isIn ? 'text-positive' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-negative'); },
                     }"
-                    x-bind:class="on ? '' : 'opacity-50'"
+                    x-bind:class="on || needsDate ? '' : 'opacity-50'"
                     x-show="{{ $dup ? 'showAll || on' : 'true' }}">
                 @if($twin)
                 <input type="hidden" name="rows[{{ $i }}][twin_id]" value="{{ $twin['id'] }}" x-bind:disabled="!isTransfer">
@@ -113,9 +114,14 @@
                                 <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
                                     <input type="date" name="rows[{{ $i }}][date]" value="{{ $row['date'] }}" max="{{ now()->toDateString() }}"
                                         x-bind:required="on" aria-label="Fecha del movimiento"
+                                        x-on:change="if ($event.target.value && needsDate) { on = true; needsDate = false }"
                                         class="rounded-lg border {{ $nodt ? 'border-red-400' : 'border-transparent' }} hover:border-[#ababab]/40 focus:border-[#ababab]/40 bg-transparent px-2 py-0.5 -ml-2 text-xs text-[#878787] dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
                                     @if($nodt)
+                                        @if($dup)
                                         <span class="text-[11px] font-bold text-negative">Sin fecha</span>
+                                        @else
+                                        <span class="text-[11px] font-bold text-negative" x-show="needsDate">Falta la fecha: escríbela y se marca solo</span>
+                                        @endif
                                     @endif
                                     @if($twin)
                                         <span class="text-[11px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded-full"><svg class="inline-block w-3 h-3 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> Transferencia</span>

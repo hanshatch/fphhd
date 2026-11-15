@@ -25,7 +25,7 @@ class RecurringMatchService
 
     /**
      * $rows: [clave => ['type' => 'expense'|'income', 'amount' => '10519.54',
-     *                   'date' => 'Y-m-d', 'description' => '...']]
+     *                   'date' => 'Y-m-d' | '' (ilegible), 'description' => '...']]
      *
      * Devuelve [clave => ['mode' => 'apply'|'adjust', 'charge' => RecurringCharge,
      *                     'transaction' => ?Transaction]]
@@ -45,7 +45,8 @@ class RecurringMatchService
         $pairs = [];
 
         foreach ($rows as $key => $row) {
-            $date = Carbon::parse($row['date']);
+            // Sin fecha legible solo se puede empatar por nombre contra un cargo que ya venció
+            $date = filled($row['date']) ? Carbon::parse($row['date']) : null;
 
             foreach ($charges as $charge) {
                 if ($charge->type !== $row['type']) {
@@ -60,12 +61,14 @@ class RecurringMatchService
                 // Pendiente: aplicar con el monto real
                 if ($charge->is_active
                     && ($nameOk || $exact)
-                    && abs($charge->next_application_date->diffInDays($date, false)) <= self::DAYS
+                    && ($date
+                        ? abs($charge->next_application_date->diffInDays($date, false)) <= self::DAYS
+                        : $nameOk && $charge->next_application_date->lte(now()->addDays(self::DAYS)))
                     && ($score = $this->score($charge, (string) $charge->amount, $row['amount'])) !== null) {
                     $pairs[] = [$score, $key, 'c' . $charge->id, 'apply', $charge, null];
                 }
 
-                if (! $nameOk) {
+                if (! $nameOk || ! $date) {
                     continue;
                 }
 
