@@ -111,9 +111,80 @@ class BankEmailImportService
         return $email;
     }
 
+    // ── Retomar correos sin responder ─────────────────────────────────
+
+    /** Correos que siguen esperando respuesta (los de moneda extranjera se capturan en la web) */
+    public function pendingEmails()
+    {
+        return BankEmail::where('status', BankEmail::STATUS_PENDING)->orderBy('received_at')->orderBy('id')->get()
+            ->filter(fn (BankEmail $e) => is_array($e->parsed) && ($e->parsed['currency'] ?? 'MXN') === 'MXN')
+            ->values();
+    }
+
+    /**
+     * «Volver a leer correos»: las preguntas de Telegram caducan, pero el correo
+     * sigue pendiente. Lee el buzón por si hay nuevos y vuelve a enrutar los que
+     * se quedaron sin respuesta; los que ya se registraron por otro lado
+     * (importación, captura manual) se cierran solos.
+     *
+     * @return array{new:int, closed:int, registered:int, asked:int}
+     */
+    public function retry(?BankEmail $only = null, int $days = 7): array
+    {
+        $stale = $only ? collect([$only]) : $this->pendingEmails();
+        $new   = 0;
+
+        // Las preguntas a medias se descartan: se vuelven a hacer desde el correo
+        $this->telegramFlow->resetPending();
+
+        if ($only === null && $this->mailbox->isConfigured()) {
+            try {
+                $new = $this->sync($days);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        $result = ['new' => $new, 'closed' => 0, 'registered' => 0, 'asked' => 0];
+
+        foreach ($stale as $email) {
+            $email->refresh();
+
+            if ($email->status !== BankEmail::STATUS_PENDING || ! is_array($email->parsed)) {
+                continue;
+            }
+
+            $this->route($email, true);
+
+            $result[match ($email->refresh()->status) {
+                BankEmail::STATUS_DUPLICATE  => 'closed',
+                BankEmail::STATUS_REGISTERED => 'registered',
+                default                      => 'asked',
+            }]++;
+        }
+
+        return $result;
+    }
+
+    /** Aviso diario: cuántos correos siguen sin responder, con botón para retomarlos */
+    public function remindPending(): int
+    {
+        $count = $this->pendingEmails()->count();
+
+        if ($count > 0) {
+            $this->notify(
+                '📬 Tienes ' . $count . ($count === 1 ? ' correo del banco' : ' correos del banco') . ' sin responder.',
+                [[['text' => '🔄 Volver a leer correos', 'callback_data' => 'mail:retry']]]
+            );
+        }
+
+        return $count;
+    }
+
     // ── Enrutamiento ──────────────────────────────────────────────────
 
-    private function route(BankEmail $email): void
+    /** $retry: segunda vuelta de un correo cuya pregunta caducó */
+    private function route(BankEmail $email, bool $retry = false): void
     {
         $p       = $email->parsed;
         $account = $this->matchAccount($email->bank, $p['last4'] ?? null);
@@ -159,7 +230,16 @@ class BankEmailImportService
         $direction = $type === 'income' ? 'in' : 'out';
 
         // 3) Ya registrado en esta cuenta (también si fue como transferencia desde la otra cuenta)
-        if ($account && ($dup = $this->matcher->existing($account, $direction, $p['amount'], $p['date'], 1))) {
+        // Al retomar, lo normal es que ya se haya registrado al importar el estado de cuenta
+        // (con la fecha del banco, que puede diferir un par de días de la del correo)
+        if ($account && ($dup = $this->matcher->existing($account, $direction, $p['amount'], $p['date'], $retry ? 3 : 1))) {
+            // Retomado y el movimiento no pertenece a otro correo: se cierra sin preguntar
+            if ($retry && ! BankEmail::where('transaction_id', $dup->id)->where('id', '<>', $email->id)->exists()) {
+                $email->update(['status' => BankEmail::STATUS_DUPLICATE, 'transaction_id' => $dup->id]);
+
+                return;
+            }
+
             // Si ya es transferencia, este correo es la otra mitad: se cierra sin preguntar
             if ($dup->type === Transaction::TYPE_TRANSFER) {
                 $email->update(['status' => BankEmail::STATUS_DUPLICATE, 'transaction_id' => $dup->id]);

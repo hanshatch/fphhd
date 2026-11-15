@@ -370,6 +370,67 @@ class BankEmailImportTest extends TestCase
         $this->assertSame($cash->id, $tx->counterparty_account_id);
     }
 
+    public function test_expired_question_offers_to_reread_mail_and_resumes_it(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379');
+        $otros   = Category::create(['name' => 'Otros gastos', 'kind' => 'expense']);
+
+        $this->inbox = [$this->mail('u1', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
+        app(BankEmailImportService::class)->sync();
+
+        // Hans estaba en junta: la pregunta caducó
+        \Illuminate\Support\Facades\Cache::flush();
+
+        $this->tgCallback('cat:' . $otros->id)->assertNoContent();
+
+        $this->assertSame(0, Transaction::count());
+        $this->assertStringContainsString('1 correo del banco sin responder', $this->lastText());
+        $this->assertStringContainsString('mail:retry', (string) end($this->sent)['reply_markup']);
+
+        // Botón «Volver a leer correos»: se vuelve a preguntar y ahora sí se registra
+        $this->tgCallback('mail:retry')->assertNoContent();
+
+        $texts = array_column($this->sent, 'text');
+        $this->assertStringContainsString('1 por responder', end($texts));
+        $this->assertStringContainsString('¿Qué categoría?', $texts[count($texts) - 2]);
+
+        $this->tgCallback('cat:' . $otros->id)->assertNoContent();
+
+        $tx = Transaction::sole();
+        $this->assertSame('20000.00', $tx->amount);
+        $this->assertSame($cheques->id, $tx->account_id);
+        $this->assertSame(BankEmail::STATUS_REGISTERED, BankEmail::sole()->status);
+    }
+
+    public function test_reread_closes_mail_already_registered_by_statement_import(): void
+    {
+        $cheques = $this->account('Cheques', 'banamex', '379');
+
+        $this->inbox = [$this->mail('u1', 'notificaciones@banamex.com', 'Retiro/Compra con cuenta Banamex', BankEmailParserTest::BANAMEX_RETIRO, '2026-09-30 14:56')];
+        app(BankEmailImportService::class)->sync();
+        \Illuminate\Support\Facades\Cache::flush();
+
+        // Mientras tanto se importó el estado de cuenta, con la fecha del banco
+        $tx = Transaction::create([
+            'date' => '2026-10-02', 'type' => 'expense', 'amount' => '20000.00',
+            'account_id' => $cheques->id, 'description' => 'RETIRO BANAMEX',
+        ]);
+
+        $this->postJson('/telegram/webhook', ['message' => [
+            'chat' => ['id' => self::CHAT_ID], 'text' => 'correos',
+        ]], ['X-Telegram-Bot-Api-Secret-Token' => self::SECRET])->assertNoContent();
+
+        $this->assertStringContainsString('1 ya estaba(n) registrado(s)', $this->lastText());
+        $this->assertSame(1, Transaction::count());
+        $this->assertSame(BankEmail::STATUS_DUPLICATE, BankEmail::sole()->status);
+        $this->assertSame($tx->id, BankEmail::sole()->transaction_id);
+
+        // Ya no queda nada: el recordatorio no molesta
+        $before = count($this->sent);
+        $this->artisan('gmail:remind')->assertSuccessful();
+        $this->assertCount($before, $this->sent);
+    }
+
     public function test_existing_same_movement_is_flagged_as_duplicate(): void
     {
         $cheques = $this->account('Cheques', 'banamex', '379');

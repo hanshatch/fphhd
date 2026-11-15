@@ -28,3 +28,11 @@ Schedule::command('gmail:sync')
     ->name('gmail-sync-bank-emails')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/scheduler.log'));
+
+// Correos del banco que se quedaron sin responder (la pregunta de Telegram
+// caduca a los 30 min): recordatorio con botón para retomarlos.
+Schedule::command('gmail:remind')
+    ->twiceDaily(8, 20)
+    ->name('remind-pending-bank-emails')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/scheduler.log'));

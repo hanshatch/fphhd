@@ -152,6 +152,59 @@ class TelegramExpenseService
         $this->startPending($chatId, [$pending], 1);
     }
 
+    /** Descarta la pregunta en curso y su cola (al retomar correos se vuelven a hacer) */
+    public function resetPending(): void
+    {
+        if ($chatId = config('services.telegram.chat_id')) {
+            Cache::forget($this->pendingKey($chatId));
+        }
+    }
+
+    /**
+     * Aviso de «expiró». Si hay correos del banco sin responder, ofrece
+     * retomarlos en vez de dejar el movimiento perdido.
+     *
+     * @return array{0:string, 1:?array}
+     */
+    private function expiredNotice(): array
+    {
+        $count = app(\App\Services\Mail\BankEmailImportService::class)->pendingEmails()->count();
+
+        if ($count === 0) {
+            return ['⏰ Este registro expiró. Mándame el gasto de nuevo.', null];
+        }
+
+        return [
+            "⏰ Esta pregunta expiró.\n\nTienes " . $count
+                . ($count === 1 ? ' correo del banco' : ' correos del banco') . ' sin responder; te los vuelvo a preguntar.',
+            $this->retryKeyboard(),
+        ];
+    }
+
+    private function retryKeyboard(?\App\Models\BankEmail $email = null): array
+    {
+        return [[$email
+            ? ['text' => '🔄 Volver a leer este correo', 'callback_data' => 'mail:retry:' . $email->id]
+            : ['text' => '🔄 Volver a leer correos', 'callback_data' => 'mail:retry']]];
+    }
+
+    /** Lee de nuevo el buzón y retoma los correos sin responder; devuelve el resumen */
+    private function retryMail(?\App\Models\BankEmail $only = null): string
+    {
+        $r = app(\App\Services\Mail\BankEmailImportService::class)->retry($only);
+
+        $lines = array_filter([
+            $r['new'] > 0 ? '📥 ' . $r['new'] . ' nuevo(s)' : null,
+            $r['closed'] > 0 ? '✔️ ' . $r['closed'] . ' ya estaba(n) registrado(s)' : null,
+            $r['registered'] > 0 ? '✅ ' . $r['registered'] . ' registrado(s) solo(s)' : null,
+            $r['asked'] > 0 ? '❓ ' . $r['asked'] . ' por responder (te pregunto abajo)' : null,
+        ]);
+
+        return $lines === []
+            ? '🔄 Correos al día: no hay nada pendiente.'
+            : "🔄 Correos revisados\n" . implode("\n", $lines);
+    }
+
     private function startPending(int|string $chatId, array $queue, int $total): void
     {
         $pending          = array_shift($queue);
@@ -312,6 +365,7 @@ class TelegramExpenseService
      *  mail:ask:<email>        → no es ese recurrente, preguntar categoría
      *  mail:undo:<email>       → borrar lo que se registró solo
      *  mail:skip:<email>       → no registrar
+     *  mail:retry[:<email>]    → volver a leer los correos sin responder (o solo ese)
      */
     private function handleMailCallback(int|string $chatId, int $messageId, string $data): void
     {
@@ -319,6 +373,14 @@ class TelegramExpenseService
 
         $email   = ctype_digit((string) $emailId) ? \App\Models\BankEmail::with('account')->find((int) $emailId) : null;
         $service = app(\App\Services\Mail\BankEmailImportService::class);
+
+        // mail:retry → todos los pendientes · mail:retry:<email> → solo ese
+        if ($action === 'retry' && ($emailId === null || $email !== null)) {
+            $this->telegram->editMessageText($chatId, $messageId, '🔄 Leyendo tus correos…');
+            $this->telegram->editMessageText($chatId, $messageId, $this->retryMail($email));
+
+            return;
+        }
 
         if ($email === null) {
             $this->telegram->editMessageText($chatId, $messageId, 'ℹ️ Ese correo ya no está pendiente.');
@@ -332,7 +394,7 @@ class TelegramExpenseService
 
             $this->telegram->editMessageText($chatId, $messageId, $tx
                 ? "🔁 Transferencia registrada\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
-                : 'ℹ️ No pude convertirlo en transferencia; regístralo a mano.');
+                : 'ℹ️ No pude convertirlo en transferencia.', $tx ? null : $this->stillPendingKeyboard($email));
 
             return;
         }
@@ -343,7 +405,7 @@ class TelegramExpenseService
 
             $this->telegram->editMessageText($chatId, $messageId, $tx
                 ? "🔁 Transferencia registrada\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
-                : 'ℹ️ Ese correo ya no está pendiente.');
+                : 'ℹ️ Ese correo ya no está pendiente.', $tx ? null : $this->stillPendingKeyboard($email));
 
             return;
         }
@@ -355,7 +417,7 @@ class TelegramExpenseService
             $this->telegram->editMessageText($chatId, $messageId, $tx
                 ? "✅ Cargo recurrente aplicado\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
                     . "\nPróximo: " . $charge->fresh()->next_application_date->translatedFormat('j M Y')
-                : 'ℹ️ Ese cargo recurrente ya no está pendiente.');
+                : 'ℹ️ Ese cargo recurrente ya no está pendiente.', $tx ? null : $this->stillPendingKeyboard($email));
 
             return;
         }
@@ -366,7 +428,7 @@ class TelegramExpenseService
 
             $this->telegram->editMessageText($chatId, $messageId, $tx
                 ? "✏️ Ajustado al monto real\n" . format_currency($tx->amount) . ' · ' . $tx->description . ' · ' . $tx->date->translatedFormat('j M Y')
-                : 'ℹ️ No pude ajustar ese movimiento.');
+                : 'ℹ️ No pude ajustar ese movimiento.', $tx ? null : $this->stillPendingKeyboard($email));
 
             return;
         }
@@ -390,6 +452,12 @@ class TelegramExpenseService
             $service->skip($email);
             $this->telegram->editMessageText($chatId, $messageId, '⏭ No registrado.');
         }
+    }
+
+    /** Si el correo sigue sin registrarse, botón para volver a leerlo */
+    private function stillPendingKeyboard(\App\Models\BankEmail $email): ?array
+    {
+        return $email->fresh()?->status === \App\Models\BankEmail::STATUS_PENDING ? $this->retryKeyboard($email) : null;
     }
 
     /** Descarta el pendiente actual y continúa con la cola si hay más */
@@ -439,6 +507,13 @@ class TelegramExpenseService
         $text   = trim($message['text']);
 
         if ($text !== '' && ! str_starts_with($text, '/') && $this->consumeDescriptionEdit($chatId, $text)) {
+            return;
+        }
+
+        // «correos» / «pendientes»: volver a leer el buzón y retomar lo que quedó sin responder
+        if (in_array(ltrim(mb_strtolower($text), '/'), ['correos', 'correo', 'pendientes'], true)) {
+            $this->telegram->sendMessage($chatId, $this->retryMail());
+
             return;
         }
 
@@ -513,7 +588,7 @@ class TelegramExpenseService
         $pending = Cache::get($this->pendingKey($chatId));
 
         if ($pending === null) {
-            $this->telegram->editMessageText($chatId, $messageId, '⏰ Este registro expiró. Mándame el gasto de nuevo.');
+            $this->telegram->editMessageText($chatId, $messageId, ...$this->expiredNotice());
 
             return;
         }
@@ -1181,7 +1256,7 @@ class TelegramExpenseService
         $pending = Cache::get($this->pendingKey($chatId));
 
         if ($pending === null) {
-            $this->telegram->sendMessage($chatId, '⏰ Ese registro expiró. Mándame el gasto de nuevo.');
+            $this->telegram->sendMessage($chatId, ...$this->expiredNotice());
 
             return true;
         }
@@ -1243,6 +1318,7 @@ class TelegramExpenseService
             . "90 café 15/07\n\n"
             . "Sin fecha se registra hoy. Yo te pregunto de qué cuenta salió y, si no la adivino, la categoría.\n\n"
             . "💵 Si lo pagaste en efectivo, empieza con «e»: e 150 tacos\n\n"
-            . '📷 También puedes mandarme un screenshot de los cargos de tu tarjeta y los registro uno por uno.';
+            . "📷 También puedes mandarme un screenshot de los cargos de tu tarjeta y los registro uno por uno.\n\n"
+            . '📬 Escribe «correos» para volver a leer los correos del banco que dejaste sin responder.';
     }
 }
