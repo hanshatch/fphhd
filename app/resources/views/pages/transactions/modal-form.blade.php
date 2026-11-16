@@ -138,6 +138,23 @@
                 class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white placeholder-[#ababab] focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
         </div>
 
+        {{-- Cargo recurrente: ligar un movimiento que llegó por correo o captura --}}
+        @if($exists && $transaction->recurringCharge)
+        <p class="text-sm text-[#878787]">↻ Ligado al cargo recurrente <strong class="text-[#373737] dark:text-white">«{{ $transaction->recurringCharge->name }}»</strong></p>
+        @elseif(($recurrings ?? collect())->isNotEmpty())
+        <div x-show="type === '{{ $transaction->type }}'">
+            <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">↻ Cargo recurrente</label>
+            <select name="link_recurring_id" x-bind:disabled="type !== '{{ $transaction->type }}'"
+                class="w-full rounded-xl border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-4 py-3 text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b] transition">
+                <option value="">No es un cargo recurrente</option>
+                @foreach($recurrings as $charge)
+                <option value="{{ $charge->id }}">{{ $charge->name }} · {{ format_currency($charge->amount) }} · vence {{ $charge->next_application_date->translatedFormat('j M') }}</option>
+                @endforeach
+            </select>
+            <p class="mt-1.5 text-xs text-[#878787]">Al ligarlo cuenta como el cargo de este periodo y ya no te lo vuelvo a pedir. No crea otro movimiento.</p>
+        </div>
+        @endif
+
         {{-- Fecha --}}
         <div>
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">

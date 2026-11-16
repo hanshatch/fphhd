@@ -64,8 +64,45 @@ class RecurringChargeService
             'account_id'  => $charge->account_id,
             'category_id' => $charge->category_id,
             'description' => $label,
+            'recurring_charge_id' => $charge->id,
         ]);
 
+        $this->advance($charge);
+
+        return $transaction;
+    }
+
+    /**
+     * Liga un movimiento que YA existe (llegó por correo, captura o a mano) como
+     * la aplicación pendiente del cargo: no crea nada, solo cuenta la cuota y
+     * avanza la próxima fecha. Devuelve false si no corresponde o ya estaba ligado.
+     */
+    public function linkTransaction(RecurringCharge $charge, Transaction $transaction): bool
+    {
+        if (! $charge->is_active || $transaction->recurring_charge_id
+            || $charge->account_id !== $transaction->account_id || $charge->type !== $transaction->type) {
+            return false;
+        }
+
+        $transaction->update([
+            'recurring_charge_id' => $charge->id,
+            'category_id'         => $transaction->category_id ?? $charge->category_id,
+        ]);
+
+        // Aprende cómo lo escribe el banco para reconocerlo solo la próxima vez
+        if (blank($charge->statement_text) && filled($transaction->description)
+            && ($key = app(MerchantMemoryService::class)->key($transaction->description))) {
+            $charge->update(['statement_text' => $key]);
+        }
+
+        $this->advance($charge);
+
+        return true;
+    }
+
+    /** Cuenta una aplicación del cargo y avanza su próxima fecha (o lo cierra si ya terminó) */
+    private function advance(RecurringCharge $charge): void
+    {
         $newApplied = $charge->applied_installments + 1;
 
         // ¿Se completaron todas las cuotas?
@@ -88,8 +125,6 @@ class RecurringChargeService
                 'is_active'             => ! $pastEnd,
             ]);
         }
-
-        return $transaction;
     }
 
     /**

@@ -151,6 +151,10 @@ class TransactionController extends Controller
 
         return view('pages.transactions.modal-form', [
             'transaction' => $transaction,
+            'recurrings'  => $transaction->exists && ! $transaction->recurring_charge_id
+                ? \App\Models\RecurringCharge::active()->where('account_id', $transaction->account_id)
+                    ->where('type', $transaction->type)->orderBy('next_application_date')->get()
+                : collect(),
             'accounts'    => $accounts,
             'categories'  => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
             'sources'     => Source::active()->orderBy('name')->get(),
@@ -171,13 +175,27 @@ class TransactionController extends Controller
             'source_id'               => 'nullable|exists:sources,id',
             'counterparty_account_id' => 'required_if:type,transfer|nullable|exists:accounts,id|different:account_id',
             'description'             => 'nullable|string|max:500',
+            'link_recurring_id'       => 'nullable|integer|exists:recurring_charges,id',
         ]);
 
-        $transaction->update($data);
+        $transaction->update(\Illuminate\Support\Arr::except($data, 'link_recurring_id'));
+
+        $status = 'Movimiento actualizado.';
+
+        // Ligar a un cargo recurrente: cuenta como su aplicación pendiente, sin crear otro movimiento
+        if (! empty($data['link_recurring_id'])) {
+            $charge = \App\Models\RecurringCharge::find($data['link_recurring_id']);
+
+            $status = $charge && app(\App\Services\RecurringChargeService::class)->linkTransaction($charge, $transaction->fresh())
+                ? 'Movimiento ligado a «' . $charge->name . '».' . ($charge->fresh()->is_active
+                    ? ' Próximo cargo: ' . $charge->fresh()->next_application_date->translatedFormat('j M Y') . '.'
+                    : ' Con este quedó completo.')
+                : 'Movimiento actualizado, pero no se pudo ligar: el cargo recurrente es de otra cuenta o tipo.';
+        }
 
         $back = $this->safeRedirectTo($request->input('redirect_to'));
 
-        return redirect($back ?: route('transactions.index'))->with('status', 'Movimiento actualizado.');
+        return redirect($back ?: route('transactions.index'))->with('status', $status);
     }
 
     /**

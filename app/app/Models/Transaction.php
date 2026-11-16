@@ -11,8 +11,13 @@ class Transaction extends Model
 {
     protected $fillable = [
         'date', 'position', 'type', 'amount', 'account_id', 'category_id',
-        'source_id', 'counterparty_account_id', 'transfer_pending', 'description', 'tags',
+        'source_id', 'recurring_charge_id', 'counterparty_account_id', 'transfer_pending', 'description', 'tags',
     ];
+
+    public function recurringCharge(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(RecurringCharge::class);
+    }
 
     protected $casts = [
         'date'   => 'date',
