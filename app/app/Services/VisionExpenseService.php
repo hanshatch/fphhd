@@ -18,6 +18,9 @@ class VisionExpenseService
         return (bool) config('services.openai.api_key');
     }
 
+    /** Lo que se alcanzó a identificar de la última captura: título de pantalla y banco */
+    public array $lastScreen = ['title' => null, 'app' => null];
+
     /**
      * Devuelve lista de movimientos:
      * [['amount' => "129.00", 'description' => ..., 'date' => "Y-m-d"|null,
@@ -31,7 +34,10 @@ class VisionExpenseService
         array $incomeCategories,
         ?string $caption = null,
         int $maxItems = self::MAX_ITEMS,
+        array $apps = [],
     ): ?array {
+        $this->lastScreen = ['title' => null, 'app' => null];
+
         if (! $this->isConfigured()) {
             return null;
         }
@@ -50,7 +56,10 @@ class VisionExpenseService
             . '"type": "expense" si es cargo/compra/descuento, "income" si es abono/depósito/pago recibido. '
             . 'Para gastos, "category" debe ser exactamente uno de: ' . implode(', ', $expenseCategories) . '; '
             . 'para abonos, uno de: ' . implode(', ', $incomeCategories) . '; o null si ninguno aplica. '
-            . 'Si no hay movimientos legibles responde {"charges": []}.';
+            . 'Si no hay movimientos legibles responde {"charges": []}. '
+            . 'Agrega al objeto "title": el título de la pantalla tal como aparece en el encabezado (ej. "Inversión", "Apartado Open", "Tus movimientos") o null si no se ve'
+            . ($apps === [] ? '.' : '; y "app": de qué banco o app es la captura, exactamente uno de: ' . implode(', ', $apps)
+                . ', o null si no se puede saber con certeza por el logo, el nombre o el diseño.');
 
         $userContent = [];
 
@@ -94,6 +103,11 @@ class VisionExpenseService
         if (! is_array($data) || ! is_array($data['charges'] ?? null)) {
             return null;
         }
+
+        $this->lastScreen = [
+            'title' => is_string($data['title'] ?? null) ? trim($data['title']) ?: null : null,
+            'app'   => is_string($data['app'] ?? null) && in_array($data['app'], $apps, true) ? $data['app'] : null,
+        ];
 
         $items = [];
 

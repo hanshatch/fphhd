@@ -50,6 +50,7 @@ class StatementImportController extends Controller
         return view('pages.accounts.import', [
             'account'    => $account,
             'token'      => $token,
+            'warning'    => $this->service->screenWarning($account, $token),
             'rows'       => $rows,
             'categories' => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
             'recurrings' => \App\Models\RecurringCharge::active()->where('account_id', $account->id)
@@ -81,6 +82,9 @@ class StatementImportController extends Controller
             'rows.*.twin_id'     => 'nullable|integer',
             'rows.*.recurring_id' => 'nullable|integer',
             'rows.*.adjust_tx_id' => 'nullable|integer',
+            'confirm_account'     => $this->service->screenWarning($account, $token) ? 'accepted' : 'nullable',
+        ], [
+            'confirm_account.accepted' => 'Confirma que la captura sí es de «' . $account->displayLabel() . '» antes de registrar.',
         ]);
 
         // Sin la otra cuenta la transferencia queda por conciliar; lo que no vale es esta misma

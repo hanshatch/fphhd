@@ -41,6 +41,21 @@
     <form method="POST" action="{{ route('accounts.import.store', [$account, $token]) }}" x-data="{ showAll: {{ $dupes ? 'false' : 'true' }} }">
         @csrf
 
+        {{-- La captura parece de otra cuenta: no se registra sin confirmarlo --}}
+        @if($warning ?? null)
+        <div class="mb-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-500/10 dark:border-red-500/40 p-3">
+            <p class="text-sm font-bold text-red-600">⚠️ ¿Cuenta equivocada?</p>
+            <p class="mt-1 text-sm text-[#373737] dark:text-white">{{ $warning }}</p>
+            <label class="mt-2 flex items-center gap-3 min-h-[44px] cursor-pointer">
+                <input type="checkbox" name="confirm_account" value="1" required
+                       class="w-5 h-5 rounded border-[#ababab] text-positive focus:ring-[#76a72b]">
+                <span class="text-sm font-semibold text-[#373737] dark:text-white">Sí, es de «{{ $account->displayLabel() }}»</span>
+            </label>
+            @error('confirm_account')<p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>@enderror
+            <a href="{{ route('accounts.index') }}" class="mt-1 inline-block text-xs font-semibold text-red-600 hover:underline">No, elegir otra cuenta</a>
+        </div>
+        @endif
+
         {{-- Los ya registrados estorban al revisar: se ocultan hasta que se pidan --}}
         @if($dupes)
         <div class="flex items-center gap-1 p-1 mb-3 rounded-xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/30 w-full sm:w-fit" role="group" aria-label="Qué movimientos mostrar">

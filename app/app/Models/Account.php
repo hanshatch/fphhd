@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Account extends Model
 {
     protected $fillable = [
-        'name', 'type', 'institution', 'bank_last4', 'currency',
+        'name', 'type', 'institution', 'bank_last4', 'statement_title', 'currency',
         'initial_balance', 'is_active', 'color', 'icon', 'logo_path',
         'invest_apr', 'invest_cap', 'notes',
     ];

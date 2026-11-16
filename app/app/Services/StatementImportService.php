@@ -90,7 +90,9 @@ class StatementImportService
 
         $rows     = [];
         $found    = [];
+        $screens  = [];
         $analyzed = false;
+        $apps     = array_values(array_diff(array_keys(Account::INSTITUTION_LABELS), [Account::INST_EFECTIVO, Account::INST_OTHER]));
 
         $context = 'La cuenta es «' . $account->name . '» (' . $account->institutionLabel() . ', ' . $account->type . '). '
             . $this->accountHint($account);
@@ -104,7 +106,10 @@ class StatementImportService
                 $incomeCats,
                 trim($context),
                 self::MAX_ITEMS_PER_IMAGE,
+                $apps,
             );
+
+            $screens[] = $this->vision->lastScreen;
 
             if ($items === null) {
                 continue;
@@ -151,8 +156,62 @@ class StatementImportService
         $token = Str::random(32);
 
         Cache::put($this->key($account, $token), $rows, now()->addMinutes(self::TTL_MINUTES));
+        Cache::put($this->key($account, $token) . ':screen', $this->screenCheck($account, $screens), now()->addMinutes(self::TTL_MINUTES));
 
         return $token;
+    }
+
+    /**
+     * ¿La captura es de esta cuenta? Compara el banco que se reconoce en la
+     * imagen y el título de la pantalla contra lo aprendido de cada cuenta.
+     *
+     * @return array{warning: ?string, title: ?string}
+     */
+    private function screenCheck(Account $account, array $screens): array
+    {
+        $titles = collect($screens)->pluck('title')->filter()->map(fn ($t) => $this->titleKey($t))->unique()->values();
+        $title  = $titles->count() === 1 ? $titles->first() : null;
+        $labels = Account::INSTITUTION_LABELS;
+
+        // 1) El banco de la captura no es el de la cuenta
+        $app = collect($screens)->pluck('app')->filter()->first(fn ($a) => $a !== $account->institution);
+
+        if ($app && ! in_array($account->institution, [Account::INST_OTHER, Account::INST_EFECTIVO], true)) {
+            return ['title' => $title, 'warning' => 'La captura parece de ' . $labels[$app] . ', pero la estás importando a «' . $account->displayLabel() . '».'];
+        }
+
+        // 2) Esa pantalla es la que siempre se ha usado para OTRA cuenta
+        // (en Nu la misma captura sirve para débito y cajitas: el título no distingue)
+        if ($account->institution === Account::INST_NU) {
+            return ['title' => null, 'warning' => null];
+        }
+
+        foreach ($titles as $seen) {
+            if ($account->statement_title && $this->titleKey($account->statement_title) === $seen) {
+                continue;
+            }
+
+            $owner = Account::where('is_active', true)->where('id', '<>', $account->id)->whereNotNull('statement_title')->get()
+                ->first(fn (Account $a) => $this->titleKey($a->statement_title) === $seen);
+
+            if ($owner) {
+                return ['title' => $title, 'warning' => 'La pantalla «' . $owner->statement_title . '» es la que usas para «' . $owner->displayLabel()
+                    . '», pero la estás importando a «' . $account->displayLabel() . '».'];
+            }
+        }
+
+        return ['title' => $title, 'warning' => null];
+    }
+
+    private function titleKey(string $title): string
+    {
+        return trim(preg_replace('/\s+/', ' ', mb_strtolower(Str::ascii($title))));
+    }
+
+    /** Aviso de «esta captura parece de otra cuenta», o null */
+    public function screenWarning(Account $account, string $token): ?string
+    {
+        return Cache::get($this->key($account, $token) . ':screen')['warning'] ?? null;
     }
 
     /** Borrador guardado, o null si expiró */
@@ -324,7 +383,16 @@ class StatementImportService
             $created++;
         }
 
+        $screen = Cache::pull($this->key($account, $token) . ':screen');
         Cache::forget($this->key($account, $token));
+
+        // Aprende con qué pantalla se importa esta cuenta, para avisar si luego se sube a otra
+        if ($created + $linked + $applied + $adjusted + $pending > 0 && ! empty($screen['title']) && empty($screen['warning'])
+            && blank($account->statement_title)
+            && ! Account::where('id', '<>', $account->id)->whereNotNull('statement_title')->get()
+                ->contains(fn (Account $a) => $this->titleKey($a->statement_title) === $screen['title'])) {
+            $account->update(['statement_title' => Str::limit($screen['title'], 120, '')]);
+        }
 
         if ($created + $linked + $applied + $adjusted + $pending > 0) {
             AuditLog::record('statement_import', [

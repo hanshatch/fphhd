@@ -278,6 +278,41 @@ class StatementImportTest extends TestCase
         $this->assertSame('17365.95', $balances->balance($debit));
     }
 
+    public function test_capture_from_another_account_is_flagged_and_needs_confirmation(): void
+    {
+        $klar = Account::create(['name' => 'Inversion', 'type' => 'investment', 'institution' => 'klar', 'initial_balance' => '0.00', 'color' => '#373737']);
+        $open = Account::create(['name' => 'Apartado', 'type' => 'investment', 'institution' => 'openbank', 'initial_balance' => '0.00', 'color' => '#373737']);
+
+        Http::preventStrayRequests();
+        config(['services.openai.api_key' => 'test-oa-key']);
+        $screen = fn (?string $app) => Http::response(['choices' => [['message' => ['content' => json_encode([
+            'title' => 'Inversión', 'app' => $app,
+            'charges' => [['amount' => '71.89', 'description' => 'Pago semanal de intereses - General', 'date' => '2026-10-24', 'type' => 'income', 'category' => null]],
+        ])]]]]);
+        Http::fakeSequence('api.openai.com/*')->pushResponse($screen(null))->pushResponse($screen(null))->pushResponse($screen('klar'));
+
+        $row = fn () => ['rows' => [['include' => 1, 'date' => '2026-10-24', 'description' => 'Pago semanal de intereses - General', 'amount' => '71.89', 'type' => 'interest']]];
+
+        // En su cuenta: sin aviso, y aprende que «Inversión» es la pantalla de esta cuenta
+        $location = $this->upload($klar)->headers->get('Location');
+        $this->get($location)->assertOk()->assertDontSee('¿Cuenta equivocada?');
+        $this->post($location, $row())->assertRedirect();
+        $this->assertSame('inversion', $klar->fresh()->statement_title);
+
+        // La misma pantalla subida a otra cuenta: avisa y no registra sin confirmar
+        $location = $this->upload($open)->headers->get('Location');
+        $this->get($location)->assertOk()->assertSee('¿Cuenta equivocada?')->assertSee('es la que usas para «Klar · Inversion»', false);
+        $this->post($location, $row())->assertSessionHasErrors('confirm_account');
+        $this->assertSame(0, Transaction::where('account_id', $open->id)->count());
+        $this->assertNull($open->fresh()->statement_title);
+
+        // Si el lector reconoce el banco, también avisa
+        $location = $this->upload($open)->headers->get('Location');
+        $this->get($location)->assertOk()->assertSee('La captura parece de Klar');
+        $this->post($location, $row() + ['confirm_account' => 1])->assertRedirect();
+        $this->assertSame(1, Transaction::where('account_id', $open->id)->count());
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
