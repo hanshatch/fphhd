@@ -21,7 +21,17 @@ class TransactionMatchService
 {
     public function existing(Account $account, string $direction, string $amount, string $date, int $days = 3): ?Transaction
     {
+        return $this->candidates($account, $direction, $amount, $date, $days)->first();
+    }
+
+    /**
+     * Todos los movimientos de la cuenta con ese monto en la ventana, el más
+     * reciente primero. $exclude: ids que ya se empataron con otro renglón.
+     */
+    public function candidates(Account $account, string $direction, string $amount, string $date, int $days = 3, array $exclude = [])
+    {
         return $this->window(Transaction::with('account', 'counterpartyAccount'), $amount, $date, $days)
+            ->when($exclude !== [], fn ($q) => $q->whereNotIn('id', $exclude))
             ->where(function ($q) use ($account, $direction) {
                 // Una transferencia pendiente que ENTRÓ a la cuenta cuenta como entrada, no como salida
                 if ($direction === 'out') {
@@ -38,7 +48,7 @@ class TransactionMatchService
                 }
             })
             ->orderByDesc('id')
-            ->first();
+            ->get();
     }
 
     public function transferTwin(Account $account, string $direction, string $amount, string $date, int $days = 3): ?Transaction

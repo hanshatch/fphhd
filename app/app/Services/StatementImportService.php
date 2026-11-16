@@ -54,6 +54,13 @@ class StatementImportService
 
     public const TYPES_TRANSFER = ['transfer_out', 'transfer_in'];
 
+    /** Empate de duplicados durante analyze(): ids ya tomados, apartados por folio y renglón en curso */
+    private array $claimed = [];
+
+    private array $reserved = [];
+
+    private int $current = -1;
+
     public function __construct(
         private VisionExpenseService $vision,
         private MerchantMemoryService $memory,
@@ -78,6 +85,7 @@ class StatementImportService
         $incomeCats  = Category::active()->ofKind(Category::KIND_INCOME)->orderBy('name')->pluck('name')->all();
 
         $rows     = [];
+        $found    = [];
         $analyzed = false;
 
         $context = 'La cuenta es «' . $account->name . '» (' . $account->institutionLabel() . ', ' . $account->type . '). '
@@ -107,7 +115,14 @@ class StatementImportService
                     continue; // movimiento de otra subcuenta (débito u otra cajita)
                 }
 
-                $rows[] = $this->buildRow($account, $item, $pocket);
+                // Renglón repetido entre capturas que se traslapan
+                foreach ($found as [$seen]) {
+                    if ($this->sameLine($seen, $item)) {
+                        continue 2;
+                    }
+                }
+
+                $found[] = [$item, $pocket];
             }
         }
 
@@ -115,11 +130,15 @@ class StatementImportService
             return null;
         }
 
-        // Quitar renglones repetidos entre capturas que se traslapan
-        $rows = collect($rows)
-            ->unique(fn ($r) => $r['date'] . '|' . $r['amount'] . '|' . mb_strtolower($r['description']))
-            ->values()
-            ->all();
+        // Cada movimiento ya registrado empata con UN solo renglón: dos recargas
+        // de $200 el mismo día no pueden darse ambas por registradas con una sola.
+        $this->claimed  = [];
+        $this->reserved = $this->reserveByFolio($account, $found);
+
+        foreach ($found as $i => [$item, $pocket]) {
+            $this->current = $i;
+            $rows[]        = $this->buildRow($account, $item, $pocket);
+        }
 
         $rows = $this->attachRecurring($account, $rows);
 
@@ -332,7 +351,7 @@ class StatementImportService
                 'type'                    => $pocket['type'],
                 'category_id'             => null,
                 'category_source'         => null,
-                'duplicate'               => $this->duplicate($account, $pocket['type'] === 'transfer_in' ? 'in' : 'out', $item['amount'], $date),
+                'duplicate'               => $this->duplicate($account, $pocket['type'] === 'transfer_in' ? 'in' : 'out', $item['amount'], $date, $description),
                 'counterparty_account_id' => $pocket['other']?->id,
                 'twin'                    => null,
             ];
@@ -355,7 +374,7 @@ class StatementImportService
         $source = $type === 'income' ? Source::find($this->memory->suggestSource($description)) : null;
 
         $direction = $type === 'income' ? 'in' : 'out';
-        $duplicate = $this->duplicate($account, $direction, $item['amount'], $date);
+        $duplicate = $this->duplicate($account, $direction, $item['amount'], $date, $description);
 
         // ¿La otra mitad ya está en otra cuenta tuya? Entonces es transferencia interna
         // (como cargo/abono suelto, o como transferencia que quedó por conciliar)
@@ -520,16 +539,97 @@ class StatementImportService
      * más lejos, o si no se leyó la fecha, es «posible duplicado». Ambos
      * llegan desmarcados a la revisión.
      */
-    private function duplicate(Account $account, string $direction, string $amount, ?string $date): ?array
+    private function duplicate(Account $account, string $direction, string $amount, ?string $date, string $description = ''): ?array
     {
-        $sure = $date ? $this->matcher->existing($account, $direction, $amount, $date) : null;
-        $tx   = $sure ?? $this->matcher->existing(
-            $account, $direction, $amount,
-            $date ?? now()->toDateString(),
-            $date ? self::POSSIBLE_DAYS : self::UNDATED_DAYS,
-        );
+        $tx = $this->matches($account, $direction, $amount, $date)
+            ->reject(fn (Transaction $t) => in_array($t->id, $this->claimed, true))
+            // El que comparte folio/teléfono con este renglón es suyo; los apartados para otro renglón no se tocan
+            ->first(fn (Transaction $t) => ($this->reserved[$t->id] ?? $this->current) === $this->current);
 
-        return $tx ? $this->matcher->describe($tx, $account) + ['possible' => $sure === null] : null;
+        if (! $tx) {
+            return null;
+        }
+
+        $this->claimed[] = $tx->id;
+
+        $sure = $date !== null && abs(Carbon::parse($date)->diffInDays($tx->date)) <= 3;
+
+        return $this->matcher->describe($tx, $account) + ['possible' => ! $sure];
+    }
+
+    /** Movimientos ya registrados con ese monto: primero los de ±3 días, luego los más lejanos */
+    private function matches(Account $account, string $direction, string $amount, ?string $date)
+    {
+        $anchor = Carbon::parse($date ?? now()->toDateString());
+
+        return $this->matcher
+            ->candidates($account, $direction, $amount, $anchor->toDateString(), $date ? self::POSSIBLE_DAYS : self::UNDATED_DAYS)
+            ->sortBy(fn (Transaction $t) => abs($anchor->diffInDays($t->date)))
+            ->values();
+    }
+
+    /**
+     * Aparta cada movimiento registrado para el renglón que trae su mismo folio
+     * o teléfono, para que otro renglón del mismo monto no se lo quede.
+     *
+     * @return array<int, int> id de transacción → índice del renglón
+     */
+    private function reserveByFolio(Account $account, array $found): array
+    {
+        $reserved = [];
+
+        foreach ($found as $i => [$item, $pocket]) {
+            $date      = $this->readDate($this->anchorYear($item['date']));
+            $direction = $pocket !== null
+                ? ($pocket['type'] === 'transfer_in' ? 'in' : 'out')
+                : ($item['type'] === 'income' ? 'in' : 'out');
+
+            $own = $this->matches($account, $direction, $item['amount'], $date)
+                ->first(fn (Transaction $t) => ! isset($reserved[$t->id])
+                    && array_intersect($this->folios((string) $t->description), $this->folios($item['description'])) !== []);
+
+            if ($own) {
+                $reserved[$own->id] = $i;
+            }
+        }
+
+        return $reserved;
+    }
+
+    /** Números largos de una descripción: folios, referencias, teléfonos */
+    private function folios(string $text): array
+    {
+        preg_match_all('/\d{5,}/', $text, $m);
+
+        return array_unique($m[0]);
+    }
+
+    /** ¿Dos lecturas del mismo renglón (capturas traslapadas)? Folios distintos = movimientos distintos */
+    private function sameLine(array $a, array $b): bool
+    {
+        if ($a['date'] !== $b['date'] || $a['amount'] !== $b['amount'] || $a['type'] !== $b['type']) {
+            return false;
+        }
+
+        $x = mb_strtolower($a['description']);
+        $y = mb_strtolower($b['description']);
+
+        if ($x === $y) {
+            return true;
+        }
+
+        $fa = $this->folios($x);
+        $fb = $this->folios($y);
+        sort($fa);
+        sort($fb);
+
+        if ($fa !== $fb) {
+            return false;
+        }
+
+        similar_text($x, $y, $percent);
+
+        return $percent >= 85;
     }
 
     /**

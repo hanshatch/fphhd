@@ -193,6 +193,32 @@ class StatementImportTest extends TestCase
             ->assertSee('parecen ya registrados');
     }
 
+    public function test_one_registered_movement_only_matches_one_row_of_the_same_amount(): void
+    {
+        $account = $this->account();
+
+        // Ya estaban dos de las cuatro recargas del día
+        Transaction::create(['date' => '2026-11-02', 'type' => 'expense', 'amount' => '200.00', 'account_id' => $account->id, 'description' => 'Recarga tiempo aire · 5530808688']);
+        Transaction::create(['date' => '2026-11-02', 'type' => 'expense', 'amount' => '10.00', 'account_id' => $account->id, 'description' => 'Recarga tiempo aire · 5512420504']);
+
+        $this->fakeVision([
+            ['amount' => '10.00', 'description' => 'Recarga Telcel Amigo Sin Límite de 10 al 5548635354', 'date' => '2026-11-03', 'type' => 'expense', 'category' => null],
+            ['amount' => '10.00', 'description' => 'Recarga Telcel Amigo Sin Límite de 10 al 5512420504', 'date' => '2026-11-03', 'type' => 'expense', 'category' => null],
+            ['amount' => '200.00', 'description' => 'Recarga Telcel Amigo Sin Límite de 200 al 5543589391', 'date' => '2026-11-03', 'type' => 'expense', 'category' => null],
+            ['amount' => '200.00', 'description' => 'Recarga Telcel Amigo Sin Límite de 200 al 5530808688', 'date' => '2026-11-03', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $token = basename($this->upload($account)->headers->get('Location'));
+        $rows  = app(\App\Services\StatementImportService::class)->draft($account, $token);
+
+        // Cada registrada empata con el renglón de su mismo teléfono; las otras dos son nuevas
+        $this->assertNull($rows[0]['duplicate']);
+        $this->assertSame('Recarga tiempo aire · 5512420504', $rows[1]['duplicate']['description']);
+        $this->assertFalse($rows[1]['duplicate']['possible']);
+        $this->assertNull($rows[2]['duplicate']);
+        $this->assertSame('Recarga tiempo aire · 5530808688', $rows[3]['duplicate']['description']);
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
