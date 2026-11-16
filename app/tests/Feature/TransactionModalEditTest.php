@@ -77,9 +77,37 @@ class TransactionModalEditTest extends TestCase
         $this->assertNotNull($charge->fresh()->statement_text);
 
         // Ya ligado: el modal lo dice y un segundo intento no vuelve a avanzar el cargo
-        $this->actingAsVerified($user)->get(route('transactions.edit.modal', $tx))->assertSee('Ligado al cargo recurrente');
+        $this->actingAsVerified($user)->get(route('transactions.edit.modal', $tx))->assertSee('Ligado a')->assertSee('Desligar');
         $this->actingAsVerified($user)->patch(route('transactions.update', $tx), $payload);
         $this->assertSame('2026-12-10', $charge->fresh()->next_application_date->toDateString());
+
+        // Me equivoqué: desligar deja el movimiento intacto y el cargo otra vez pendiente
+        $this->actingAsVerified($user)->patch(route('transactions.unlink-recurring', $tx))
+            ->assertSessionHas('status', fn ($m) => str_contains($m, 'Se desligó de «Colegiatura»'));
+        $this->assertSame(1, Transaction::count());
+        $this->assertNull($tx->fresh()->recurring_charge_id);
+        $this->assertSame([0, true], [$charge->fresh()->applied_installments, $charge->fresh()->is_active]);
+        $this->assertTrue($charge->fresh()->next_application_date->lte($tx->date->copy()->endOfMonth()));
+    }
+
+    public function test_ligar_un_cargo_atrasado_no_lo_deja_vencido_ni_aprende_un_texto_generico(): void
+    {
+        $user    = User::factory()->create();
+        $account = $this->account();
+        $tx      = Transaction::create(['date' => '2026-11-09', 'type' => 'expense', 'amount' => '700.21',
+            'account_id' => $account->id, 'description' => 'TRANSFERENCIA INTERBANCARIA']);
+        // Octubre nunca se registró: el cargo seguía esperando el 5 de octubre
+        $charge  = \App\Models\RecurringCharge::create([
+            'name' => 'Mantenimiento', 'account_id' => $account->id, 'type' => 'expense', 'amount' => '700.21',
+            'day_of_month' => 5, 'start_date' => '2026-07-17', 'next_application_date' => '2026-10-05', 'is_active' => true,
+        ]);
+
+        $this->actingAsVerified($user)->patch(route('transactions.update', $tx), ['date' => '2026-11-09', 'type' => 'expense',
+            'amount' => '700.21', 'account_id' => $account->id, 'description' => 'TRANSFERENCIA INTERBANCARIA', 'link_recurring_id' => $charge->id]);
+
+        $this->assertSame('2026-12-05', $charge->fresh()->next_application_date->toDateString());
+        $this->assertSame(1, $charge->fresh()->applied_installments);
+        $this->assertNull($charge->fresh()->statement_text);
     }
 
     public function test_guardar_desde_el_modal_regresa_a_la_cuenta(): void

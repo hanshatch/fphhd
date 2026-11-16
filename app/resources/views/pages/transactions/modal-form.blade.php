@@ -140,7 +140,14 @@
 
         {{-- Cargo recurrente: ligar un movimiento que llegó por correo o captura --}}
         @if($exists && $transaction->recurringCharge)
-        <p class="text-sm text-[#878787]">↻ Ligado al cargo recurrente <strong class="text-[#373737] dark:text-white">«{{ $transaction->recurringCharge->name }}»</strong></p>
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-[#ababab]/30 px-4 py-1">
+            <p class="text-sm text-[#878787] min-w-0">↻ Ligado a <strong class="text-[#373737] dark:text-white">«{{ $transaction->recurringCharge->name }}»</strong></p>
+            {{-- Mismo form (PATCH): solo cambia el destino. No valida los demás campos. --}}
+            <button type="submit" formaction="{{ route('transactions.unlink-recurring', $transaction) }}" formnovalidate
+                class="flex-shrink-0 inline-flex items-center min-h-[44px] px-3 rounded-lg text-xs font-semibold text-negative hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                Desligar
+            </button>
+        </div>
         @elseif(($recurrings ?? collect())->isNotEmpty())
         <div x-show="type === '{{ $transaction->type }}'">
             <label class="block text-sm font-semibold text-[#373737] dark:text-white mb-1.5">↻ Cargo recurrente</label>

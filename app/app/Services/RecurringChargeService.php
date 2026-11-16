@@ -89,15 +89,60 @@ class RecurringChargeService
             'category_id'         => $transaction->category_id ?? $charge->category_id,
         ]);
 
-        // Aprende cómo lo escribe el banco para reconocerlo solo la próxima vez
+        // Aprende cómo lo escribe el banco para reconocerlo solo la próxima vez. Un texto
+        // genérico («Transferencia interbancaria») no sirve: empataría con cualquier movimiento.
         if (blank($charge->statement_text) && filled($transaction->description)
-            && ($key = app(MerchantMemoryService::class)->key($transaction->description))) {
+            && ($key = app(MerchantMemoryService::class)->key($transaction->description))
+            && ! preg_match('/^(transferencia|traspaso|spei|retiro|dep[oó]sito|abono|pago|cargo|compra)\b/iu', $key)) {
             $charge->update(['statement_text' => $key]);
         }
 
         $this->advance($charge);
 
+        // El movimiento es de un mes posterior al que estaba pendiente (los meses de en medio
+        // nunca se registraron): la próxima fecha es la que sigue al mes del movimiento,
+        // no un vencimiento que ya pasó. En compras a meses cada cuota cuenta, no se salta.
+        if (! $charge->is_msi) {
+            $charge->refresh();
+            $monthEnd = $transaction->date->copy()->endOfMonth();
+
+            while ($charge->is_active && $charge->next_application_date->lte($monthEnd)) {
+                $next = $charge->calculateNextDate($charge->next_application_date);
+
+                $charge->update([
+                    'next_application_date' => $next->toDateString(),
+                    'is_active'             => ! ($charge->end_date && $next->greaterThan($charge->end_date)),
+                ]);
+            }
+        }
+
         return true;
+    }
+
+    /**
+     * Deshace una liga hecha por error: el movimiento se queda como está y el
+     * cargo vuelve a quedar pendiente para el mes de ese movimiento.
+     */
+    public function unlinkTransaction(Transaction $transaction): ?RecurringCharge
+    {
+        $charge = $transaction->recurringCharge;
+
+        if (! $charge) {
+            return null;
+        }
+
+        $month   = $transaction->date->copy()->startOfMonth();
+        $pending = $month->copy()->setDay(min($charge->day_of_month, $month->daysInMonth));
+
+        $charge->update([
+            'applied_installments'  => max(0, $charge->applied_installments - 1),
+            'next_application_date' => min($pending->toDateString(), $charge->next_application_date->toDateString()),
+            'is_active'             => true,
+        ]);
+
+        $transaction->update(['recurring_charge_id' => null]);
+
+        return $charge;
     }
 
     /** Cuenta una aplicación del cargo y avanza su próxima fecha (o lo cierra si ya terminó) */

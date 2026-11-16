@@ -198,6 +198,18 @@ class TransactionController extends Controller
         return redirect($back ?: route('transactions.index'))->with('status', $status);
     }
 
+    /** Deshace la liga con un cargo recurrente; el movimiento no se toca */
+    public function unlinkRecurring(Request $request, Transaction $transaction): RedirectResponse
+    {
+        $charge = app(\App\Services\RecurringChargeService::class)->unlinkTransaction($transaction);
+        $back   = $this->safeRedirectTo($request->input('redirect_to'));
+
+        return redirect($back ?: route('transactions.index'))->with('status', $charge
+            ? 'Se desligó de «' . $charge->name . '». El cargo vuelve a estar pendiente desde el '
+                . $charge->next_application_date->translatedFormat('j M Y') . '.'
+            : 'Ese movimiento no estaba ligado a ningún cargo recurrente.');
+    }
+
     /**
      * Solo acepta rutas internas ("/accounts/2"), nunca URLs externas ni
      * protocol-relative, para no convertir el form en un open redirect.
