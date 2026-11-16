@@ -17,11 +17,12 @@ class RecurringChargeController extends Controller
 
     public function index(): View
     {
-        $active    = RecurringCharge::active()->with('account', 'category')->orderBy('next_application_date')->get();
+        // Programados: en el orden en que caen dentro del mes
+        $active    = RecurringCharge::active()->with('account', 'category')->orderBy('day_of_month')->orderBy('name')->get();
         $completed = RecurringCharge::where('is_active', false)->with('account', 'category')->orderByDesc('updated_at')->limit(20)->get();
-        $upcoming  = $this->service->upcomingThisMonth();
+        $board     = $this->service->monthBoard();
 
-        return view('pages.recurring.index', compact('active', 'completed', 'upcoming'));
+        return view('pages.recurring.index', compact('active', 'completed', 'board'));
     }
 
     public function create(): View

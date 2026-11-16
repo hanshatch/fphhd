@@ -186,6 +186,65 @@ class RecurringChargeService
     }
 
     /**
+     * Tablero del mes para la pantalla de cargos recurrentes. Cada cargo cae en
+     * un solo estado, para que se lea de un vistazo qué falta y qué ya quedó:
+     *
+     *  - overdue:  ya venció y no se ha aplicado (incluye meses anteriores)
+     *  - upcoming: vence de hoy a fin de mes
+     *  - done:     movimientos de este mes ligados a un cargo  [charge, transaction]
+     *  - skipped:  su fecha de este mes ya pasó sin movimiento (se omitió)
+     */
+    public function monthBoard(?Carbon $today = null): array
+    {
+        $today = ($today ?? Carbon::today())->copy()->startOfDay();
+        $start = $today->copy()->startOfMonth();
+        $end   = $today->copy()->endOfMonth();
+
+        $applied = Transaction::whereNotNull('recurring_charge_id')
+            ->whereDate('date', '>=', $start->toDateString())->whereDate('date', '<=', $end->toDateString())
+            ->orderBy('date')->get()->groupBy('recurring_charge_id');
+
+        $board = ['overdue' => collect(), 'upcoming' => collect(), 'done' => collect(), 'skipped' => collect()];
+
+        foreach (RecurringCharge::with('account', 'category')->orderBy('next_application_date')->get() as $charge) {
+            $txs = $applied->get($charge->id, collect());
+
+            foreach ($txs as $tx) {
+                $board['done']->push(['charge' => $charge, 'transaction' => $tx]);
+            }
+
+            if (! $charge->is_active) {
+                continue;
+            }
+
+            $next = $charge->next_application_date->copy()->startOfDay();
+
+            if ($next->lt($today)) {
+                $board['overdue']->push($charge);
+            } elseif ($next->lte($end)) {
+                $board['upcoming']->push($charge);
+            } elseif ($txs->isEmpty()) {
+                $thisMonth = $start->copy()->setDay(min($charge->day_of_month, $start->daysInMonth));
+
+                if ($charge->start_date && $charge->start_date->lte($thisMonth)) {
+                    $board['skipped']->push($charge);
+                }
+            }
+        }
+
+        $sum = fn ($amounts) => $amounts->reduce(fn ($carry, $a) => bcadd($carry, (string) $a, 2), '0.00');
+
+        $board['pending_total'] = $sum($board['overdue']->merge($board['upcoming'])->pluck('amount'));
+        $board['done_total']    = $sum($board['done']->map(fn ($d) => $d['transaction']->amount));
+        $board['month_total']   = bcadd($board['pending_total'], $board['done_total'], 2);
+        $board['progress']      = bccomp($board['month_total'], '0', 2) > 0
+            ? (int) round(((float) $board['done_total'] / (float) $board['month_total']) * 100)
+            : 0;
+
+        return $board;
+    }
+
+    /**
      * Cargos pendientes que caen dentro del mes vigente (de hoy a fin de mes).
      */
     public function upcomingThisMonth(): Collection
