@@ -80,7 +80,8 @@
                         counterparty: '{{ $row['counterparty_account_id'] ?? '' }}',
                         linked: {{ $rec ? 'true' : 'false' }},
                         get isTransfer() { return this.type === 'transfer_out' || this.type === 'transfer_in'; },
-                        get isIn() { return this.type === 'income' || this.type === 'transfer_in'; },
+                        get isIn() { return this.type === 'income' || this.type === 'interest' || this.type === 'transfer_in'; },
+                        get noCategory() { return this.isTransfer || this.type === 'interest'; },
                         get amountClass() { return this.isIn ? 'text-positive' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-negative'); },
                     }"
                     x-bind:class="on || needsDate ? '' : 'opacity-50'"
@@ -194,20 +195,21 @@
                                 @else
                                 <option value="expense">Cargo</option>
                                 <option value="income">Abono</option>
+                                <option value="interest">Interés / rendimiento</option>
                                 <option value="transfer_out">Transferencia enviada</option>
                                 <option value="transfer_in">Transferencia recibida</option>
                                 @endif
                             </select>
 
-                            <div class="min-w-0" x-show="!isTransfer">
+                            <div class="min-w-0" x-show="!noCategory">
                                 <x-category-picker :categories="$categories" :selected="$row['category_id']"
                                     name="rows[{{ $i }}][category_id]" kind-expr="type"
-                                    disabled-expr="isTransfer"
+                                    disabled-expr="noCategory"
                                     class="!py-2 !px-3 !rounded-lg text-xs min-h-[38px]" />
                             </div>
 
                             @if(! $rec && $recurrings->isNotEmpty())
-                            <div class="col-span-2 min-w-0 flex items-center gap-2" x-show="!isTransfer">
+                            <div class="col-span-2 min-w-0 flex items-center gap-2" x-show="!noCategory">
                                 <span class="text-xs text-[#878787] flex-shrink-0">↻ Recurrente</span>
                                 <select name="rows[{{ $i }}][recurring_id]" x-bind:disabled="isTransfer"
                                     class="w-full min-w-0 rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-2 py-2 text-xs text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">

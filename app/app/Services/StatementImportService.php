@@ -130,6 +130,8 @@ class StatementImportService
             return null;
         }
 
+        $found = $this->markInterest($account, $found);
+
         // Cada movimiento ya registrado empata con UN solo renglón: dos recargas
         // de $200 el mismo día no pueden darse ambas por registradas con una sola.
         $this->claimed  = [];
@@ -303,10 +305,14 @@ class StatementImportService
 
             Transaction::create([
                 'date'        => $date,
-                'type'        => $type === 'income' ? Transaction::TYPE_INCOME : Transaction::TYPE_EXPENSE,
+                'type'        => match ($type) {
+                    'income'   => Transaction::TYPE_INCOME,
+                    'interest' => Transaction::TYPE_INTEREST,
+                    default    => Transaction::TYPE_EXPENSE,
+                },
                 'amount'      => $amount,
                 'account_id'  => $account->id,
-                'category_id' => $categoryId,
+                'category_id' => $type === 'interest' ? null : $categoryId,
                 'source_id'   => $type === 'income' ? (($row['source_id'] ?? null) ?: null) : null,
                 'description' => $description ?: 'Cargo',
             ]);
@@ -373,7 +379,13 @@ class StatementImportService
 
         $source = $type === 'income' ? Source::find($this->memory->suggestSource($description)) : null;
 
-        $direction = $type === 'income' ? 'in' : 'out';
+        $direction = in_array($type, ['income', 'interest'], true) ? 'in' : 'out';
+
+        // Los rendimientos no llevan categoría ni fuente: son tipo «interés»
+        if ($type === 'interest') {
+            $categoryId = $categorySource = $source = null;
+        }
+
         $duplicate = $this->duplicate($account, $direction, $item['amount'], $date, $description);
 
         // ¿La otra mitad ya está en otra cuenta tuya? Entonces es transferencia interna
@@ -557,6 +569,40 @@ class StatementImportService
         return $this->matcher->describe($tx, $account) + ['possible' => ! $sure];
     }
 
+    /**
+     * Rendimientos: un abono que dice «intereses» o «rendimientos» en una cuenta
+     * que no es de crédito se propone como interés, no como ingreso. Si la app
+     * lista además la reinversión de ese mismo pago («Monto invertido» por el
+     * mismo monto y día), ese renglón se descarta: el dinero no salió de la cuenta.
+     */
+    private function markInterest(Account $account, array $found): array
+    {
+        if ($account->isCredit()) {
+            return $found;
+        }
+
+        foreach ($found as $i => [$item, $pocket]) {
+            if ($pocket !== null || $item['type'] !== 'income'
+                || ! preg_match('/\b(inter[eé]s(es)?|rendimientos?)\b/iu', $item['description'])) {
+                continue;
+            }
+
+            $found[$i][0]['type'] = 'interest';
+
+            foreach ($found as $j => [$other, $otherPocket]) {
+                if ($otherPocket === null && $other['type'] === 'expense'
+                    && $other['amount'] === $item['amount'] && $other['date'] === $item['date']
+                    && preg_match('/monto invertido|reinver/iu', $other['description'])) {
+                    unset($found[$j]);
+
+                    break;
+                }
+            }
+        }
+
+        return array_values($found);
+    }
+
     /** Movimientos ya registrados con ese monto: primero los de ±3 días, luego los más lejanos */
     private function matches(Account $account, string $direction, string $amount, ?string $date)
     {
@@ -582,7 +628,7 @@ class StatementImportService
             $date      = $this->readDate($this->anchorYear($item['date']));
             $direction = $pocket !== null
                 ? ($pocket['type'] === 'transfer_in' ? 'in' : 'out')
-                : ($item['type'] === 'income' ? 'in' : 'out');
+                : (in_array($item['type'], ['income', 'interest'], true) ? 'in' : 'out');
 
             $own = $this->matches($account, $direction, $item['amount'], $date)
                 ->first(fn (Transaction $t) => ! isset($reserved[$t->id])

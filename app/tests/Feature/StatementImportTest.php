@@ -219,6 +219,41 @@ class StatementImportTest extends TestCase
         $this->assertSame('Recarga tiempo aire · 5530808688', $rows[3]['duplicate']['description']);
     }
 
+    public function test_interest_payment_is_imported_as_interest_and_its_reinvestment_is_dropped(): void
+    {
+        $account = Account::create([
+            'name' => 'Inversion', 'type' => 'investment', 'institution' => 'klar',
+            'initial_balance' => '25000.00', 'color' => '#373737',
+        ]);
+
+        $this->fakeVision([
+            ['amount' => '36.99', 'description' => 'Monto Invertido - General', 'date' => '2026-11-14', 'type' => 'expense', 'category' => 'Finanzas'],
+            ['amount' => '36.99', 'description' => 'Pago semanal de intereses - General', 'date' => '2026-11-14', 'type' => 'income', 'category' => null],
+            ['amount' => '500.00', 'description' => 'Monto Invertido - General', 'date' => '2026-11-10', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+        $rows     = app(\App\Services\StatementImportService::class)->draft($account, basename($location));
+
+        // La reinversión del interés se descarta; una inversión sin interés gemelo se conserva
+        $this->assertCount(2, $rows);
+        $this->assertSame('interest', $rows[0]['type']);
+        $this->assertNull($rows[0]['category_id']);
+        $this->assertSame('500.00', $rows[1]['amount']);
+
+        $this->get($location)->assertOk()->assertSee('Interés / rendimiento');
+
+        $this->post($location, ['rows' => [
+            ['include' => 1, 'date' => '2026-11-14', 'description' => $rows[0]['description'], 'amount' => '36.99', 'type' => 'interest'],
+        ]])->assertRedirect();
+
+        $tx = Transaction::sole();
+        $this->assertSame(Transaction::TYPE_INTEREST, $tx->type);
+        $this->assertSame('36.99', $tx->amount);
+        $this->assertNull($tx->category_id);
+        $this->assertSame('25036.99', app(\App\Services\AccountService::class)->balance($account));
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
