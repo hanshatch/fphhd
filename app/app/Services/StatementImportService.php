@@ -214,6 +214,23 @@ class StatementImportService
         return Cache::get($this->key($account, $token) . ':screen')['warning'] ?? null;
     }
 
+    /**
+     * Cuenta sobre la que se arma la importación. En Nu una sola lista trae la
+     * cuenta de débito y las cajitas: subida a una cajita, se importa desde la
+     * de débito, donde cada «Agregaste/Retiraste» es una transferencia que
+     * registra las dos cuentas a la vez y las compras no se pierden.
+     */
+    public function importTarget(Account $account): Account
+    {
+        if ($account->institution !== Account::INST_NU || ! $this->isPocket($account)) {
+            return $account;
+        }
+
+        $debits = Account::where('is_active', true)->where('institution', Account::INST_NU)->where('type', Account::TYPE_DEBIT)->get();
+
+        return $debits->count() === 1 ? $debits->first() : $account;
+    }
+
     /** Borrador guardado, o null si expiró */
     public function draft(Account $account, string $token): ?array
     {

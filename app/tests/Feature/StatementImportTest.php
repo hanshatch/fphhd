@@ -786,29 +786,35 @@ class StatementImportTest extends TestCase
         return [$debit, $turbo, $gen];
     }
 
-    public function test_nu_capture_uploaded_to_a_pocket_keeps_only_that_pockets_moves_as_transfers(): void
+    public function test_nu_capture_uploaded_to_a_pocket_is_imported_from_debit_and_registers_both_accounts(): void
     {
-        [$debit, $turbo] = $this->nuSetup();
+        [$debit, $turbo, $gen] = $this->nuSetup();
 
-        $token = basename($this->upload($turbo)->headers->get('Location'));
-        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$turbo->id}:{$token}");
+        // Subida a la cajita: la revisión se abre sobre la cuenta de débito, con TODOS los renglones
+        $location = $this->upload($turbo)->headers->get('Location');
+        $this->assertStringContainsString("/accounts/{$debit->id}/import/", $location);
 
-        // Solo los dos movimientos de Cajita Turbo; débito y la cajita General quedan fuera
-        $this->assertCount(2, $rows);
-        $this->assertSame(['3903.30', '120.00'], array_column($rows, 'amount'));
-        $this->assertSame('transfer_in', $rows[0]['type']);   // agregaste → entra a la cajita
-        $this->assertSame('transfer_out', $rows[1]['type']);  // retiraste → sale de la cajita
-        $this->assertSame($debit->id, $rows[0]['counterparty_account_id']);
+        $token = basename($location);
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$debit->id}:{$token}");
 
-        $this->post(route('accounts.import.store', [$turbo, $token]), ['rows' => array_map(fn ($r) => [
+        $this->assertCount(5, $rows);
+        $this->assertSame(['transfer_out', 'income', 'expense', 'transfer_in', 'transfer_out'], array_column($rows, 'type'));
+        $this->assertSame([$turbo->id, $turbo->id, $gen->id], [$rows[0]['counterparty_account_id'], $rows[3]['counterparty_account_id'], $rows[4]['counterparty_account_id']]);
+
+        $this->post(route('accounts.import.store', [$debit, $token]), ['rows' => array_map(fn ($r) => [
             'include' => 1, 'date' => $r['date'], 'description' => $r['description'], 'amount' => $r['amount'],
             'type' => $r['type'], 'counterparty_account_id' => $r['counterparty_account_id'],
-        ], $rows)])->assertRedirect(route('accounts.show', $turbo));
+        ], $rows)])->assertRedirect(route('accounts.show', $debit));
 
         $in  = Transaction::where('amount', '3903.30')->sole();
         $out = Transaction::where('amount', '120.00')->sole();
         $this->assertSame([$debit->id, $turbo->id], [$in->account_id, $in->counterparty_account_id]);
         $this->assertSame([$turbo->id, $debit->id], [$out->account_id, $out->counterparty_account_id]);
+
+        // Las dos cuentas quedan al día con una sola importación
+        $balances = app(\App\Services\AccountService::class);
+        $this->assertSame('3783.30', $balances->balance($turbo));
+        $this->assertSame('-483.30', $balances->balance($debit));   // +4000 −200 −3903.30 +120 −500
     }
 
     public function test_nu_capture_uploaded_to_debit_turns_pocket_moves_into_transfers_to_the_right_pocket(): void
@@ -838,10 +844,11 @@ class StatementImportTest extends TestCase
         ]);
 
         $token = basename($this->upload($turbo)->headers->get('Location'));
-        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$turbo->id}:{$token}");
+        $rows  = \Illuminate\Support\Facades\Cache::get("statement_import:{$debit->id}:{$token}");
 
+        // Subida a la cajita se importa desde débito: lo ya registrado desde cualquiera de las dos no se duplica
         $this->assertNotNull($rows[0]['duplicate']);
-        $this->assertNull($rows[1]['duplicate']);
+        $this->assertNull($rows[3]['duplicate']);
     }
 
     public function test_atm_withdrawal_in_capture_is_transfer_to_cash(): void

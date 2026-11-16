@@ -27,6 +27,14 @@ class StatementImportController extends Controller
                 ->with('status', 'El análisis de imágenes no está configurado (falta la API key de visión).');
         }
 
+        // Nu: la captura de una cajita es la misma lista de la cuenta de débito; se importa todo junto
+        $target = $this->service->importTarget($account);
+        $moved  = $target->id !== $account->id
+            ? 'Las capturas de Nu traen la cuenta y las cajitas juntas: se importa todo desde «' . $target->name
+                . '» y lo de «' . $account->name . '» queda como transferencia en las dos cuentas.'
+            : null;
+        $account = $target;
+
         $token = $this->service->analyze($account, $request->file('images'));
 
         if ($token === null) {
@@ -34,7 +42,7 @@ class StatementImportController extends Controller
                 ->with('status', 'No pude analizar la imagen. Inténtalo de nuevo en un momento.');
         }
 
-        return redirect()->route('accounts.import.review', [$account, $token]);
+        return redirect()->route('accounts.import.review', [$account, $token])->with('status', $moved);
     }
 
     /** Tabla de revisión: Hans marca qué entra y asigna categoría */
