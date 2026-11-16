@@ -49,6 +49,10 @@ class StatementImportService
             . 'Monto en verde con "+" es abono; en negro sin signo es cargo. '
             . 'Ignora el contador ("36 movimientos"), los títulos "Esta semana"/"Anteriores" y los renglones cortados por el borde. '
             . 'En un estado de cuenta en PDF: columnas fecha, concepto, retiro y depósito; retiros son cargos y depósitos abonos.',
+        'klar' => 'App Klar: lista agrupada por fecha ("Ayer", "Más en este mes", "octubre"). Monto con "-" es cargo; monto en verde sin signo es abono. '
+            . 'Los renglones "En proceso" y "Diferible" son cargos válidos. IGNORA los renglones con el monto tachado o que digan '
+            . '"Saldo insuficiente" o "Rechazada": no se cobraron. Ignora el saldo disponible, "Fondo de Rendimientos" e "Historial de ganancias" de la portada. '
+            . 'En la pantalla "Inversión": "Pago semanal de intereses" es abono; "Monto Invertido" y "Retiro anticipado" con "-" son cargos.',
         'mercadopago' => 'App Mercado Pago: "Pagaste" o nombre de comercio con "-" es cargo; "Recibiste", "Rendimientos" o "+" es abono.',
     ];
 
@@ -400,18 +404,27 @@ class StatementImportService
             $categorySource = null;
         }
 
-        // Inversión / ahorro: un retiro (o el interés que sale) va a la cuenta de débito del mismo banco
-        $toDebit = null;
+        // Retiros entre la inversión/ahorro y la cuenta de débito del mismo banco son
+        // transferencias: «Retiro anticipado» sale de la inversión y entra a débito.
+        $sibling = null;
 
-        if (! $twin && $type === 'expense' && in_array($account->type, [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT], true)
-            && (! empty($item['to_debit']) || preg_match('/\bretiro\b/iu', $description))) {
-            $debits = Account::where('is_active', true)->where('institution', $account->institution)
-                ->where('type', Account::TYPE_DEBIT)->where('id', '<>', $account->id)->get();
+        if (! $twin && preg_match('/^\s*retiro\b/iu', $description) && $account->institution !== 'other') {
+            $invested = [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT];
+            $leaving  = $type === 'expense' && in_array($account->type, $invested, true);
+            $arriving = $type === 'income' && $account->type === Account::TYPE_DEBIT;
 
-            $toDebit        = $account->institution !== 'other' && $debits->count() === 1 ? $debits->first() : null;
-            $type           = 'transfer_out';
-            $categoryId     = null;
-            $categorySource = null;
+            $others = $leaving || $arriving
+                ? Account::where('is_active', true)->where('institution', $account->institution)->where('id', '<>', $account->id)
+                    ->whereIn('type', $leaving ? [Account::TYPE_DEBIT] : $invested)->get()
+                : collect();
+
+            if ($others->isNotEmpty()) {
+                $sibling        = $others->count() === 1 ? $others->first() : null;
+                $type           = $leaving ? 'transfer_out' : 'transfer_in';
+                $categoryId     = null;
+                $categorySource = null;
+                $source         = null;
+            }
         }
 
         return [
@@ -425,7 +438,7 @@ class StatementImportService
             'source_id'               => $twin ? null : $source?->id,
             'source_name'             => $twin ? null : $source?->name,
             'duplicate'               => $duplicate,
-            'counterparty_account_id' => $twin?->account_id ?? $toDebit?->id,
+            'counterparty_account_id' => $twin?->account_id ?? $sibling?->id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
     }
@@ -586,9 +599,10 @@ class StatementImportService
     /**
      * Rendimientos: un abono que dice «intereses» o «rendimientos» en una cuenta
      * que no es de crédito se propone como interés, no como ingreso. Si la app
-     * lista además la salida de ese mismo pago («Monto invertido» por el mismo
-     * monto y día), ese renglón es el interés que se va a la cuenta de débito
-     * del mismo banco: se propone como transferencia, no como gasto.
+     * lista además «Monto invertido» por el mismo monto y día (Klar: el interés
+     * pasa de la inversión a su «Fondo de Rendimientos»), ese renglón se descarta:
+     * el fondo es parte de la misma cuenta de inversión, el dinero no ha salido.
+     * Sale cuando se retira a la cuenta de débito, y eso sí es transferencia.
      */
     private function markInterest(Account $account, array $found): array
     {
@@ -597,7 +611,8 @@ class StatementImportService
         }
 
         foreach ($found as $i => [$item, $pocket]) {
-            if ($pocket !== null || $item['type'] !== 'income'
+            // «Retiro - Fondo de Rendimientos» no es interés: es dinero que llega de la inversión
+            if ($pocket !== null || $item['type'] !== 'income' || preg_match('/^\s*retiro\b/iu', $item['description'])
                 || ! preg_match('/\b(inter[eé]s(es)?|rendimientos?)\b/iu', $item['description'])) {
                 continue;
             }
@@ -607,9 +622,8 @@ class StatementImportService
             foreach ($found as $j => [$other, $otherPocket]) {
                 if ($otherPocket === null && $other['type'] === 'expense'
                     && $other['amount'] === $item['amount'] && $other['date'] === $item['date']
-                    && empty($other['to_debit'])
                     && preg_match('/monto invertido|reinver/iu', $other['description'])) {
-                    $found[$j][0]['to_debit'] = true;
+                    unset($found[$j]);
 
                     break;
                 }
