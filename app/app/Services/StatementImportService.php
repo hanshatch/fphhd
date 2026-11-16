@@ -400,6 +400,20 @@ class StatementImportService
             $categorySource = null;
         }
 
+        // Inversión / ahorro: un retiro (o el interés que sale) va a la cuenta de débito del mismo banco
+        $toDebit = null;
+
+        if (! $twin && $type === 'expense' && in_array($account->type, [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT], true)
+            && (! empty($item['to_debit']) || preg_match('/\bretiro\b/iu', $description))) {
+            $debits = Account::where('is_active', true)->where('institution', $account->institution)
+                ->where('type', Account::TYPE_DEBIT)->where('id', '<>', $account->id)->get();
+
+            $toDebit        = $account->institution !== 'other' && $debits->count() === 1 ? $debits->first() : null;
+            $type           = 'transfer_out';
+            $categoryId     = null;
+            $categorySource = null;
+        }
+
         return [
             'date'                    => $date ?? '',
             'undated'                 => $date === null,
@@ -411,7 +425,7 @@ class StatementImportService
             'source_id'               => $twin ? null : $source?->id,
             'source_name'             => $twin ? null : $source?->name,
             'duplicate'               => $duplicate,
-            'counterparty_account_id' => $twin?->account_id,
+            'counterparty_account_id' => $twin?->account_id ?? $toDebit?->id,
             'twin'                    => $twin ? $this->matcher->describe($twin, $account) : null,
         ];
     }
@@ -572,8 +586,9 @@ class StatementImportService
     /**
      * Rendimientos: un abono que dice «intereses» o «rendimientos» en una cuenta
      * que no es de crédito se propone como interés, no como ingreso. Si la app
-     * lista además la reinversión de ese mismo pago («Monto invertido» por el
-     * mismo monto y día), ese renglón se descarta: el dinero no salió de la cuenta.
+     * lista además la salida de ese mismo pago («Monto invertido» por el mismo
+     * monto y día), ese renglón es el interés que se va a la cuenta de débito
+     * del mismo banco: se propone como transferencia, no como gasto.
      */
     private function markInterest(Account $account, array $found): array
     {
@@ -592,8 +607,9 @@ class StatementImportService
             foreach ($found as $j => [$other, $otherPocket]) {
                 if ($otherPocket === null && $other['type'] === 'expense'
                     && $other['amount'] === $item['amount'] && $other['date'] === $item['date']
+                    && empty($other['to_debit'])
                     && preg_match('/monto invertido|reinver/iu', $other['description'])) {
-                    unset($found[$j]);
+                    $found[$j][0]['to_debit'] = true;
 
                     break;
                 }

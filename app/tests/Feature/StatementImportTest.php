@@ -219,39 +219,43 @@ class StatementImportTest extends TestCase
         $this->assertSame('Recarga tiempo aire · 5530808688', $rows[3]['duplicate']['description']);
     }
 
-    public function test_interest_payment_is_imported_as_interest_and_its_reinvestment_is_dropped(): void
+    public function test_interest_is_imported_as_interest_and_its_payout_and_withdrawals_go_to_the_debit_account(): void
     {
         $account = Account::create([
             'name' => 'Inversion', 'type' => 'investment', 'institution' => 'klar',
             'initial_balance' => '25000.00', 'color' => '#373737',
         ]);
+        $debit = Account::create([
+            'name' => 'Klar', 'type' => 'debit', 'institution' => 'klar',
+            'initial_balance' => '0.00', 'color' => '#373737',
+        ]);
 
         $this->fakeVision([
             ['amount' => '36.99', 'description' => 'Monto Invertido - General', 'date' => '2026-11-14', 'type' => 'expense', 'category' => 'Finanzas'],
             ['amount' => '36.99', 'description' => 'Pago semanal de intereses - General', 'date' => '2026-11-14', 'type' => 'income', 'category' => null],
-            ['amount' => '500.00', 'description' => 'Monto Invertido - General', 'date' => '2026-11-10', 'type' => 'expense', 'category' => null],
+            ['amount' => '17000.00', 'description' => 'Retiro anticipado - General', 'date' => '2026-11-09', 'type' => 'expense', 'category' => 'Finanzas'],
         ]);
 
         $location = $this->upload($account)->headers->get('Location');
         $rows     = app(\App\Services\StatementImportService::class)->draft($account, basename($location));
 
-        // La reinversión del interés se descarta; una inversión sin interés gemelo se conserva
-        $this->assertCount(2, $rows);
-        $this->assertSame('interest', $rows[0]['type']);
-        $this->assertNull($rows[0]['category_id']);
-        $this->assertSame('500.00', $rows[1]['amount']);
+        // El interés entra como interés; su salida y el retiro son transferencias a la cuenta de débito
+        $this->assertSame(['transfer_out', 'interest', 'transfer_out'], array_column($rows, 'type'));
+        $this->assertSame($debit->id, $rows[0]['counterparty_account_id']);
+        $this->assertSame($debit->id, $rows[2]['counterparty_account_id']);
+        $this->assertNull($rows[1]['category_id']);
 
         $this->get($location)->assertOk()->assertSee('Interés / rendimiento');
 
-        $this->post($location, ['rows' => [
-            ['include' => 1, 'date' => '2026-11-14', 'description' => $rows[0]['description'], 'amount' => '36.99', 'type' => 'interest'],
-        ]])->assertRedirect();
+        $this->post($location, ['rows' => array_map(fn ($r) => [
+            'include' => 1, 'date' => $r['date'], 'description' => $r['description'], 'amount' => $r['amount'],
+            'type' => $r['type'], 'counterparty_account_id' => $r['counterparty_account_id'],
+        ], $rows)])->assertRedirect();
 
-        $tx = Transaction::sole();
-        $this->assertSame(Transaction::TYPE_INTEREST, $tx->type);
-        $this->assertSame('36.99', $tx->amount);
-        $this->assertNull($tx->category_id);
-        $this->assertSame('25036.99', app(\App\Services\AccountService::class)->balance($account));
+        $balances = app(\App\Services\AccountService::class);
+        $this->assertSame(1, Transaction::where('type', Transaction::TYPE_INTEREST)->where('account_id', $account->id)->count());
+        $this->assertSame('8000.00', $balances->balance($account));
+        $this->assertSame('17036.99', $balances->balance($debit));
     }
 
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
