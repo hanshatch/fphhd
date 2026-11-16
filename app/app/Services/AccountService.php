@@ -207,6 +207,44 @@ class AccountService
      * En TDC el saldo es deuda: subirla = expense, bajarla = income.
      * Retorna null si no hubo diferencia.
      */
+    /** Tope para tomar una diferencia como rendimientos: 3% del saldo (o del mayor movimiento reciente) */
+    private const INTEREST_CAP = '0.03';
+
+    /**
+     * Cuadre contra el saldo real del banco al terminar una importación.
+     * En cuentas de ahorro o inversión, si al banco le sobra un poco es el
+     * rendimiento que la app no lista como movimiento: se registra como interés.
+     * Cualquier otra diferencia solo se reporta; no se inventa un movimiento.
+     *
+     * @return array{account: Account, diff: string, interest: ?Transaction}
+     */
+    public function squareWithBank(Account $account, string $target): array
+    {
+        $target  = parse_money($target) ?? '0.00';
+        $current = $this->balance($account);
+        $diff    = bcsub($target, $current, 2);
+        $tx      = null;
+
+        if (bccomp($diff, '0', 2) > 0 && in_array($account->type, [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT], true)) {
+            // Una cuenta recién vaciada tiene saldo 0: la base es lo que movió en los últimos 60 días
+            $recent = (string) (Transaction::where(fn ($q) => $q->where('account_id', $account->id)->orWhere('counterparty_account_id', $account->id))
+                ->whereDate('date', '>=', now()->subDays(60)->toDateString())->max('amount') ?: 0);
+            $base   = collect([ltrim($target, '-'), ltrim($current, '-'), $recent])->reduce(fn ($m, $v) => bccomp($v, $m, 2) > 0 ? $v : $m, '0');
+
+            if (bccomp($diff, bcmul($base, self::INTEREST_CAP, 2), 2) <= 0) {
+                $tx = Transaction::create([
+                    'date'        => now()->toDateString(),
+                    'type'        => Transaction::TYPE_INTEREST,
+                    'amount'      => $diff,
+                    'account_id'  => $account->id,
+                    'description' => 'Rendimientos (cuadre con el saldo del banco)',
+                ]);
+            }
+        }
+
+        return ['account' => $account, 'diff' => $diff, 'interest' => $tx];
+    }
+
     public function adjustBalance(Account $account, string $target, string $date, ?string $description = null): ?Transaction
     {
         $current = $this->balance($account);

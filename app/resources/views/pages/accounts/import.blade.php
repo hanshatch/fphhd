@@ -256,6 +256,21 @@
             @endforeach
         </div>
 
+        {{-- Cuadre opcional contra el saldo del banco --}}
+        <x-card class="p-3 mt-3 mb-24">
+            <p class="text-sm font-semibold text-[#373737] dark:text-white">¿Cuánto dice el banco que tienes? <span class="font-normal text-[#878787]">(opcional)</span></p>
+            <p class="mt-1 text-xs text-[#878787]">Al registrar comparo el saldo. En ahorro e inversión, si faltan rendimientos que la app del banco no lista, los registro como interés; cualquier otra diferencia te la aviso.</p>
+            <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                @foreach($balanced as $b)
+                <label class="block">
+                    <span class="text-xs font-semibold text-[#373737] dark:text-white">{{ $b->displayLabel() }}{{ $b->isCredit() ? ' (lo que debes)' : '' }}</span>
+                    <input type="text" inputmode="decimal" name="balances[{{ $b->id }}]" value="{{ old('balances.' . $b->id) }}" placeholder="$0.00"
+                           class="mt-1 w-full rounded-lg border border-[#ababab]/40 bg-[#efeded]/50 dark:bg-white/5 px-3 py-2 text-sm tabular-nums text-[#373737] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#76a72b]">
+                </label>
+                @endforeach
+            </div>
+        </x-card>
+
         {{-- Barra fija inferior --}}
         <div class="fixed bottom-20 lg:bottom-4 left-0 lg:left-60 right-0 px-4 z-40 pointer-events-none">
             <div class="max-w-3xl mx-auto flex gap-2 pointer-events-auto">

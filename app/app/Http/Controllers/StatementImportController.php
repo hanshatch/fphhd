@@ -59,6 +59,7 @@ class StatementImportController extends Controller
             'account'    => $account,
             'token'      => $token,
             'warning'    => $this->service->screenWarning($account, $token),
+            'balanced'   => $this->balanceAccounts($account),
             'rows'       => $rows,
             'categories' => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),
             'recurrings' => \App\Models\RecurringCharge::active()->where('account_id', $account->id)
@@ -66,6 +67,17 @@ class StatementImportController extends Controller
             'others'     => Account::where('is_active', true)->where('id', '<>', $account->id)->get()
                 ->sortBy(fn (Account $a) => mb_strtolower($a->displayLabel()))->values(),
         ]);
+    }
+
+    /** Cuentas cuyo saldo se puede cuadrar en esta importación: la cuenta y sus apartados del mismo banco */
+    private function balanceAccounts(Account $account)
+    {
+        $pockets = in_array($account->institution, [Account::INST_OTHER, Account::INST_EFECTIVO], true)
+            ? collect()
+            : Account::where('is_active', true)->where('institution', $account->institution)->where('id', '<>', $account->id)
+                ->whereIn('type', [Account::TYPE_SAVINGS, Account::TYPE_INVESTMENT])->orderBy('name')->get();
+
+        return collect([$account])->merge($pockets)->values();
     }
 
     /** Crea las transacciones seleccionadas */
@@ -91,6 +103,8 @@ class StatementImportController extends Controller
             'rows.*.recurring_id' => 'nullable|integer',
             'rows.*.adjust_tx_id' => 'nullable|integer',
             'confirm_account'     => $this->service->screenWarning($account, $token) ? 'accepted' : 'nullable',
+            'balances'            => 'nullable|array',
+            'balances.*'          => 'nullable|string|max:20',
         ], [
             'confirm_account.accepted' => 'Confirma que la captura sí es de «' . $account->displayLabel() . '» antes de registrar.',
         ]);
@@ -122,6 +136,25 @@ class StatementImportController extends Controller
             $r['reconciled'] === 1 ? '1 transferencia se concilió sola con su otra cuenta.' : ($r['reconciled'] > 1 ? "{$r['reconciled']} transferencias se conciliaron solas con su otra cuenta." : null),
             $r['pending'] === 1 ? '1 transferencia quedó por conciliar.' : ($r['pending'] > 1 ? "{$r['pending']} transferencias quedaron por conciliar." : null),
         ]);
+
+        // Cuadre contra el saldo del banco (opcional): rendimientos no listados o aviso de diferencia
+        $allowed = $this->balanceAccounts($account)->keyBy('id');
+
+        foreach ($data['balances'] ?? [] as $id => $target) {
+            if (blank($target) || ! $allowed->has((int) $id) || parse_money($target) === null) {
+                continue;
+            }
+
+            $s    = app(\App\Services\AccountService::class)->squareWithBank($allowed[(int) $id], $target);
+            $name = '«' . $s['account']->displayLabel() . '»';
+
+            $parts[] = match (true) {
+                bccomp($s['diff'], '0', 2) === 0 => "{$name} cuadra con el banco.",
+                $s['interest'] !== null          => "{$name}: registré " . format_currency($s['diff']) . ' de rendimientos para cuadrar con el banco.',
+                default                          => "⚠️ {$name} NO cuadra: al banco le " . (bccomp($s['diff'], '0', 2) > 0 ? 'sobran ' : 'faltan ')
+                    . format_currency(ltrim($s['diff'], '-')) . ' contra FP. Revisa qué falta o usa «Ajustar saldo».',
+            };
+        }
 
         $msg = $parts === [] ? 'No se registró ningún movimiento.' : implode(' ', $parts);
 

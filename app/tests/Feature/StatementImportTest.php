@@ -313,6 +313,36 @@ class StatementImportTest extends TestCase
         $this->assertSame(1, Transaction::where('account_id', $open->id)->count());
     }
 
+    public function test_bank_balance_at_import_registers_unlisted_yield_as_interest_and_only_warns_otherwise(): void
+    {
+        $debit = Account::create(['name' => 'Nu', 'type' => 'debit', 'institution' => 'nu', 'initial_balance' => '0.00', 'color' => '#820ad1']);
+        $turbo = Account::create(['name' => 'Cajita Turbo', 'type' => 'investment', 'institution' => 'nu', 'initial_balance' => '25000.00', 'color' => '#820ad1']);
+
+        $this->fakeVision([
+            ['amount' => '25263.22', 'description' => 'Retiraste dinero de tu Cajita · Cajita Turbo', 'date' => now()->subDays(2)->toDateString(), 'type' => 'income', 'category' => null],
+        ]);
+
+        $location = $this->upload($debit)->headers->get('Location');
+        $rows     = app(\App\Services\StatementImportService::class)->draft($debit, basename($location));
+
+        $this->get($location)->assertOk()->assertSee('¿Cuánto dice el banco que tienes?')->assertSee('Cajita Turbo');
+
+        // La cajita quedó en $0 en el banco: los $263.22 que faltan son rendimientos. Débito no cuadra: solo avisa.
+        $this->post($location, [
+            'rows' => [['include' => 1, 'date' => $rows[0]['date'], 'description' => $rows[0]['description'], 'amount' => $rows[0]['amount'],
+                'type' => $rows[0]['type'], 'counterparty_account_id' => $rows[0]['counterparty_account_id']]],
+            'balances' => [$turbo->id => '0.00', $debit->id => '20,000.00'],
+        ])->assertRedirect()
+            ->assertSessionHas('status', fn ($m) => str_contains($m, 'registré $263.22 de rendimientos') && str_contains($m, '«Nu» NO cuadra: al banco le faltan $5,263.22'));
+
+        $interest = Transaction::where('type', Transaction::TYPE_INTEREST)->sole();
+        $this->assertSame([$turbo->id, '263.22'], [$interest->account_id, $interest->amount]);
+
+        $balances = app(\App\Services\AccountService::class);
+        $this->assertSame('0.00', $balances->balance($turbo));
+        $this->assertSame('25263.22', $balances->balance($debit));   // sin ajuste inventado
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
