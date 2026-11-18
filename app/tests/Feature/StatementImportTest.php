@@ -532,6 +532,42 @@ class StatementImportTest extends TestCase
         $this->get($location)->assertOk()->assertSee('Detecté <strong class="text-[#373737] dark:text-white">1</strong>', false);
     }
 
+    public function test_a_hole_between_screenshots_is_warned(): void
+    {
+        $account = $this->account();
+        config(['services.openai.api_key' => 'test-oa-key']);
+
+        Http::preventStrayRequests();
+        Http::fake(['api.openai.com/*' => Http::sequence()
+            ->push(['choices' => [['message' => ['content' => json_encode(['charges' => [
+                ['amount' => '500.00', 'description' => 'Stradivarius', 'date' => '2026-09-25', 'type' => 'expense', 'category' => null],
+                ['amount' => '924.37', 'description' => 'Cuota anual', 'date' => '2026-10-03', 'type' => 'expense', 'category' => null],
+            ]])]]]])
+            ->push(['choices' => [['message' => ['content' => json_encode(['charges' => [
+                ['amount' => '3988.34', 'description' => 'Vallarta', 'date' => '2026-10-22', 'type' => 'expense', 'category' => null],
+                ['amount' => '3099.54', 'description' => 'Vallarta', 'date' => '2026-10-29', 'type' => 'expense', 'category' => null],
+            ]])]]]]),
+        ]);
+
+        $location = $this->upload($account, 2)->headers->get('Location');
+
+        $this->get($location)->assertOk()->assertSee('Puede faltar una captura')->assertSee('del 3 oct al 22 oct');
+    }
+
+    public function test_overlapping_screenshots_do_not_warn_about_a_hole(): void
+    {
+        $account = $this->account();
+
+        $this->fakeVision([
+            ['amount' => '115.00', 'description' => 'Cinepolis', 'date' => '2026-08-15', 'type' => 'expense', 'category' => null],
+            ['amount' => '300.00', 'description' => 'Fresko', 'date' => '2026-09-20', 'type' => 'expense', 'category' => null],
+        ]);
+
+        $location = $this->upload($account, 2)->headers->get('Location');
+
+        $this->get($location)->assertOk()->assertDontSee('Puede faltar una captura');
+    }
+
     private function revolut(): Account
     {
         return Account::create([

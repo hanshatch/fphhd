@@ -59,6 +59,7 @@ class StatementImportController extends Controller
             'account'    => $account,
             'token'      => $token,
             'warning'    => $this->service->screenWarning($account, $token),
+            'gaps'       => $this->service->gapWarnings($account, $token),
             'balanced'   => $this->balanceAccounts($account),
             'rows'       => $rows,
             'categories' => Category::active()->with('children')->orderBy('kind')->orderBy('name')->get(),

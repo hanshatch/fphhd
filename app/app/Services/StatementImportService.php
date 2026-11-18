@@ -21,6 +21,9 @@ use Illuminate\Support\Str;
 class StatementImportService
 {
     private const MAX_ITEMS_PER_IMAGE = 40;
+    /** Días sin movimientos entre dos capturas a partir de los cuales se avisa */
+    private const GAP_DAYS = 4;
+
     private const TTL_MINUTES         = 60;
 
     // Mismo monto a más de 3 días: se avisa como «posible duplicado». Sin fecha
@@ -91,6 +94,7 @@ class StatementImportService
         $rows     = [];
         $found    = [];
         $screens  = [];
+        $spans    = [];
         $analyzed = false;
         $apps     = array_values(array_diff(array_keys(Account::INSTITUTION_LABELS), [Account::INST_EFECTIVO, Account::INST_OTHER]));
 
@@ -116,6 +120,7 @@ class StatementImportService
             }
 
             $analyzed = true;
+            $spans[]  = $this->span($items);
 
             // Renglones de capturas ANTERIORES aún sin empatar con uno de esta. Dos renglones
             // idénticos en la MISMA captura son dos movimientos reales (dos retiros de $17,000
@@ -163,6 +168,7 @@ class StatementImportService
 
         Cache::put($this->key($account, $token), $rows, now()->addMinutes(self::TTL_MINUTES));
         Cache::put($this->key($account, $token) . ':screen', $this->screenCheck($account, $screens), now()->addMinutes(self::TTL_MINUTES));
+        Cache::put($this->key($account, $token) . ':gaps', $this->gaps($spans), now()->addMinutes(self::TTL_MINUTES));
 
         return $token;
     }
@@ -207,6 +213,46 @@ class StatementImportService
         }
 
         return ['title' => $title, 'warning' => null];
+    }
+
+    /** Primer y último día que cubre una captura, o null si no trae fechas legibles */
+    private function span(array $items): ?array
+    {
+        $dates = collect($items)->map(fn ($i) => $this->readDate($this->anchorYear($i['date'] ?? null)))->filter()->sort()->values();
+
+        return $dates->isEmpty() ? null : [$dates->first(), $dates->last()];
+    }
+
+    /**
+     * Huecos entre capturas: si una termina el 3 oct y la siguiente empieza el
+     * 22 oct sin compartir ningún día, lo de en medio no se subió y el saldo no
+     * va a cuadrar. Capturas seguidas se traslapan o quedan a pocos días.
+     *
+     * @return array<int, array{from: string, to: string}>
+     */
+    private function gaps(array $spans): array
+    {
+        $spans = collect($spans)->filter()->sortBy(fn ($s) => $s[0])->values();
+        $gaps  = [];
+        $until = null;
+
+        foreach ($spans as [$from, $to]) {
+            if ($until !== null && Carbon::parse($until)->diffInDays(Carbon::parse($from)) > self::GAP_DAYS) {
+                $gaps[] = ['from' => $until, 'to' => $from];
+            }
+
+            $until = $until === null ? $to : max($until, $to);
+        }
+
+        return $gaps;
+    }
+
+    /** Avisos de «entre estas capturas faltan días», listos para mostrar */
+    public function gapWarnings(Account $account, string $token): array
+    {
+        return collect(Cache::get($this->key($account, $token) . ':gaps', []))
+            ->map(fn ($g) => str_replace('.', '', 'del ' . Carbon::parse($g['from'])->translatedFormat('j M') . ' al ' . Carbon::parse($g['to'])->translatedFormat('j M')))
+            ->all();
     }
 
     private function titleKey(string $title): string

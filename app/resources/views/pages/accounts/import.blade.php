@@ -62,6 +62,17 @@
         </div>
         @endif
 
+        {{-- Entre dos capturas quedaron días sin cubrir: lo de en medio no se va a registrar --}}
+        @if($gaps ?? [])
+        <div class="mb-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/40 p-3">
+            <p class="text-sm font-bold text-amber-700 dark:text-amber-400">⚠️ Puede faltar una captura</p>
+            <p class="mt-1 text-sm text-[#373737] dark:text-white">
+                Tus capturas no traen ningún movimiento {{ implode(' ni ', $gaps) }}.
+                Si la cuenta se movió esos días, sube también esa parte o el saldo no va a cuadrar.
+            </p>
+        </div>
+        @endif
+
         {{-- Los ya registrados estorban al revisar: se ocultan hasta que se pidan --}}
         @if($dupes)
         <div class="flex items-center gap-1 p-1 mb-3 rounded-xl bg-white dark:bg-[#2a2a2a] border border-[#ababab]/30 w-full sm:w-fit" role="group" aria-label="Qué movimientos mostrar">
