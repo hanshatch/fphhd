@@ -704,7 +704,9 @@ class StatementImportService
         foreach ($found as $i => [$item, $pocket]) {
             // «Retiro - Fondo de Rendimientos» no es interés: es dinero que llega de la inversión
             if ($pocket !== null || $item['type'] !== 'income' || preg_match('/^\s*retiro\b/iu', $item['description'])
-                || ! preg_match('/\b(inter[eé]s(es)?|rendimientos?)\b/iu', $item['description'])) {
+                || ! preg_match('/\b(inter[eé]s(es)?|rendimientos?)\b/iu', $item['description'])
+                    // «Ganancias» (Mercado Pago, Klar) son rendimientos solo en cuentas de ahorro o inversión
+                    && ! ($this->isPocket($account) && preg_match('/\bganancias?\b/iu', $item['description']))) {
                 continue;
             }
 

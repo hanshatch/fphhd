@@ -390,6 +390,24 @@ class StatementImportTest extends TestCase
             ->assertSee("x-show=\"true\"", false);
     }
 
+    public function test_mercado_pago_gains_are_interest_in_an_investment_account_only(): void
+    {
+        $charges = [
+            ['amount' => '0.41', 'description' => 'Ganancias', 'date' => '2026-10-30', 'type' => 'income', 'category' => null],
+            ['amount' => '0.52', 'description' => 'Ganancia Beneficio de Mercado Pago', 'date' => '2026-10-30', 'type' => 'income', 'category' => null],
+        ];
+
+        $mp = Account::create(['name' => 'MP', 'type' => 'investment', 'institution' => 'mercadopago', 'initial_balance' => '0.00', 'color' => '#373737']);
+        $this->fakeVision($charges);
+        $rows = app(\App\Services\StatementImportService::class)->draft($mp, basename($this->upload($mp)->headers->get('Location')));
+        $this->assertSame(['interest', 'interest'], array_column($rows, 'type'));
+
+        // En una cuenta normal, «ganancias» puede ser cualquier ingreso
+        $debit = Account::create(['name' => 'Cheques', 'type' => 'debit', 'institution' => 'banamex', 'initial_balance' => '0.00', 'color' => '#373737']);
+        $rows  = app(\App\Services\StatementImportService::class)->draft($debit, basename($this->upload($debit)->headers->get('Location')));
+        $this->assertSame(['income', 'income'], array_column($rows, 'type'));
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
