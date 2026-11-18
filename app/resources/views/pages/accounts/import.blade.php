@@ -4,7 +4,9 @@
     <x-page-header title="Importar a {{ $account->name }}" :back="route('accounts.show', $account)" />
 
     @php
-        $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'])->count();
+        // Solo se ocultan los que SEGURO ya existen; un «posible duplicado» se decide a la vista
+        $dupes = collect($rows)->filter(fn ($r) => $r['duplicate'] && ! ($r['duplicate']['possible'] ?? false))->count();
+        $maybe = collect($rows)->filter(fn ($r) => $r['duplicate'] && ($r['duplicate']['possible'] ?? false))->count();
         $twins = collect($rows)->filter(fn ($r) => $r['twin'] ?? null)->count();
         $recs  = collect($rows)->filter(fn ($r) => $r['recurring'] ?? null)->count();
         $blank = collect($rows)->filter(fn ($r) => $r['undated'] ?? false)->count();
@@ -23,6 +25,10 @@
         Revisa la categoría de cada uno y desmarca los que no quieras registrar.
         @if($dupes)
             <span class="text-amber-600 font-semibold">{{ $dupes }} parecen ya registrados</span> y están ocultos; usa «Todos» para verlos.
+        @endif
+        @if($maybe)
+            <span class="text-amber-600 font-semibold">{{ $maybe }} {{ $maybe === 1 ? 'se parece' : 'se parecen' }} a algo registrado en otra fecha</span>:
+            {{ $maybe === 1 ? 'está desmarcado' : 'están desmarcados' }}; márcalo si es un movimiento distinto.
         @endif
         @if($blank)
             <span class="text-negative font-semibold">{{ $blank }} sin fecha legible</span>:
@@ -100,7 +106,7 @@
                         get amountClass() { return this.isIn ? 'text-positive' : (this.type === 'transfer_out' ? 'text-[#878787]' : 'text-negative'); },
                     }"
                     x-bind:class="on || needsDate ? '' : 'opacity-50'"
-                    x-show="{{ $dup ? 'showAll || on' : 'true' }}">
+                    x-show="{{ $dup && ! ($dup['possible'] ?? false) ? 'showAll || on' : 'true' }}">
                 @if($twin)
                 <input type="hidden" name="rows[{{ $i }}][twin_id]" value="{{ $twin['id'] }}" x-bind:disabled="!isTransfer">
                 @endif

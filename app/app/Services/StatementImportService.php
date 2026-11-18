@@ -117,6 +117,11 @@ class StatementImportService
 
             $analyzed = true;
 
+            // Renglones de capturas ANTERIORES aún sin empatar con uno de esta. Dos renglones
+            // idénticos en la MISMA captura son dos movimientos reales (dos retiros de $17,000
+            // el mismo día); solo se descarta lo que se repite entre capturas que se traslapan.
+            $earlier = array_keys($found);
+
             foreach ($items as $item) {
                 $pocket = $this->pocketRule($account, $item) ?? $this->cashRule($account, $item);
 
@@ -124,9 +129,10 @@ class StatementImportService
                     continue; // movimiento de otra subcuenta (débito u otra cajita)
                 }
 
-                // Renglón repetido entre capturas que se traslapan
-                foreach ($found as [$seen]) {
-                    if ($this->sameLine($seen, $item)) {
+                foreach ($earlier as $k => $index) {
+                    if ($this->sameLine($found[$index][0], $item)) {
+                        unset($earlier[$k]);
+
                         continue 2;
                     }
                 }
@@ -751,6 +757,31 @@ class StatementImportService
 
             if ($own) {
                 $reserved[$own->id] = $i;
+            }
+        }
+
+        // Luego, el movimiento de casi la misma fecha (±3 días) es del renglón de ESA fecha:
+        // así un abono de $17,000 del 17 no se queda con el ya registrado el 9 y deja al
+        // renglón del 9 como «nuevo».
+        $taken = array_flip($reserved);
+
+        foreach ($found as $i => [$item, $pocket]) {
+            $date = $this->readDate($this->anchorYear($item['date']));
+
+            if ($date === null || isset($taken[$i])) {
+                continue;
+            }
+
+            $direction = $pocket !== null
+                ? ($pocket['type'] === 'transfer_in' ? 'in' : 'out')
+                : (in_array($item['type'], ['income', 'interest'], true) ? 'in' : 'out');
+
+            $near = $this->matches($account, $direction, $item['amount'], $date)
+                ->first(fn (Transaction $t) => ! isset($reserved[$t->id]) && abs(Carbon::parse($date)->diffInDays($t->date)) <= 3);
+
+            if ($near) {
+                $reserved[$near->id] = $i;
+                $taken[$i]           = true;
             }
         }
 

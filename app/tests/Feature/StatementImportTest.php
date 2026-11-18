@@ -343,6 +343,53 @@ class StatementImportTest extends TestCase
         $this->assertSame('25263.22', $balances->balance($debit));   // sin ajuste inventado
     }
 
+    public function test_repeated_amounts_on_the_same_day_are_all_kept_and_matched_to_the_right_date(): void
+    {
+        $account = $this->account();
+
+        // Ya registrado: un abono de $17,000 del día 9
+        Transaction::create(['date' => '2026-11-09', 'type' => 'income', 'amount' => '17000.00', 'account_id' => $account->id, 'description' => 'Pago']);
+
+        $out = ['amount' => '17000.00', 'description' => 'Transferencia Interbancaria', 'date' => '2026-11-17', 'type' => 'expense', 'category' => null];
+
+        $this->fakeVision([
+            $out,
+            ['amount' => '17000.00', 'description' => 'Devolución', 'date' => '2026-11-17', 'type' => 'income', 'category' => null],
+            $out,   // mismo texto, mismo día, misma captura: es OTRO movimiento
+            ['amount' => '17000.00', 'description' => 'Mercado*Pago Pago Recibido', 'date' => '2026-11-17', 'type' => 'income', 'category' => null],
+            ['amount' => '17000.00', 'description' => 'Pago', 'date' => '2026-11-09', 'type' => 'income', 'category' => null],
+        ]);
+
+        $location = $this->upload($account)->headers->get('Location');
+        $rows     = app(\App\Services\StatementImportService::class)->draft($account, basename($location));
+
+        // No se pierde ningún renglón aunque dos sean idénticos
+        $this->assertCount(5, $rows);
+
+        // El ya registrado empata con el renglón de SU fecha, no con el primero que aparece
+        $this->assertFalse($rows[4]['duplicate']['possible']);
+        $this->assertNull($rows[0]['duplicate']);
+        $this->assertNull($rows[2]['duplicate']);
+        $this->assertSame([null, null], [$rows[1]['duplicate'], $rows[3]['duplicate']]);
+    }
+
+    public function test_possible_duplicate_is_shown_for_a_decision_instead_of_hidden(): void
+    {
+        $account = $this->account();
+
+        Transaction::create(['date' => '2026-11-09', 'type' => 'income', 'amount' => '17000.00', 'account_id' => $account->id, 'description' => 'Pago']);
+
+        $this->fakeVision([
+            ['amount' => '17000.00', 'description' => 'Devolución', 'date' => '2026-11-17', 'type' => 'income', 'category' => null],
+        ]);
+
+        $this->get($this->upload($account)->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('se parece a algo registrado en otra fecha')
+            ->assertDontSee('están ocultos')
+            ->assertSee("x-show=\"true\"", false);
+    }
+
     public function test_undated_row_is_not_dated_today_and_is_flagged_as_possible_duplicate(): void
     {
         // Caso real: la colegiatura del 9 oct volvió a entrar fechada «hoy» (26 oct) y se duplicó
@@ -447,7 +494,9 @@ class StatementImportTest extends TestCase
             ->assertOk()
             ->assertSee('Posible duplicado de: Planet Fitness', false)
             ->assertDontSee('Telmex · ', false)
-            ->assertSee('1 parecen ya registrados', false);
+            // Un posible duplicado ya no se oculta: queda a la vista, desmarcado, para decidir
+            ->assertSee('1 se parece a algo registrado en otra fecha', false)
+            ->assertDontSee('parecen ya registrados', false);
 
         Carbon::setTestNow();
     }
